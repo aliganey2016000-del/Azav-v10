@@ -23,7 +23,20 @@ export class EvaluationService {
       throw err;
     }
 
-    // Check duplicate evaluation of the same type
+    if (data.studentId.toString() !== attachment.studentId.toString()) {
+      const err: any = new Error('Evaluation student does not match the clinical attachment student.');
+      err.statusCode = 400;
+      err.code = 'STUDENT_ATTACHMENT_MISMATCH';
+      throw err;
+    }
+
+    if (!attachment.supervisorId || data.supervisorId.toString() !== attachment.supervisorId.toString()) {
+      const err: any = new Error('Evaluation supervisor does not match the clinical attachment supervisor.');
+      err.statusCode = 400;
+      err.code = 'SUPERVISOR_ATTACHMENT_MISMATCH';
+      throw err;
+    }
+
     const existing = await Evaluation.findOne({
       attachmentId: data.attachmentId,
       type: data.type,
@@ -41,8 +54,8 @@ export class EvaluationService {
 
     const evaluation = new Evaluation({
       attachmentId: data.attachmentId,
-      studentId: data.studentId,
-      supervisorId: data.supervisorId,
+      studentId: attachment.studentId,
+      supervisorId: attachment.supervisorId,
       type: data.type,
       clinicalCompetency: data.clinicalCompetency,
       professionalism: data.professionalism,
@@ -56,7 +69,6 @@ export class EvaluationService {
 
     await evaluation.save();
 
-    // If FINAL evaluation is submitted, trigger completion workflow
     if (data.type === EvaluationType.FINAL && overallScore >= 60) {
       attachment.status = ClinicalAttachmentStatus.COMPLETED;
       await attachment.save();
