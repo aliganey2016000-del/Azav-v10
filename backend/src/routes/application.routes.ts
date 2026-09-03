@@ -15,7 +15,7 @@ applicationRouter.get('/:id', validateApplicationAccess, ApplicationController.g
 
 applicationRouter.patch(
   '/:id/status',
-  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN, UserRole.ORGANIZATION_ADMIN),
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN),
   validateApplicationAccess,
   ApplicationController.updateStatus
 );
