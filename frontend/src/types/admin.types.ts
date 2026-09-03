@@ -35,6 +35,28 @@ export interface AdminDashboardData {
   organizationCapacity: OrganizationCapacityItem[];
 }
 
+export interface ChartDataPoint {
+  label: string;
+  value: number;
+}
+
+export interface CategoryData {
+  category: string;
+  count: number;
+  color: string;
+}
+
+export interface AdminAnalyticsData {
+  enrollmentTrend: ChartDataPoint[];
+  applicationsTrend: ChartDataPoint[];
+  placementGrowth: ChartDataPoint[];
+  certificateIssuance: ChartDataPoint[];
+  usersByRole: CategoryData[];
+  applicationsByStatus: CategoryData[];
+  organizationsByType: CategoryData[];
+  monthlyActivity: ChartDataPoint[];
+}
+
 export interface AdminUser {
   _id: string;
   firstName: string;

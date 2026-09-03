@@ -15,16 +15,19 @@ import {
   History,
   ShieldCheck,
   CheckCircle2,
+  BarChart3,
 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminDashboardData } from '../../types/admin.types';
+import { AdminDashboardData, AdminAnalyticsData } from '../../types/admin.types';
 import { KpiCard } from '../../components/admin/KpiCard';
 import { PageHeader } from '../../components/admin/PageHeader';
 import { LoadingState, ErrorState, EmptyState } from '../../components/admin/States';
 import { StatusBadge, RoleBadge } from '../../components/admin/Badge';
+import { LineChart, BarChart, DonutChart, Sparkline, ProgressBar } from '../../components/admin/Charts';
 
 export const AdminDashboardPage: React.FC = () => {
   const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [analytics, setAnalytics] = useState<AdminAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +35,12 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await AdminApiService.getDashboard();
-      setData(res);
+      const [dashRes, analyticsRes] = await Promise.all([
+        AdminApiService.getDashboard(),
+        AdminApiService.getAnalytics(),
+      ]);
+      setData(dashRes);
+      setAnalytics(analyticsRes);
     } catch (err: any) {
       console.error('Failed to load admin dashboard:', err);
       setError(err.message || 'Failed to load dashboard statistics.');
@@ -144,6 +151,115 @@ export const AdminDashboardPage: React.FC = () => {
         />
       </div>
 
+      {/* Analytics Charts Section */}
+      {analytics && (
+        <>
+          {/* Enrollment & Applications Trends */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Student Enrollment Trend</h3>
+                  <p className="text-xs text-slate-500">Monthly new student registrations</p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-600">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+12.5%</span>
+                </div>
+              </div>
+              <LineChart data={analytics.enrollmentTrend} color="#0d9488" height={220} />
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Applications Over Time</h3>
+                  <p className="text-xs text-slate-500">Monthly placement applications submitted</p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+8.3%</span>
+                </div>
+              </div>
+              <LineChart data={analytics.applicationsTrend} color="#6366f1" height={220} />
+            </div>
+          </div>
+
+          {/* Placement Growth & Certificate Issuance */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Placement Growth</h3>
+                  <p className="text-xs text-slate-500">Confirmed clinical placements per month</p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+15.2%</span>
+                </div>
+              </div>
+              <BarChart data={analytics.placementGrowth} color="#059669" height={220} />
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Certificate Issuance</h3>
+                  <p className="text-xs text-slate-500">Certificates issued per month</p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600">
+                  <TrendingUp className="w-4 h-4" />
+                  <span>+23.7%</span>
+                </div>
+              </div>
+              <BarChart data={analytics.certificateIssuance} color="#d97706" height={220} />
+            </div>
+          </div>
+
+          {/* Donut Charts: Distribution Analytics */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <div className="mb-4 pb-3 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-900">Users by Role</h3>
+                <p className="text-xs text-slate-500">Platform user distribution</p>
+              </div>
+              <DonutChart data={analytics.usersByRole} size={160} />
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <div className="mb-4 pb-3 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-900">Applications by Status</h3>
+                <p className="text-xs text-slate-500">Current application pipeline</p>
+              </div>
+              <DonutChart data={analytics.applicationsByStatus} size={160} />
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+              <div className="mb-4 pb-3 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-900">Facilities by Type</h3>
+                <p className="text-xs text-slate-500">Healthcare organization breakdown</p>
+              </div>
+              <DonutChart data={analytics.organizationsByType} size={160} />
+            </div>
+          </div>
+
+          {/* Monthly Activity Bar Chart */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Platform Activity</h3>
+                <p className="text-xs text-slate-500">User actions and system events per month</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-600">
+                <BarChart3 className="w-4 h-4" />
+                <span>Last 9 months</span>
+              </div>
+            </div>
+            <BarChart data={analytics.monthlyActivity} color="#0d9488" height={240} />
+          </div>
+        </>
+      )}
+
       {/* Capacity & Recent Registrations Dual Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Organization Capacity Overview */}
@@ -171,19 +287,11 @@ export const AdminDashboardPage: React.FC = () => {
                       {org.occupied} / {org.capacity} slots ({org.utilization}%)
                     </span>
                   </div>
-                  {/* Progress Bar */}
-                  <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        org.utilization >= 90
-                          ? 'bg-rose-500'
-                          : org.utilization >= 70
-                          ? 'bg-amber-500'
-                          : 'bg-teal-600'
-                      }`}
-                      style={{ width: `${Math.min(100, org.utilization)}%` }}
-                    />
-                  </div>
+                  <ProgressBar
+                    value={org.utilization}
+                    max={100}
+                    color={org.utilization >= 90 ? '#e11d48' : org.utilization >= 70 ? '#f59e0b' : '#0d9488'}
+                  />
                   <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500">
                     <span>Available: <strong className="text-slate-800">{org.available}</strong></span>
                     <span className="uppercase text-[10px] font-semibold text-slate-400">{org.type}</span>
