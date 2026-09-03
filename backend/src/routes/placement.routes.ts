@@ -8,7 +8,7 @@ import { CertificateController } from '../controllers/certificate.controller.js'
 import { UniversityController, OrganizationController } from '../controllers/university.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
-import { validatePlacementAccess } from '../middleware/idor.js';
+import { validatePlacementAccess, validateAttachmentAccess } from '../middleware/idor.js';
 import { UserRole } from '../types/index.js';
 
 export const placementRouter = Router();
@@ -22,13 +22,13 @@ placementRouter.post(
 
 export const attendanceRouter = Router();
 attendanceRouter.use(authenticate);
-attendanceRouter.post('/', AttendanceController.record);
-attendanceRouter.get('/attachment/:attachmentId', AttendanceController.listByAttachment);
+attendanceRouter.post('/', validateAttachmentAccess, AttendanceController.record);
+attendanceRouter.get('/attachment/:attachmentId', validateAttachmentAccess, AttendanceController.listByAttachment);
 
 export const logbookRouter = Router();
 logbookRouter.use(authenticate);
-logbookRouter.post('/', LogbookController.create);
-logbookRouter.get('/attachment/:attachmentId', LogbookController.listByAttachment);
+logbookRouter.post('/', validateAttachmentAccess, LogbookController.create);
+logbookRouter.get('/attachment/:attachmentId', validateAttachmentAccess, LogbookController.listByAttachment);
 logbookRouter.patch(
   '/:id/review',
   requireRole(UserRole.CLINICAL_SUPERVISOR, UserRole.ORGANIZATION_ADMIN, UserRole.SUPER_ADMIN),
@@ -40,9 +40,10 @@ evaluationRouter.use(authenticate);
 evaluationRouter.post(
   '/',
   requireRole(UserRole.CLINICAL_SUPERVISOR, UserRole.ORGANIZATION_ADMIN, UserRole.SUPER_ADMIN),
+  validateAttachmentAccess,
   EvaluationController.submit
 );
-evaluationRouter.get('/attachment/:attachmentId', EvaluationController.listByAttachment);
+evaluationRouter.get('/attachment/:attachmentId', validateAttachmentAccess, EvaluationController.listByAttachment);
 
 const verifyRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
