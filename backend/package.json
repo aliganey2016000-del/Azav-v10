@@ -5,9 +5,11 @@
   "main": "dist/server.cjs",
   "scripts": {
     "dev": "tsx src/server.ts",
-    "build": "esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
+    "build": "npm run build:server && npm run build:admin",
+    "build:server": "esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
+    "build:admin": "esbuild src/scripts/createSuperAdmin.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/createSuperAdmin.cjs",
     "start": "node dist/server.cjs",
-    "create:admin": "tsx src/scripts/createSuperAdmin.ts"
+    "create:admin": "node dist/createSuperAdmin.cjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
