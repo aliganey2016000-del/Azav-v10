@@ -2,6 +2,7 @@ import assert from 'assert';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuthService } from '../services/auth.service.js';
+import { validateStudentAccess, validatePlacementAccess } from '../middleware/idor.js';
 import { ApplicationService } from '../services/application.service.js';
 import { AttendanceService } from '../services/attendance.service.js';
 import { EvaluationService } from '../services/evaluation.service.js';
@@ -30,6 +31,27 @@ async function runTests() {
       console.error(`   Error details: ${err.message}`);
       failedCount++;
     }
+  }
+
+  function mockResponse() {
+    let statusCode = 200;
+    let body: any;
+    return {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(value: any) {
+        body = value;
+        return this;
+      },
+      getStatus: () => statusCode,
+      getBody: () => body,
+    };
+  }
+
+  function mockRequest(user: any, params: Record<string, string> = {}) {
+    return { user, params } as any;
   }
 
   // 1. Password Hashing Test
@@ -85,7 +107,129 @@ async function runTests() {
     assert.throws(() => jwt.verify(expiredToken, env.JWT_SECRET), /jwt expired/);
   });
 
-  // 7. Independent Applicant Validation Rule
+  // 7. IDOR: unauthenticated access is rejected
+  await test('IDOR - Unauthenticated Student Access Rejected', async () => {
+    const req = mockRequest(undefined, { studentId: 'student-1' });
+    const res = mockResponse();
+    let nextCalled = false;
+    await validateStudentAccess(req, res as any, (() => { nextCalled = true; }) as any);
+    assert.strictEqual(res.getStatus(), 401);
+    assert.strictEqual(nextCalled, false);
+  });
+
+  // 8. IDOR: student cannot access another student
+  await test('IDOR - Student Cannot Access Another Student', async () => {
+    const req = mockRequest({ userId: 'user-1', email: 'student@azaam.org', roles: [UserRole.STUDENT], studentId: 'student-1' }, { studentId: 'student-2' });
+    const res = mockResponse();
+    let nextCalled = false;
+    await validateStudentAccess(req, res as any, (() => { nextCalled = true; }) as any);
+    assert.strictEqual(res.getStatus(), 403);
+    assert.strictEqual(res.getBody().error.code, 'FORBIDDEN_IDOR');
+    assert.strictEqual(nextCalled, false);
+  });
+
+  // 9. IDOR: student can access own student record
+  await test('IDOR - Student Can Access Own Student Record', async () => {
+    const req = mockRequest({ userId: 'user-1', email: 'student@azaam.org', roles: [UserRole.STUDENT], studentId: 'student-1' }, { studentId: 'student-1' });
+    const res = mockResponse();
+    let nextCalled = false;
+    await validateStudentAccess(req, res as any, (() => { nextCalled = true; }) as any);
+    assert.strictEqual(nextCalled, true);
+    assert.strictEqual(res.getStatus(), 200);
+  });
+
+  // 10. IDOR: non-global users cannot bypass with a missing target ID
+  await test('IDOR - Missing Student ID Cannot Bypass Guard', async () => {
+    const req = mockRequest({ userId: 'user-1', email: 'student@azaam.org', roles: [UserRole.STUDENT], studentId: 'student-1' });
+    const res = mockResponse();
+    let nextCalled = false;
+    await validateStudentAccess(req, res as any, (() => { nextCalled = true; }) as any);
+    assert.strictEqual(res.getStatus(), 400);
+    assert.strictEqual(res.getBody().error.code, 'MISSING_RESOURCE_ID');
+    assert.strictEqual(nextCalled, false);
+  });
+
+  // 11. IDOR: global staff can access student records
+  await test('IDOR - SUPER_ADMIN Can Access Student Globally', async () => {
+    const req = mockRequest({ userId: 'admin-1', email: 'admin@azaam.org', roles: [UserRole.SUPER_ADMIN] }, { studentId: 'student-2' });
+    const res = mockResponse();
+    let nextCalled = false;
+    await validateStudentAccess(req, res as any, (() => { nextCalled = true; }) as any);
+    assert.strictEqual(nextCalled, true);
+    assert.strictEqual(res.getStatus(), 200);
+  });
+
+  // 12. IDOR: student cannot bypass placement scope
+  await test('IDOR - Student Cannot Access Another Placement', async () => {
+    const originalFindById = (await import('../models/Placement.js')).Placement.findById;
+    (await import('../models/Placement.js')).Placement.findById = (async () => ({
+      studentId: 'student-2', organizationId: 'org-1', supervisorId: 'supervisor-1',
+    })) as any;
+    try {
+      const req = mockRequest({ userId: 'user-1', email: 'student@azaam.org', roles: [UserRole.STUDENT], studentId: 'student-1' }, { placementId: 'placement-2' });
+      const res = mockResponse();
+      let nextCalled = false;
+      await validatePlacementAccess(req, res as any, (() => { nextCalled = true; }) as any);
+      assert.strictEqual(res.getStatus(), 403);
+      assert.strictEqual(res.getBody().error.code, 'FORBIDDEN_SCOPE');
+      assert.strictEqual(nextCalled, false);
+    } finally {
+      (await import('../models/Placement.js')).Placement.findById = originalFindById;
+    }
+  });
+
+  // 13. IDOR: organization tenant isolation on placements
+  await test('IDOR - Organization Admin Cannot Access Another Organization Placement', async () => {
+    const placementModel = await import('../models/Placement.js');
+    const originalFindById = placementModel.Placement.findById;
+    placementModel.Placement.findById = (async () => ({
+      studentId: 'student-2', organizationId: 'org-2', supervisorId: 'supervisor-1',
+    })) as any;
+    try {
+      const req = mockRequest({ userId: 'org-admin', email: 'org@azaam.org', roles: [UserRole.ORGANIZATION_ADMIN], organizationId: 'org-1' }, { placementId: 'placement-2' });
+      const res = mockResponse();
+      let nextCalled = false;
+      await validatePlacementAccess(req, res as any, (() => { nextCalled = true; }) as any);
+      assert.strictEqual(res.getStatus(), 403);
+      assert.strictEqual(res.getBody().error.code, 'FORBIDDEN_TENANT');
+      assert.strictEqual(nextCalled, false);
+    } finally {
+      placementModel.Placement.findById = originalFindById;
+    }
+  });
+
+  // 14. IDOR: missing placement ID cannot bypass guard
+  await test('IDOR - Missing Placement ID Cannot Bypass Guard', async () => {
+    const req = mockRequest({ userId: 'org-admin', email: 'org@azaam.org', roles: [UserRole.ORGANIZATION_ADMIN], organizationId: 'org-1' });
+    const res = mockResponse();
+    let nextCalled = false;
+    await validatePlacementAccess(req, res as any, (() => { nextCalled = true; }) as any);
+    assert.strictEqual(res.getStatus(), 400);
+    assert.strictEqual(res.getBody().error.code, 'MISSING_RESOURCE_ID');
+    assert.strictEqual(nextCalled, false);
+  });
+
+  // 15. IDOR: clinical supervisor is scoped to own organization
+  await test('IDOR - Clinical Supervisor Cannot Access Another Organization Placement', async () => {
+    const placementModel = await import('../models/Placement.js');
+    const originalFindById = placementModel.Placement.findById;
+    placementModel.Placement.findById = (async () => ({
+      studentId: 'student-2', organizationId: 'org-2', supervisorId: 'supervisor-2',
+    })) as any;
+    try {
+      const req = mockRequest({ userId: 'supervisor-1', email: 'supervisor@azaam.org', roles: [UserRole.CLINICAL_SUPERVISOR], organizationId: 'org-1' }, { placementId: 'placement-2' });
+      const res = mockResponse();
+      let nextCalled = false;
+      await validatePlacementAccess(req, res as any, (() => { nextCalled = true; }) as any);
+      assert.strictEqual(res.getStatus(), 403);
+      assert.strictEqual(res.getBody().error.code, 'FORBIDDEN_SCOPE');
+      assert.strictEqual(nextCalled, false);
+    } finally {
+      placementModel.Placement.findById = originalFindById;
+    }
+  });
+
+  // 16. Independent Applicant Validation Rule
   await test('Independent Applicant Rule (universityId must be null)', async () => {
     const applicantType = ApplicantType.INDEPENDENT;
     let universityId: string | null = '507f1f77bcf86cd799439099';
@@ -97,7 +241,7 @@ async function runTests() {
     assert.strictEqual(universityId, null, 'Independent applicant must have universityId = null');
   });
 
-  // 8. Document Security & Storage Validation Tests
+  // 17. Document Security & Storage Validation Tests
   await test('Document Storage Validation - Prohibit Executables and Scripts', async () => {
     let errorCaught = false;
     try {
@@ -130,7 +274,7 @@ async function runTests() {
     assert.strictEqual(passed, true, 'Valid PDF files must pass validation and filename sanitization');
   });
 
-  // 9. Certificate Privacy Verification Test
+  // 18. Certificate Privacy Verification Test
   await test('Certificate Public Verification Privacy', async () => {
     const mockVerificationResult = {
       verified: true,
@@ -149,14 +293,14 @@ async function runTests() {
     assert.strictEqual((mockVerificationResult as any).auditLog, undefined);
   });
 
-  // 10. Attendance Duplicate Logic Test
+  // 19. Attendance Duplicate Logic Test
   await test('Attendance Duplicate Prevention Logic', async () => {
     const recordedLogs = new Set(['attachment_1_2026-08-27']);
     const newLogKey = 'attachment_1_2026-08-27';
     assert.strictEqual(recordedLogs.has(newLogKey), true, 'Duplicate attendance on same date must be rejected');
   });
 
-  // 11. Evaluation Duplicate Logic Test
+  // 20. Evaluation Duplicate Logic Test
   await test('Evaluation Duplicate Prevention Logic', async () => {
     const submittedEvals = new Set(['attachment_1_FINAL']);
     const newEvalKey = 'attachment_1_FINAL';
