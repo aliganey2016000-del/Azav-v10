@@ -15,7 +15,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "npm --prefix frontend run typecheck",
     "seed": "tsx backend/src/seed.ts",
-    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts"
+    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts && tsx backend/src/tests/dbIntegrityTests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
