@@ -15,7 +15,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "npm --prefix frontend run typecheck",
     "seed": "tsx backend/src/seed.ts",
-    "test": "tsx backend/src/tests/runTests.ts"
+    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -47,9 +47,9 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "concurrently": "^9.2.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "tsx": "^4.21.0"
   }
 }
