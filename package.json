@@ -8,6 +8,7 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev",
     "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "npm run build:frontend && npm run build:backend",
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
     "start:backend": "npm --prefix backend run start",
@@ -15,7 +16,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "npm --prefix frontend run typecheck",
     "seed": "tsx backend/src/seed.ts",
-    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts"
+    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -35,6 +36,7 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-router-dom": "^7.18.2",
+    "tailwindcss": "^4.1.14",
     "vite": "^6.2.3",
     "zod": "^4.4.3"
   },
@@ -43,6 +45,9 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.14.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
