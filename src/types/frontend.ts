@@ -1,0 +1,75 @@
+export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  AZAAM_STAFF = 'AZAAM_STAFF',
+  UNIVERSITY_ADMIN = 'UNIVERSITY_ADMIN',
+  UNIVERSITY_STAFF = 'UNIVERSITY_STAFF',
+  ORGANIZATION_ADMIN = 'ORGANIZATION_ADMIN',
+  ORGANIZATION_STAFF = 'ORGANIZATION_STAFF',
+  CLINICAL_SUPERVISOR = 'CLINICAL_SUPERVISOR',
+  STUDENT = 'STUDENT',
+  INDEPENDENT_APPLICANT = 'INDEPENDENT_APPLICANT',
+}
+
+export enum ApplicantType {
+  UNIVERSITY = 'UNIVERSITY',
+  INDEPENDENT = 'INDEPENDENT',
+}
+
+export enum ApplicationStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  DOCUMENTS_REQUIRED = 'DOCUMENTS_REQUIRED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  PLACEMENT_PENDING = 'PLACEMENT_PENDING',
+  PLACED = 'PLACED',
+  SUPERVISOR_ASSIGNED = 'SUPERVISOR_ASSIGNED',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  CERTIFICATE_ISSUED = 'CERTIFICATE_ISSUED',
+}
+
+export enum PlacementStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum AttendanceStatus {
+  PRESENT = 'PRESENT',
+  ABSENT = 'ABSENT',
+  EXCUSED = 'EXCUSED',
+  LATE = 'LATE',
+}
+
+export enum LogbookStatus {
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  REVISION_REQUESTED = 'REVISION_REQUESTED',
+  REJECTED = 'REJECTED',
+}
+
+export enum EvaluationType {
+  MID_TERM = 'MID_TERM',
+  FINAL = 'FINAL',
+}
+
+export enum CertificateStatus {
+  ISSUED = 'ISSUED',
+  REVOKED = 'REVOKED',
+}
+
+
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  roles: UserRole[];
+  universityId?: any;
+  organizationId?: any;
+  studentId?: any;
+}

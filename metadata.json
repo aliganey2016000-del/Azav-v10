@@ -1,0 +1,6 @@
+{
+  "name": "AZAAM International Medics Network",
+  "description": "Clinical Attachment & Training Management Platform for medical students, universities, and healthcare organizations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
