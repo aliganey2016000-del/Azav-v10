@@ -79,7 +79,7 @@ async function runTests() {
       const originalPlacementFindById = Placement.findById;
       const originalSupervisorFindOne = ClinicalSupervisor.findOne;
       Placement.findById = (() => ({
-        studentId: 'student-1', organizationId: 'org-2', supervisorId: 'user-1',
+        studentId: 'student-1', organizationId: 'org-1', supervisorId: 'user-1',
       })) as any;
       ClinicalSupervisor.findOne = (() => mockQuery({ _id: 'clinical-supervisor-1', organizationId: 'org-1' })) as any;
       try {
@@ -88,7 +88,7 @@ async function runTests() {
         let nextCalled = false;
         await validatePlacementAccess(req, res as any, (() => { nextCalled = true; }) as any);
         assert.strictEqual(res.getStatus(), 403);
-        assert.strictEqual(res.getBody().error.code, 'FORBIDDEN_SUPERVISOR_SCOPE');
+        assert.strictEqual(res.getBody().error.code, 'FORBIDDEN_SCOPE');
         assert.strictEqual(nextCalled, false);
       } finally {
         Placement.findById = originalPlacementFindById;
