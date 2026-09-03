@@ -129,7 +129,9 @@ export class AuthService {
       studentId: studentId || (user.studentId ? user.studentId.toString() : null),
     };
 
-    return jwt.sign(payload, env.JWT_SECRET, { expiresIn: '7d' });
+    return jwt.sign(payload, env.JWT_SECRET, {
+      expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+    });
   }
 
   static async getMe(userId: string) {
