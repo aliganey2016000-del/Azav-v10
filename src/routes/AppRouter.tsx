@@ -22,6 +22,9 @@ import { CertificatesPage } from '../pages/CertificatesPage';
 // University Dedicated Portal Pages
 import { UniversityMouPage } from '../pages/university/UniversityMouPage';
 import { UniversityStudentsTrackingPage } from '../pages/university/UniversityStudentsTrackingPage';
+import { UniversityNominateStudentPage } from '../pages/university/UniversityNominateStudentPage';
+import { UniversityStudentStatusPage } from '../pages/university/UniversityStudentStatusPage';
+import { UniversityStudentJourneyPage } from '../pages/university/UniversityStudentJourneyPage';
 import { UniversityFinancialsPage } from '../pages/university/UniversityFinancialsPage';
 
 // Admin Management Pages
@@ -97,7 +100,10 @@ export const AppRouter: React.FC = () => {
 
             {/* UNIVERSITY PORTAL ROUTES - /university/* */}
             <Route path="/university/dashboard" element={<DashboardPage />} />
+            <Route path="/university/nominate-student" element={<UniversityNominateStudentPage />} />
             <Route path="/university/students" element={<UniversityStudentsTrackingPage />} />
+            <Route path="/university/students/:id" element={<UniversityStudentJourneyPage />} />
+            <Route path="/university/student-status" element={<UniversityStudentStatusPage />} />
             <Route path="/university/mou" element={<UniversityMouPage />} />
             <Route path="/university/financials" element={<UniversityFinancialsPage />} />
             <Route path="/university/applications" element={<ApplicationsPage />} />

@@ -1,11 +1,13 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 
 const envSchema = z.object({
   NODE_ENV: z.string().default('development'),
-  PORT: z.any().transform(() => 3000),
+  PORT: z.coerce.number().int().positive().default(3000),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/azaam_medics_db'),
   JWT_SECRET: z.string().default('azaam_default_jwt_secret_key_2026_dev'),
   JWT_EXPIRES_IN: z.string().default('7d'),

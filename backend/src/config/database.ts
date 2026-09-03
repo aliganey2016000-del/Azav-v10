@@ -11,8 +11,7 @@ export async function connectDatabase(): Promise<boolean> {
 
   const uri = process.env.MONGODB_URI || env.MONGODB_URI;
   if (!uri || uri.includes('127.0.0.1') || uri.includes('localhost')) {
-    console.info('[MongoDB] Operating in local memory/fallback mode for development preview.');
-    return false;
+    throw new Error('[MongoDB] A real MONGODB_URI is required. Local memory fallback is disabled.');
   }
 
   try {
@@ -29,10 +28,9 @@ export async function connectDatabase(): Promise<boolean> {
     console.log('[MongoDB] Connected successfully!');
     return true;
   } catch (error) {
-    console.warn(`[MongoDB] Database connection notice: ${(error as Error).message}`);
-    console.info('[MongoDB] Operating in development mock fallback mode.');
+    console.error(`[MongoDB] Database connection failed: ${(error as Error).message}`);
     isConnected = false;
-    return false;
+    throw error;
   }
 }
 

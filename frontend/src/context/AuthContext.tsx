@@ -32,7 +32,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         } catch {
-          // Token lookup failed, check stored local user
+          setToken(null);
+          setUser(null);
+          localStorage.removeItem('azaam_token');
+          localStorage.removeItem('azaam_user');
+          localStorage.removeItem('azaam_user_role');
+          setIsLoading(false);
+          return;
         }
 
       } else {

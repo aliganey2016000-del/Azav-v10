@@ -16,8 +16,11 @@ import {
   organizationRouter,
 } from './routes/placement.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
+import { financeRouter } from './routes/finance.routes.js';
+import { notificationRouter } from './routes/notification.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { isDatabaseConnected } from './config/database.js';
+import { env } from './config/env.js';
 
 export function createApp() {
   const app = express();
@@ -27,7 +30,10 @@ export function createApp() {
 
   // Security Middleware
   app.use(helmet({ contentSecurityPolicy: false }));
-  app.use(cors({ origin: '*', credentials: true }));
+  app.use(cors({
+    origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN,
+    credentials: true,
+  }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -62,6 +68,8 @@ export function createApp() {
   app.use('/api/v1/universities', universityRouter);
   app.use('/api/v1/organizations', organizationRouter);
   app.use('/api/v1/admin', adminRouter);
+  app.use('/api/v1/finance', financeRouter);
+  app.use('/api/v1/notifications', notificationRouter);
 
   // 404 API Route handler
   app.use('/api/*', (_req, res) => {

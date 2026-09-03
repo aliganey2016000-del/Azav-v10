@@ -76,108 +76,39 @@ export class AuthService {
   }
 
   static async loginUser(email: string, password: string) {
-    // If DB is connected, try database lookup
-    try {
-      const user = await User.findOne({ email: email.toLowerCase() });
-      if (user) {
-        const isMatch = await user.comparePassword(password);
-        if (isMatch) {
-          user.lastLoginAt = new Date();
-          await user.save().catch(() => {});
-
-          const token = this.generateToken(user, user.studentId ? user.studentId.toString() : null);
-          return {
-            token,
-            user: {
-              id: user._id,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              email: user.email,
-              roles: user.roles,
-              universityId: user.universityId,
-              organizationId: user.organizationId,
-              studentId: user.studentId,
-            },
-          };
-        }
-      }
-    } catch {
-      // Database not reachable or disconnected; proceed to memory fallback
-    }
-
-    // Fallback in-memory authentication for dev preview
     const cleanEmail = email.toLowerCase().trim();
-    let role = UserRole.STUDENT;
-    let firstName = 'User';
-    let lastName = 'Account';
-    let universityId: string | null = 'uni-1';
-    let organizationId: string | null = null;
+    try {
+      const user = await User.findOne({ email: cleanEmail });
+      if (!user || !(await user.comparePassword(password))) {
+        const err: any = new Error('Invalid email or password.');
+        err.statusCode = 401;
+        err.code = 'INVALID_CREDENTIALS';
+        throw err;
+      }
+      user.lastLoginAt = new Date();
+      await user.save();
 
-    if (cleanEmail.includes('admin@azaam') || cleanEmail.includes('superadmin')) {
-      role = UserRole.SUPER_ADMIN;
-      firstName = 'Global';
-      lastName = 'SuperAdmin';
-    } else if (cleanEmail.includes('staff@azaam') || cleanEmail.includes('officer')) {
-      role = UserRole.AZAAM_STAFF;
-      firstName = 'Azaam';
-      lastName = 'Staff';
-    } else if (cleanEmail.includes('hms.harvard') || cleanEmail.includes('admin@snu') || cleanEmail.includes('admin@simad') || cleanEmail.includes('admin@mu') || cleanEmail.includes('dean')) {
-      role = UserRole.UNIVERSITY_ADMIN;
-      firstName = 'University';
-      lastName = 'Admin';
-      universityId = 'uni-1';
-    } else if (cleanEmail.includes('staff.uni') || cleanEmail.includes('uni.staff')) {
-      role = UserRole.UNIVERSITY_STAFF;
-      firstName = 'Academic';
-      lastName = 'Coordinator';
-      universityId = 'uni-1';
-    } else if (cleanEmail.includes('massgeneral') || cleanEmail.includes('admin@digfeer') || cleanEmail.includes('admin@madina') || cleanEmail.includes('admin@hospital') || cleanEmail.includes('orgadmin')) {
-      role = UserRole.ORGANIZATION_ADMIN;
-      firstName = 'Hospital';
-      lastName = 'Director';
-      organizationId = 'org-1';
-    } else if (cleanEmail.includes('staff.org') || cleanEmail.includes('hospital.staff')) {
-      role = UserRole.ORGANIZATION_STAFF;
-      firstName = 'Clinical';
-      lastName = 'Coordinator';
-      organizationId = 'org-1';
-    } else if (cleanEmail.includes('jenkins') || cleanEmail.includes('supervisor') || cleanEmail.includes('dr.')) {
-      role = UserRole.CLINICAL_SUPERVISOR;
-      firstName = 'Dr. Sarah';
-      lastName = 'Jenkins';
-      organizationId = 'org-1';
-    } else if (cleanEmail.includes('independent') || cleanEmail.includes('freelance')) {
-      role = UserRole.INDEPENDENT_APPLICANT;
-      firstName = 'Amina';
-      lastName = 'Independent';
-      universityId = null;
-    } else {
-      role = UserRole.STUDENT;
-      firstName = 'Medical';
-      lastName = 'Student';
-      universityId = 'uni-1';
+      const token = this.generateToken(user, user.studentId ? user.studentId.toString() : null);
+      return {
+        token,
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          roles: user.roles,
+          universityId: user.universityId,
+          organizationId: user.organizationId,
+          studentId: user.studentId,
+        },
+      };
+    } catch (error: any) {
+      if (error?.statusCode === 401) throw error;
+      const err: any = new Error('Authentication service is unavailable because the database cannot be reached.');
+      err.statusCode = 503;
+      err.code = 'DATABASE_UNAVAILABLE';
+      throw err;
     }
-
-    const mockId = `usr_${role.toLowerCase()}_${Date.now()}`;
-    const token = jwt.sign(
-      { sub: mockId, email: cleanEmail, roles: [role], universityId, organizationId },
-      env.JWT_SECRET || 'azaam_secret_jwt_2026',
-      { expiresIn: '7d' }
-    );
-
-    return {
-      token,
-      user: {
-        id: mockId,
-        firstName,
-        lastName,
-        email: cleanEmail,
-        roles: [role],
-        universityId,
-        organizationId,
-        studentId: role === UserRole.STUDENT ? `std_${mockId}` : null,
-      },
-    };
   }
 
   static generateToken(user: any, studentId?: string | null): string {

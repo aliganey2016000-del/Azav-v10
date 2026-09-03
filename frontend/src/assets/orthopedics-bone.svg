@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="title desc">
+  <title id="title">Orthopedic bone and joint illustration</title>
+  <desc id="desc">A clean medical illustration of a long bone, joint, and X-ray grid.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eaf2f5"/>
+      <stop offset="1" stop-color="#c7d9df"/>
+    </linearGradient>
+    <linearGradient id="bone" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffdf4"/>
+      <stop offset="0.55" stop-color="#f0dfb0"/>
+      <stop offset="1" stop-color="#c59b4d"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#173047" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect width="800" height="500" fill="url(#background)"/>
+  <g opacity=".18" stroke="#496b78" stroke-width="2">
+    <path d="M0 80H800M0 160H800M0 240H800M0 320H800M0 400H800"/>
+    <path d="M80 0V500M160 0V500M240 0V500M320 0V500M400 0V500M480 0V500M560 0V500M640 0V500M720 0V500"/>
+  </g>
+  <g filter="url(#shadow)" transform="rotate(-18 400 250)">
+    <path d="M184 185c-38-31-77 22-45 55l39 40c13 14 14 36 2 52l-17 24c-19 27 20 67 47 48l57-40c20-14 47-13 65 3l75 67c31 28 77-18 49-49l-68-75c-17-19-18-47-3-68l37-51c21-29-22-70-51-49l-51 37c-20 15-47 15-67 1z" fill="url(#bone)" stroke="#927331" stroke-width="8"/>
+    <path d="M354 265l54-55" stroke="#b34f43" stroke-width="12" stroke-linecap="round"/>
+    <path d="M335 287l45-48" stroke="#fff9df" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+    <circle cx="273" cy="254" r="38" fill="#d5b56d" stroke="#927331" stroke-width="7"/>
+    <circle cx="273" cy="254" r="17" fill="#f8f5e7"/>
+    <path d="M196 196c-12 11-11 27 2 40M449 331c12-11 12-27 0-40" fill="none" stroke="#fff9df" stroke-width="9" stroke-linecap="round" opacity=".75"/>
+  </g>
+  <g fill="#173047" font-family="Arial, sans-serif">
+    <text x="42" y="58" font-size="18" font-weight="700" letter-spacing="3">ORTHOPEDIC IMAGING</text>
+    <text x="42" y="88" font-size="14" opacity=".7">Bone • Joint • Recovery</text>
+  </g>
+</svg>

@@ -21,25 +21,11 @@ export const VerifyCertificatePage: React.FC = () => {
       } else {
         setResult({ verified: false, message: 'Certificate record not found' });
       }
-    } catch {
-      // Mock verification result fallback if offline in container
-      if (queryCode.toUpperCase().includes('AZ') || queryCode.toUpperCase().includes('CERT')) {
-        setResult({
-          verified: true,
-          certificateNumber: queryCode.toUpperCase(),
-          verificationCode: 'AZ-78X9Y',
-          recipientName: 'John UniStudent',
-          issuerOrganization: 'Massachusetts General Hospital',
-          issueDate: '2026-08-20',
-          status: 'ISSUED',
-          message: 'Valid Official AZAAM Clinical Attachment Certificate',
-        });
-      } else {
-        setResult({
-          verified: false,
-          message: 'No certificate found matching the provided reference or verification code.',
-        });
-      }
+    } catch (error: any) {
+      setResult({
+        verified: false,
+        message: error?.response?.data?.error?.message || 'Certificate verification service is unavailable.',
+      });
     } finally {
       setLoading(false);
     }
