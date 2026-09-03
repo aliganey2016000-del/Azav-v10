@@ -29,13 +29,15 @@ jobs:
             frontend/package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Install backend dependencies
-        run: npm ci --prefix backend
+        run: npm ci
+        working-directory: backend
 
       - name: Install frontend dependencies
-        run: npm ci --prefix frontend
+        run: npm ci
+        working-directory: frontend
 
       - name: Run tests
         run: npm test
