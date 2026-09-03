@@ -20,10 +20,24 @@ export class LogbookService {
       throw err;
     }
 
+    if (data.studentId.toString() !== attachment.studentId.toString()) {
+      const err: any = new Error('Logbook student does not match the clinical attachment student.');
+      err.statusCode = 400;
+      err.code = 'STUDENT_ATTACHMENT_MISMATCH';
+      throw err;
+    }
+
+    if (data.supervisorId && (!attachment.supervisorId || data.supervisorId.toString() !== attachment.supervisorId.toString())) {
+      const err: any = new Error('Supervisor does not match the clinical attachment supervisor.');
+      err.statusCode = 400;
+      err.code = 'SUPERVISOR_ATTACHMENT_MISMATCH';
+      throw err;
+    }
+
     const entry = new LogbookEntry({
       attachmentId: data.attachmentId,
-      studentId: data.studentId,
-      supervisorId: data.supervisorId || attachment.supervisorId,
+      studentId: attachment.studentId,
+      supervisorId: attachment.supervisorId || undefined,
       date: new Date(data.date),
       clinicalActivity: data.clinicalActivity,
       procedure: data.procedure,
