@@ -65,7 +65,11 @@ export async function validateStudentAccess(
       return;
     }
 
-    next();
+    // Deny by default. Roles without an explicit student scope must not pass through an IDOR guard.
+    res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN_SCOPE', message: 'You do not have permission to access this student record' },
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid student ID format' } });
   }
@@ -99,8 +103,11 @@ export async function validatePlacementAccess(
       return;
     }
 
-    // Organization staff/admin check
-    if (req.user.roles.includes(UserRole.ORGANIZATION_ADMIN) || req.user.roles.includes(UserRole.ORGANIZATION_STAFF)) {
+    // Organization staff/admin and clinical supervisors are scoped to their organization.
+    if (
+      req.user.roles.includes(UserRole.ORGANIZATION_ADMIN) ||
+      req.user.roles.includes(UserRole.ORGANIZATION_STAFF)
+    ) {
       if (req.user.organizationId && req.user.organizationId.toString() === placement.organizationId.toString()) {
         next();
         return;
@@ -112,13 +119,33 @@ export async function validatePlacementAccess(
       return;
     }
 
+    if (req.user.roles.includes(UserRole.CLINICAL_SUPERVISOR)) {
+      if (req.user.organizationId && req.user.organizationId.toString() === placement.organizationId.toString()) {
+        next();
+        return;
+      }
+      if (req.user.id && placement.supervisorId && req.user.id.toString() === placement.supervisorId.toString()) {
+        next();
+        return;
+      }
+      res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN_SCOPE', message: 'You do not have permission to access this placement' },
+      });
+      return;
+    }
+
     // Student check
     if (req.user.studentId && req.user.studentId.toString() === placement.studentId.toString()) {
       next();
       return;
     }
 
-    next();
+    // Deny by default for every role without an explicit placement scope.
+    res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN_SCOPE', message: 'You do not have permission to access this placement' },
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid placement ID' } });
   }
