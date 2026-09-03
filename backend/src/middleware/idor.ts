@@ -54,6 +54,9 @@ export async function validatePlacementAccess(req: AuthenticatedRequest, res: Re
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN_TENANT', message: 'You cannot access placements hosted by another healthcare organization' } }); return;
     }
     if (req.user.roles.includes(UserRole.CLINICAL_SUPERVISOR)) {
+      if (req.user.organizationId && placement.organizationId && req.user.organizationId.toString() !== placement.organizationId.toString()) {
+        res.status(403).json({ success: false, error: { code: 'FORBIDDEN_SCOPE', message: 'You do not have permission to access this placement' } }); return;
+      }
       const supervisor = await ClinicalSupervisor.findOne({ userId: req.user.userId }).select('_id organizationId');
       if (supervisor && placement.supervisorId && supervisor._id.toString() === placement.supervisorId.toString()) { next(); return; }
       res.status(403).json({ success: false, error: { code: 'FORBIDDEN_SUPERVISOR_SCOPE', message: 'You are not assigned to this placement' } }); return;
