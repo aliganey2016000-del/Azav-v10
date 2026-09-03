@@ -14,7 +14,6 @@ export async function validateStudentAccess(
     return;
   }
 
-  // Super Admin and AZAAM Staff can access global records
   if (req.user.roles.includes(UserRole.SUPER_ADMIN) || req.user.roles.includes(UserRole.AZAAM_STAFF)) {
     next();
     return;
@@ -22,12 +21,16 @@ export async function validateStudentAccess(
 
   const targetStudentId = req.params.studentId || req.params.id;
 
+  // Non-global users must provide an explicit target ID. Passing through here would
+  // turn an IDOR guard into a no-op on routes that accidentally omit the parameter.
   if (!targetStudentId) {
-    next();
+    res.status(400).json({
+      success: false,
+      error: { code: 'MISSING_RESOURCE_ID', message: 'Student ID is required for access validation' },
+    });
     return;
   }
 
-  // If user is a student / independent applicant, they can ONLY access their own student record
   if (req.user.roles.includes(UserRole.STUDENT) || req.user.roles.includes(UserRole.INDEPENDENT_APPLICANT)) {
     if (req.user.studentId && req.user.studentId.toString() === targetStudentId.toString()) {
       next();
@@ -40,7 +43,6 @@ export async function validateStudentAccess(
     return;
   }
 
-  // Find target student to check university/org scope
   try {
     const student = await Student.findById(targetStudentId);
     if (!student) {
@@ -48,7 +50,6 @@ export async function validateStudentAccess(
       return;
     }
 
-    // University admin/staff scope check
     if (req.user.roles.includes(UserRole.UNIVERSITY_ADMIN) || req.user.roles.includes(UserRole.UNIVERSITY_STAFF)) {
       if (
         req.user.universityId &&
@@ -65,7 +66,6 @@ export async function validateStudentAccess(
       return;
     }
 
-    // Deny by default. Roles without an explicit student scope must not pass through an IDOR guard.
     res.status(403).json({
       success: false,
       error: { code: 'FORBIDDEN_SCOPE', message: 'You do not have permission to access this student record' },
@@ -91,8 +91,13 @@ export async function validatePlacementAccess(
   }
 
   const placementId = req.params.placementId || req.params.id;
+  // As with student access, non-global roles must not bypass validation when a route
+  // is mounted without the expected resource parameter.
   if (!placementId) {
-    next();
+    res.status(400).json({
+      success: false,
+      error: { code: 'MISSING_RESOURCE_ID', message: 'Placement ID is required for access validation' },
+    });
     return;
   }
 
@@ -103,7 +108,6 @@ export async function validatePlacementAccess(
       return;
     }
 
-    // Organization staff/admin are scoped to their organization.
     if (
       req.user.roles.includes(UserRole.ORGANIZATION_ADMIN) ||
       req.user.roles.includes(UserRole.ORGANIZATION_STAFF)
@@ -135,13 +139,11 @@ export async function validatePlacementAccess(
       return;
     }
 
-    // Student check
     if (req.user.studentId && req.user.studentId.toString() === placement.studentId.toString()) {
       next();
       return;
     }
 
-    // Deny by default for every role without an explicit placement scope.
     res.status(403).json({
       success: false,
       error: { code: 'FORBIDDEN_SCOPE', message: 'You do not have permission to access this placement' },
