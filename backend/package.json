@@ -1,0 +1,30 @@
+{
+  "name": "azaam-medics-backend",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/server.cjs",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "npm run build:server && npm run build:admin",
+    "build:server": "esbuild src/server.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/server.cjs",
+    "build:admin": "esbuild src/scripts/createSuperAdmin.ts --bundle --platform=node --format=cjs --packages=external --outfile=dist/createSuperAdmin.cjs",
+    "start": "node dist/server.cjs",
+    "create:admin": "node dist/createSuperAdmin.cjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}

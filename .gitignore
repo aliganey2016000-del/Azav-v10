@@ -6,10 +6,27 @@ __v0_jsx-dev-runtime.ts
 .v0-trash/
 .vercel/
 
-# Environment variables
-.env*.local
+# Dependencies
+node_modules/
 
-# Common ignores
-node_modules
+# Build outputs
 .next/
+dist/
+build/
+*.cjs
+*.mjs
+
+# Environment variables
+.env*
+
+# Logs & cache
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+.vite/
+
+# OS files
 .DS_Store
+Thumbs.db
