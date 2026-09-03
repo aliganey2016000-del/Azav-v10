@@ -8,7 +8,7 @@ import { CertificateController } from '../controllers/certificate.controller.js'
 import { UniversityController, OrganizationController } from '../controllers/university.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
-import { validatePlacementAccess, validateAttachmentAccess } from '../middleware/idor.js';
+import { validatePlacementAccess, validateAttachmentAccess, validateLogbookEntryAccess } from '../middleware/idor.js';
 import { UserRole } from '../types/index.js';
 
 export const placementRouter = Router();
@@ -32,6 +32,7 @@ logbookRouter.get('/attachment/:attachmentId', validateAttachmentAccess, Logbook
 logbookRouter.patch(
   '/:id/review',
   requireRole(UserRole.CLINICAL_SUPERVISOR, UserRole.ORGANIZATION_ADMIN, UserRole.SUPER_ADMIN),
+  validateLogbookEntryAccess,
   LogbookController.review
 );
 
@@ -46,8 +47,8 @@ evaluationRouter.post(
 evaluationRouter.get('/attachment/:attachmentId', validateAttachmentAccess, EvaluationController.listByAttachment);
 
 const verifyRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // 30 requests per IP
+  windowMs: 15 * 60 * 1000,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
@@ -58,10 +59,7 @@ const verifyRateLimiter = rateLimit({
 });
 
 export const certificateRouter = Router();
-// Public verification route with strict rate limiting - NO AUTH REQUIRED!
 certificateRouter.get('/verify/:code', verifyRateLimiter, CertificateController.verifyPublic);
-
-// Authenticated certificate routes
 certificateRouter.use(authenticate);
 certificateRouter.get('/', CertificateController.list);
 certificateRouter.post(
