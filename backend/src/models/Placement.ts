@@ -23,7 +23,16 @@ const PlacementSchema = new Schema<IPlacement>(
     departmentId: { type: Schema.Types.ObjectId, ref: 'Department', default: null },
     supervisorId: { type: Schema.Types.ObjectId, ref: 'ClinicalSupervisor', default: null },
     startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    endDate: {
+      type: Date,
+      required: true,
+      validate: {
+        validator: function (this: IPlacement, value: Date) {
+          return !this.startDate || value >= this.startDate;
+        },
+        message: 'endDate must be on or after startDate',
+      },
+    },
     status: {
       type: String,
       enum: Object.values(PlacementStatus),
@@ -63,7 +72,16 @@ const ClinicalAttachmentSchema = new Schema<IClinicalAttachment>(
     departmentId: { type: Schema.Types.ObjectId, ref: 'Department', default: null },
     supervisorId: { type: Schema.Types.ObjectId, ref: 'ClinicalSupervisor', default: null, index: true },
     startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    endDate: {
+      type: Date,
+      required: true,
+      validate: {
+        validator: function (this: IClinicalAttachment, value: Date) {
+          return !this.startDate || value >= this.startDate;
+        },
+        message: 'endDate must be on or after startDate',
+      },
+    },
     status: {
       type: String,
       enum: Object.values(ClinicalAttachmentStatus),
