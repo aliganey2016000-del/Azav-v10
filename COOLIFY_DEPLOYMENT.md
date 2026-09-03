@@ -22,6 +22,8 @@ CORS_ORIGIN=https://<frontend-domain>
 CLIENT_URL=https://<frontend-domain>
 ```
 
+Mark `NODE_ENV`, `PORT`, `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and `CLIENT_URL` as **Runtime only** in Coolify. Do not make `MONGODB_URI` or `JWT_SECRET` available at build time. The backend Dockerfile explicitly installs build dependencies in its builder stage and installs production dependencies only in the runtime stage.
+
 ## Frontend application
 
 - Repository: `Azav-v10`
