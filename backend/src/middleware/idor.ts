@@ -103,7 +103,7 @@ export async function validatePlacementAccess(
       return;
     }
 
-    // Organization staff/admin and clinical supervisors are scoped to their organization.
+    // Organization staff/admin are scoped to their organization.
     if (
       req.user.roles.includes(UserRole.ORGANIZATION_ADMIN) ||
       req.user.roles.includes(UserRole.ORGANIZATION_STAFF)
@@ -124,7 +124,7 @@ export async function validatePlacementAccess(
         next();
         return;
       }
-      if (req.user.id && placement.supervisorId && req.user.id.toString() === placement.supervisorId.toString()) {
+      if (req.user.userId && placement.supervisorId && req.user.userId.toString() === placement.supervisorId.toString()) {
         next();
         return;
       }
