@@ -85,6 +85,14 @@ export class AuthService {
         err.code = 'INVALID_CREDENTIALS';
         throw err;
       }
+
+      if (user.status !== 'ACTIVE') {
+        const err: any = new Error('This account is not active. Please contact support.');
+        err.statusCode = 403;
+        err.code = 'ACCOUNT_INACTIVE';
+        throw err;
+      }
+
       user.lastLoginAt = new Date();
       await user.save();
 
@@ -103,7 +111,7 @@ export class AuthService {
         },
       };
     } catch (error: any) {
-      if (error?.statusCode === 401) throw error;
+      if (error?.statusCode === 401 || error?.statusCode === 403) throw error;
       const err: any = new Error('Authentication service is unavailable because the database cannot be reached.');
       err.statusCode = 503;
       err.code = 'DATABASE_UNAVAILABLE';
