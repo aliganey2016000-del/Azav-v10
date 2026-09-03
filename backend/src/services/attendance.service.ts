@@ -20,10 +20,16 @@ export class AttendanceService {
       throw err;
     }
 
+    if (data.studentId.toString() !== attachment.studentId.toString()) {
+      const err: any = new Error('Attendance student does not match the clinical attachment student.');
+      err.statusCode = 400;
+      err.code = 'STUDENT_ATTACHMENT_MISMATCH';
+      throw err;
+    }
+
     const attendanceDate = new Date(data.date);
     attendanceDate.setUTCHours(0, 0, 0, 0);
 
-    // Duplicate prevention check
     const existing = await Attendance.findOne({
       attachmentId: data.attachmentId,
       date: attendanceDate,
@@ -38,7 +44,7 @@ export class AttendanceService {
 
     const attendance = new Attendance({
       attachmentId: data.attachmentId,
-      studentId: data.studentId,
+      studentId: attachment.studentId,
       date: attendanceDate,
       status: data.status,
       checkIn: data.checkIn,
