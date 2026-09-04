@@ -26,7 +26,15 @@ const ApplicationSchema = new Schema<IApplication>(
     programmeId: { type: Schema.Types.ObjectId, ref: 'Programme', default: null },
     specialtyId: { type: Schema.Types.ObjectId, ref: 'Specialty', default: null },
     preferredStartDate: { type: Date },
-    preferredEndDate: { type: Date },
+    preferredEndDate: {
+      type: Date,
+      validate: {
+        validator: function (this: IApplication, value: Date) {
+          return !this.preferredStartDate || value >= this.preferredStartDate;
+        },
+        message: 'preferredEndDate must be on or after preferredStartDate',
+      },
+    },
     status: {
       type: String,
       enum: Object.values(ApplicationStatus),

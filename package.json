@@ -15,7 +15,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc -p frontend/tsconfig.json --noEmit",
     "seed": "tsx backend/src/seed.ts",
-    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts && tsx backend/src/tests/dbIntegrityTests.ts && tsx backend/src/tests/passwordResetTests.ts"
+    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/financeSecurityTests.ts && tsx backend/src/tests/applicationSecurityTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts && tsx backend/src/tests/dbIntegrityTests.ts && tsx backend/src/tests/passwordResetTests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -37,7 +37,7 @@
     "react-router-dom": "^7.18.2",
     "tailwindcss": "^4.1.14",
     "vite": "^6.2.3",
-    "zod": "^4.4.3"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
@@ -48,7 +48,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "autoprefixer": "^10.4.21",
-    "concurrently": "^9.2.1",
+    "concurrently": "^9.2.4",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
