@@ -2,12 +2,22 @@ import { Request, Response } from 'express';
 import { Payment } from '../models/Payment.js';
 import { UserRole } from '../types/index.js';
 
-const getAuthUser = (req: Request) => (req as any).user as {
+export interface FinanceAuthUser {
   userId: string;
   roles: UserRole[];
   universityId?: string | null;
   organizationId?: string | null;
-};
+}
+
+export interface FinanceListFilters {
+  direction?: string;
+  status?: string;
+  type?: string;
+  page?: string;
+  limit?: string;
+}
+
+const getAuthUser = (req: Request) => (req as any).user as FinanceAuthUser;
 
 const isSystemFinanceRole = (roles: UserRole[]) =>
   roles.includes(UserRole.SUPER_ADMIN) || roles.includes(UserRole.AZAAM_STAFF);
@@ -18,43 +28,70 @@ const isUniversityRole = (roles: UserRole[]) =>
 const isOrganizationRole = (roles: UserRole[]) =>
   roles.includes(UserRole.ORGANIZATION_ADMIN) || roles.includes(UserRole.ORGANIZATION_STAFF);
 
+export function buildFinanceQuery(authUser: FinanceAuthUser, filters: FinanceListFilters = {}) {
+  const roles = Array.isArray(authUser.roles) ? authUser.roles : [];
+  const pageNumber = Math.max(1, Number.parseInt(filters.page || '1', 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number.parseInt(filters.limit || '25', 10) || 25));
+  const query: Record<string, any> = {};
+
+  if (isSystemFinanceRole(roles)) {
+    // System finance roles can review both inbound university/student payments and outbound settlements.
+  } else if (isUniversityRole(roles)) {
+    if (!authUser.universityId) {
+      return {
+        forbidden: {
+          code: 'TENANT_CONTEXT_REQUIRED',
+          message: 'University context is required.',
+        },
+        query,
+        pageNumber,
+        pageSize,
+      };
+    }
+    query.universityId = authUser.universityId;
+    // University users may see inbound university/student payments, never settlement records.
+    query.direction = 'INBOUND';
+    query.counterpartyType = { $in: ['UNIVERSITY', 'STUDENT'] };
+  } else if (isOrganizationRole(roles)) {
+    if (!authUser.organizationId) {
+      return {
+        forbidden: {
+          code: 'TENANT_CONTEXT_REQUIRED',
+          message: 'Organization context is required.',
+        },
+        query,
+        pageNumber,
+        pageSize,
+      };
+    }
+    query.organizationId = authUser.organizationId;
+    // Organization users only see outbound AZAAM -> organization settlements.
+    query.direction = 'OUTBOUND';
+    query.counterpartyType = 'ORGANIZATION';
+  } else {
+    // Students/applicants can only see their own inbound payment records.
+    query.userId = authUser.userId;
+    query.direction = 'INBOUND';
+  }
+
+  if (filters.direction && isSystemFinanceRole(roles) && ['INBOUND', 'OUTBOUND'].includes(filters.direction)) {
+    query.direction = filters.direction;
+  }
+  if (filters.status) query.status = filters.status;
+  if (filters.type) query.type = filters.type;
+
+  return { query, pageNumber, pageSize };
+}
+
 export class FinanceController {
   static async list(req: Request, res: Response) {
     const authUser = getAuthUser(req);
-    const { direction, status, type, page = '1', limit = '25' } = req.query as Record<string, string>;
-    const pageNumber = Math.max(1, Number.parseInt(page, 10) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 25));
-    const query: Record<string, any> = {};
+    const filters = req.query as FinanceListFilters;
+    const { query, pageNumber, pageSize, forbidden } = buildFinanceQuery(authUser, filters);
 
-    if (isSystemFinanceRole(authUser.roles)) {
-      // System finance roles can review both inbound university/student payments and outbound settlements.
-    } else if (isUniversityRole(authUser.roles)) {
-      if (!authUser.universityId) {
-        return res.status(403).json({ success: false, error: { code: 'TENANT_CONTEXT_REQUIRED', message: 'University context is required.' } });
-      }
-      query.universityId = authUser.universityId;
-      // University users may see their payments to AZAAM, never hospital settlement records.
-      query.direction = 'INBOUND';
-      query.counterpartyType = { $in: ['UNIVERSITY', 'STUDENT'] };
-    } else if (isOrganizationRole(authUser.roles)) {
-      if (!authUser.organizationId) {
-        return res.status(403).json({ success: false, error: { code: 'TENANT_CONTEXT_REQUIRED', message: 'Organization context is required.' } });
-      }
-      query.organizationId = authUser.organizationId;
-      // Organization users only see AZAAM -> organization settlement records.
-      query.direction = 'OUTBOUND';
-      query.counterpartyType = 'ORGANIZATION';
-    } else {
-      // Students/applicants can only see their own inbound payment records.
-      query.userId = authUser.userId;
-      query.direction = 'INBOUND';
+    if (forbidden) {
+      return res.status(403).json({ success: false, error: forbidden });
     }
-
-    if (direction && isSystemFinanceRole(authUser.roles) && ['INBOUND', 'OUTBOUND'].includes(direction)) {
-      query.direction = direction;
-    }
-    if (status) query.status = status;
-    if (type) query.type = type;
 
     const [records, total] = await Promise.all([
       Payment.find(query)
@@ -83,7 +120,8 @@ export class FinanceController {
 
   static async overview(req: Request, res: Response) {
     const authUser = getAuthUser(req);
-    if (!isSystemFinanceRole(authUser.roles)) {
+    const roles = Array.isArray(authUser.roles) ? authUser.roles : [];
+    if (!isSystemFinanceRole(roles)) {
       return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Finance overview is restricted to AZAAM finance roles.' } });
     }
 
