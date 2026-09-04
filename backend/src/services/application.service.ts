@@ -3,6 +3,25 @@ import { Student } from '../models/Student.js';
 import { AuditLog } from '../models/Notification.js';
 import { ApplicationStatus, ApplicantType } from '../types/index.js';
 
+const allowedTransitions: Record<ApplicationStatus, ApplicationStatus[]> = {
+  [ApplicationStatus.DRAFT]: [ApplicationStatus.SUBMITTED],
+  [ApplicationStatus.SUBMITTED]: [ApplicationStatus.UNDER_REVIEW, ApplicationStatus.DOCUMENTS_REQUIRED, ApplicationStatus.REJECTED],
+  [ApplicationStatus.UNDER_REVIEW]: [ApplicationStatus.DOCUMENTS_REQUIRED, ApplicationStatus.APPROVED, ApplicationStatus.REJECTED],
+  [ApplicationStatus.DOCUMENTS_REQUIRED]: [ApplicationStatus.SUBMITTED, ApplicationStatus.UNDER_REVIEW, ApplicationStatus.REJECTED],
+  [ApplicationStatus.APPROVED]: [ApplicationStatus.PLACEMENT_PENDING, ApplicationStatus.PLACED],
+  [ApplicationStatus.REJECTED]: [],
+  [ApplicationStatus.PLACEMENT_PENDING]: [ApplicationStatus.PLACED, ApplicationStatus.REJECTED],
+  [ApplicationStatus.PLACED]: [ApplicationStatus.SUPERVISOR_ASSIGNED, ApplicationStatus.ACTIVE],
+  [ApplicationStatus.SUPERVISOR_ASSIGNED]: [ApplicationStatus.ACTIVE, ApplicationStatus.PLACED],
+  [ApplicationStatus.ACTIVE]: [ApplicationStatus.COMPLETED],
+  [ApplicationStatus.COMPLETED]: [ApplicationStatus.CERTIFICATE_ISSUED],
+  [ApplicationStatus.CERTIFICATE_ISSUED]: [],
+};
+
+export function isApplicationStatusTransitionAllowed(from: ApplicationStatus, to: ApplicationStatus) {
+  return allowedTransitions[from]?.includes(to) ?? false;
+}
+
 export class ApplicationService {
   static async createApplication(studentUserId: string, data: {
     programmeId?: string;
@@ -63,13 +82,27 @@ export class ApplicationService {
       throw err;
     }
 
+    if (!isApplicationStatusTransitionAllowed(application.status, newStatus)) {
+      const err: any = new Error(`Invalid application status transition: ${application.status} -> ${newStatus}`);
+      err.statusCode = 409;
+      err.code = 'INVALID_STATUS_TRANSITION';
+      throw err;
+    }
+
+    if (newStatus === ApplicationStatus.REJECTED && !reason?.trim()) {
+      const err: any = new Error('A rejection reason is required when rejecting an application.');
+      err.statusCode = 400;
+      err.code = 'REJECTION_REASON_REQUIRED';
+      throw err;
+    }
+
     const previousStatus = application.status;
     application.status = newStatus;
     application.reviewedBy = actorUserId as any;
     application.reviewedAt = new Date();
 
-    if (newStatus === ApplicationStatus.REJECTED && reason) {
-      application.rejectionReason = reason;
+    if (newStatus === ApplicationStatus.REJECTED) {
+      application.rejectionReason = reason!.trim();
     }
 
     await application.save();
