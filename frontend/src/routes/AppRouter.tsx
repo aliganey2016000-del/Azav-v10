@@ -5,6 +5,7 @@ import { PortalLayout } from '../layouts/PortalLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { getPortalRoot } from '../config/navigation';
 import { UserRole } from '../types/frontend';
+import { useAuth } from '../context/AuthContext';
 
 import { LandingPage } from '../pages/LandingPage';
 import { VerifyCertificatePage } from '../pages/VerifyCertificatePage';
@@ -38,32 +39,34 @@ import { SupervisorsPage } from '../pages/admin/SupervisorsPage';
 import { SupervisorDetailPage } from '../pages/admin/SupervisorDetailPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 
+const RoleRoute: React.FC<{ roles: UserRole[]; children: React.ReactNode }> = ({ roles, children }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.roles?.some((role) => roles.includes(role))) {
+    return <Navigate to={getPortalRoot(user.roles?.[0] || UserRole.STUDENT) + '/dashboard'} replace />;
+  }
+
+  return <>{children}</>;
+};
+
 /**
  * Portal Redirect Component
- * Redirects to the appropriate portal based on user role
+ * Redirects to the appropriate portal based on authenticated user roles.
+ * The role comes from AuthContext, never from client-controlled role storage.
  */
 const PortalRedirect: React.FC = () => {
-  const userRaw = localStorage.getItem('azaam_user');
-  const userRole = localStorage.getItem('azaam_user_role') as UserRole | null;
+  const { user, isLoading } = useAuth();
 
-  if (userRole) {
-    const portalRoot = getPortalRoot(userRole);
-    return <Navigate to={`${portalRoot}/dashboard`} replace />;
-  }
+  if (isLoading) return null;
+  if (!user) return <Navigate to="/login" replace />;
 
-  if (userRaw) {
-    try {
-      const user = JSON.parse(userRaw);
-      const role = user.roles?.[0] as UserRole;
-      if (role) {
-        const portalRoot = getPortalRoot(role);
-        return <Navigate to={`${portalRoot}/dashboard`} replace />;
-      }
-    } catch {}
-  }
+  const role = user.roles?.[0];
+  if (!role) return <Navigate to="/login" replace />;
 
-  // Fallback to student portal
-  return <Navigate to="/student/dashboard" replace />;
+  const portalRoot = getPortalRoot(role);
+  return <Navigate to={`${portalRoot}/dashboard`} replace />;
 };
 
 export const AppRouter: React.FC = () => {
@@ -88,74 +91,74 @@ export const AppRouter: React.FC = () => {
         <Route element={<ProtectedRoute />}>
           <Route element={<PortalLayout />}>
             {/* ADMIN PORTAL ROUTES - /admin/* */}
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/admin/users" element={<UsersManagementPage />} />
-            <Route path="/admin/universities" element={<UniversitiesPage />} />
-            <Route path="/admin/universities/:id" element={<UniversityDetailPage />} />
-            <Route path="/admin/organizations" element={<OrganizationsPage />} />
-            <Route path="/admin/organizations/:id" element={<OrganizationDetailPage />} />
-            <Route path="/admin/supervisors" element={<SupervisorsPage />} />
-            <Route path="/admin/supervisors/:id" element={<SupervisorDetailPage />} />
-            <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
+            <Route path="/admin/dashboard" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><AdminDashboardPage /></RoleRoute>} />
+            <Route path="/admin/users" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><UsersManagementPage /></RoleRoute>} />
+            <Route path="/admin/universities" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><UniversitiesPage /></RoleRoute>} />
+            <Route path="/admin/universities/:id" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><UniversityDetailPage /></RoleRoute>} />
+            <Route path="/admin/organizations" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><OrganizationsPage /></RoleRoute>} />
+            <Route path="/admin/organizations/:id" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><OrganizationDetailPage /></RoleRoute>} />
+            <Route path="/admin/supervisors" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><SupervisorsPage /></RoleRoute>} />
+            <Route path="/admin/supervisors/:id" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><SupervisorDetailPage /></RoleRoute>} />
+            <Route path="/admin/audit-logs" element={<RoleRoute roles={[UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF]}><AuditLogsPage /></RoleRoute>} />
             <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
             {/* UNIVERSITY PORTAL ROUTES - /university/* */}
-            <Route path="/university/dashboard" element={<PortalResourcePage eyebrow="University Admin" title="University Overview" description="Review your institution's live applications, placements, and student activity." endpoint="/admin/dashboard" />} />
-            <Route path="/university/nominate-student" element={<UniversityNominateStudentPage />} />
-            <Route path="/university/students" element={<UniversityStudentsTrackingPage />} />
-            <Route path="/university/students/:id" element={<UniversityStudentJourneyPage />} />
-            <Route path="/university/student-status" element={<UniversityStudentStatusPage />} />
-            <Route path="/university/mou" element={<PortalResourcePage eyebrow="University Admin" title="University MoU" description="Review the live institutional agreement and placement coordination records for this university." endpoint="/auth/me" />} />
-            <Route path="/university/financials" element={<PortalResourcePage eyebrow="University Admin" title="University Financials" description="Review live fee, invoice, and payment records associated with this university account." endpoint="/finance" />} />
-            <Route path="/university/applications" element={<PortalResourcePage eyebrow="University Admin" title="Student Applications" description="Review live applications submitted by or associated with this university." endpoint="/applications" />} />
-            <Route path="/university/clinical-attachments" element={<PortalResourcePage eyebrow="University Admin" title="Clinical Attachments" description="Track clinical attachment records coordinated for university students." endpoint="/placements" />} />
-            <Route path="/university/attendance" element={<PortalResourcePage eyebrow="University Admin" title="Student Attendance" description="Review live attendance records returned for university clinical attachments." endpoint="/attendance" />} />
-            <Route path="/university/logbook" element={<PortalResourcePage eyebrow="University Admin" title="Student Logbooks" description="Review live clinical logbook records for university students." endpoint="/logbooks" />} />
-            <Route path="/university/evaluations" element={<PortalResourcePage eyebrow="University Admin" title="Student Evaluations" description="Review live evaluation records submitted for university students." endpoint="/evaluations" />} />
-            <Route path="/university/certificates" element={<PortalResourcePage eyebrow="University Admin" title="Student Certificates" description="Review live certificates issued for university students." endpoint="/certificates" />} />
+            <Route path="/university/dashboard" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="University Overview" description="Review your institution's live applications, placements, and student activity." endpoint="/admin/dashboard" /></RoleRoute>} />
+            <Route path="/university/nominate-student" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><UniversityNominateStudentPage /></RoleRoute>} />
+            <Route path="/university/students" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><UniversityStudentsTrackingPage /></RoleRoute>} />
+            <Route path="/university/students/:id" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><UniversityStudentJourneyPage /></RoleRoute>} />
+            <Route path="/university/student-status" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><UniversityStudentStatusPage /></RoleRoute>} />
+            <Route path="/university/mou" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="University MoU" description="Review the live institutional agreement and placement coordination records for this university." endpoint="/auth/me" /></RoleRoute>} />
+            <Route path="/university/financials" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><UniversityFinancialsPage /></RoleRoute>} />
+            <Route path="/university/applications" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="Student Applications" description="Review live applications submitted by or associated with this university." endpoint="/applications" /></RoleRoute>} />
+            <Route path="/university/clinical-attachments" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="Clinical Attachments" description="Track clinical attachment records coordinated for university students." endpoint="/placements" /></RoleRoute>} />
+            <Route path="/university/attendance" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="Student Attendance" description="Review live attendance records returned for university clinical attachments." endpoint="/attendance" /></RoleRoute>} />
+            <Route path="/university/logbook" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="Student Logbooks" description="Review live clinical logbook records for university students." endpoint="/logbooks" /></RoleRoute>} />
+            <Route path="/university/evaluations" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="Student Evaluations" description="Review live evaluation records submitted for university students." endpoint="/evaluations" /></RoleRoute>} />
+            <Route path="/university/certificates" element={<RoleRoute roles={[UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF]}><PortalResourcePage eyebrow="University Admin" title="Student Certificates" description="Review live certificates issued for university students." endpoint="/certificates" /></RoleRoute>} />
             <Route path="/university" element={<Navigate to="/university/dashboard" replace />} />
 
             {/* ORGANIZATION PORTAL ROUTES - /organization/* */}
-            <Route path="/organization/dashboard" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Overview" description="Monitor live trainees, placements, departments, and clinical operations." endpoint="/admin/dashboard" />} />
-            <Route path="/organization/placements" element={<PortalResourcePage eyebrow="Organization Admin" title="Placements" description="Manage and review live clinical placements hosted by your organization." endpoint="/placements" />} />
-            <Route path="/organization/clinical-attachments" element={<PortalResourcePage eyebrow="Organization Admin" title="Clinical Attachments" description="Review active and completed clinical attachment placements at your organization." endpoint="/placements" />} />
-            <Route path="/organization/departments" element={<PortalResourcePage eyebrow="Organization Admin" title="Departments" description="Review departments and clinical training capacity provided by your organization." endpoint="/organizations/current/departments" />} />
-            <Route path="/organization/trainees" element={<PortalResourcePage eyebrow="Organization Admin" title="Trainees" description="Review live student applications and trainees assigned to your organization." endpoint="/applications" />} />
-            <Route path="/organization/attendance" element={<PortalResourcePage eyebrow="Organization Admin" title="Attendance" description="Review live attendance records for hosted trainees." endpoint="/attendance" />} />
-            <Route path="/organization/logbooks" element={<PortalResourcePage eyebrow="Organization Admin" title="Logbooks" description="Review live clinical logbook entries for hosted trainees." endpoint="/logbooks" />} />
-            <Route path="/organization/evaluations" element={<PortalResourcePage eyebrow="Organization Admin" title="Evaluations" description="Review live clinical evaluations for hosted trainees." endpoint="/evaluations" />} />
-            <Route path="/organization/supervisors" element={<PortalResourcePage eyebrow="Organization Admin" title="Clinical Supervisors" description="Review supervisors associated with the organization and their live assignments." endpoint="/admin/supervisors" />} />
-            <Route path="/organization/staff" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Staff" description="Review staff accounts authorized for this organization." endpoint="/admin/users" />} />
-            <Route path="/organization/documents" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Documents" description="Review documents submitted for organization and placement compliance." endpoint="/documents" />} />
-            <Route path="/organization/certificates" element={<PortalResourcePage eyebrow="Organization Admin" title="Certificates" description="Review certificates issued for trainees hosted by your organization." endpoint="/certificates" />} />
-            <Route path="/organization/profile" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Profile" description="View the organization profile currently associated with this account." endpoint="/auth/me" />} />
+            <Route path="/organization/dashboard" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Organization Overview" description="Monitor live trainees, placements, departments, and clinical operations." endpoint="/admin/dashboard" /></RoleRoute>} />
+            <Route path="/organization/placements" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Placements" description="Manage and review live clinical placements hosted by your organization." endpoint="/placements" /></RoleRoute>} />
+            <Route path="/organization/clinical-attachments" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Clinical Attachments" description="Review active and completed clinical attachment placements at your organization." endpoint="/placements" /></RoleRoute>} />
+            <Route path="/organization/departments" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Departments" description="Review departments and clinical training capacity provided by your organization." endpoint="/organizations/current/departments" /></RoleRoute>} />
+            <Route path="/organization/trainees" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Trainees" description="Review live student applications and trainees assigned to your organization." endpoint="/applications" /></RoleRoute>} />
+            <Route path="/organization/attendance" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Attendance" description="Review live attendance records for hosted trainees." endpoint="/attendance" /></RoleRoute>} />
+            <Route path="/organization/logbooks" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Logbooks" description="Review live clinical logbook entries for hosted trainees." endpoint="/logbooks" /></RoleRoute>} />
+            <Route path="/organization/evaluations" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Evaluations" description="Review live clinical evaluations for hosted trainees." endpoint="/evaluations" /></RoleRoute>} />
+            <Route path="/organization/supervisors" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Clinical Supervisors" description="Review supervisors associated with the organization and their live assignments." endpoint="/admin/supervisors" /></RoleRoute>} />
+            <Route path="/organization/staff" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Organization Staff" description="Review staff accounts authorized for this organization." endpoint="/admin/users" /></RoleRoute>} />
+            <Route path="/organization/documents" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Organization Documents" description="Review documents submitted for organization and placement compliance." endpoint="/documents" /></RoleRoute>} />
+            <Route path="/organization/certificates" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Certificates" description="Review certificates issued for trainees hosted by your organization." endpoint="/certificates" /></RoleRoute>} />
+            <Route path="/organization/profile" element={<RoleRoute roles={[UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF]}><PortalResourcePage eyebrow="Organization Admin" title="Organization Profile" description="View the organization profile currently associated with this account." endpoint="/auth/me" /></RoleRoute>} />
             <Route path="/organization" element={<Navigate to="/organization/dashboard" replace />} />
 
             {/* SUPERVISOR PORTAL ROUTES - /supervisor/* */}
-            <Route path="/supervisor/dashboard" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Supervisor Overview" description="Review assigned trainees, clinical activity, and evaluation work from one live view." endpoint="/placements" />} />
-            <Route path="/supervisor/trainees" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Assigned Trainees" description="Review live trainees assigned to your clinical supervision." endpoint="/applications" />} />
-            <Route path="/supervisor/clinical-attachments" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Clinical Attachments" description="Review the placements and rotations assigned to your supervision." endpoint="/placements" />} />
-            <Route path="/supervisor/attendance" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Attendance" description="Review live attendance records for assigned clinical attachments." endpoint="/attendance" />} />
-            <Route path="/supervisor/logbooks" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Logbooks" description="Review and follow live clinical logbook records." endpoint="/logbooks" />} />
-            <Route path="/supervisor/evaluations" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Evaluations" description="Review live trainee evaluations and performance records." endpoint="/evaluations" />} />
-            <Route path="/supervisor/documents" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Trainee Documents" description="Review live documents available for assigned trainees and placements." endpoint="/documents" />} />
-            <Route path="/supervisor/certificates" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Certificates" description="Review live certificates associated with completed clinical training." endpoint="/certificates" />} />
+            <Route path="/supervisor/dashboard" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Supervisor Overview" description="Review assigned trainees, clinical activity, and evaluation work from one live view." endpoint="/placements" /></RoleRoute>} />
+            <Route path="/supervisor/trainees" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Assigned Trainees" description="Review live trainees assigned to your clinical supervision." endpoint="/applications" /></RoleRoute>} />
+            <Route path="/supervisor/clinical-attachments" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Clinical Attachments" description="Review the placements and rotations assigned to your supervision." endpoint="/placements" /></RoleRoute>} />
+            <Route path="/supervisor/attendance" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Attendance" description="Review live attendance records for assigned clinical attachments." endpoint="/attendance" /></RoleRoute>} />
+            <Route path="/supervisor/logbooks" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Logbooks" description="Review and follow live clinical logbook records." endpoint="/logbooks" /></RoleRoute>} />
+            <Route path="/supervisor/evaluations" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Evaluations" description="Review live trainee evaluations and performance records." endpoint="/evaluations" /></RoleRoute>} />
+            <Route path="/supervisor/documents" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Trainee Documents" description="Review live documents available for assigned trainees and placements." endpoint="/documents" /></RoleRoute>} />
+            <Route path="/supervisor/certificates" element={<RoleRoute roles={[UserRole.CLINICAL_SUPERVISOR]}><PortalResourcePage eyebrow="Clinical Supervisor" title="Certificates" description="Review live certificates associated with completed clinical training." endpoint="/certificates" /></RoleRoute>} />
             <Route path="/supervisor" element={<Navigate to="/supervisor/dashboard" replace />} />
 
             {/* STUDENT PORTAL ROUTES - /student/* */}
-            <Route path="/student/dashboard" element={<PortalResourcePage eyebrow="Student" title="Student Overview" description="Follow your live application, placement, attendance, and training progress." endpoint="/auth/me" />} />
-            <Route path="/student/applications" element={<PortalResourcePage eyebrow="Student" title="My Applications" description="Review applications submitted by your authenticated student account." endpoint="/applications" />} />
-            <Route path="/student/application-status" element={<PortalResourcePage eyebrow="Student" title="Application Status" description="Review the current status of applications submitted through AIMN." endpoint="/applications" />} />
-            <Route path="/student/clinical-attachment" element={<PortalResourcePage eyebrow="Student" title="Clinical Attachment" description="Review your live placement, host institution, department, and rotation information." endpoint="/placements" />} />
-            <Route path="/student/attendance" element={<PortalResourcePage eyebrow="Student" title="My Attendance" description="Review attendance records returned for your clinical attachments." endpoint="/attendance" />} />
-            <Route path="/student/logbook" element={<PortalResourcePage eyebrow="Student" title="My Logbook" description="Review live clinical logbook records associated with your attachment." endpoint="/logbooks" />} />
-            <Route path="/student/evaluations" element={<PortalResourcePage eyebrow="Student" title="My Evaluations" description="Review evaluation feedback returned by your clinical supervisors." endpoint="/evaluations" />} />
-            <Route path="/student/finance/fees" element={<PortalResourcePage eyebrow="Student" title="Training Fees" description="Review fee records and payment obligations returned by the live finance service." endpoint="/finance" />} />
-            <Route path="/student/finance/payments" element={<PortalResourcePage eyebrow="Student" title="Payments" description="Review payment records associated with your clinical training applications." endpoint="/finance" />} />
-            <Route path="/student/finance/history" element={<PortalResourcePage eyebrow="Student" title="Payment History" description="Review the live payment history available to your account." endpoint="/finance" />} />
-            <Route path="/student/documents" element={<PortalResourcePage eyebrow="Student" title="My Documents" description="Upload and review documents required for application and placement clearance." endpoint="/documents" />} />
-            <Route path="/student/certificates" element={<PortalResourcePage eyebrow="Student" title="My Certificates" description="Review certificates issued for your completed clinical training." endpoint="/certificates" />} />
-            <Route path="/student/notifications" element={<PortalResourcePage eyebrow="Student" title="Notifications" description="Review account and placement updates delivered by the AIMN notification service." endpoint="/notifications" />} />
+            <Route path="/student/dashboard" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="Student Overview" description="Follow your live application, placement, attendance, and training progress." endpoint="/auth/me" /></RoleRoute>} />
+            <Route path="/student/applications" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="My Applications" description="Review applications submitted by your authenticated student account." endpoint="/applications" /></RoleRoute>} />
+            <Route path="/student/application-status" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="Application Status" description="Review the current status of applications submitted through AIMN." endpoint="/applications" /></RoleRoute>} />
+            <Route path="/student/clinical-attachment" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="Clinical Attachment" description="Review your live placement, host institution, department, and rotation information." endpoint="/placements" /></RoleRoute>} />
+            <Route path="/student/attendance" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="My Attendance" description="Review attendance records returned for your clinical attachments." endpoint="/attendance" /></RoleRoute>} />
+            <Route path="/student/logbook" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="My Logbook" description="Review live clinical logbook records associated with your attachment." endpoint="/logbooks" /></RoleRoute>} />
+            <Route path="/student/evaluations" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="My Evaluations" description="Review evaluation feedback returned by your clinical supervisors." endpoint="/evaluations" /></RoleRoute>} />
+            <Route path="/student/finance/fees" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="Training Fees" description="Review fee records and payment obligations returned by the live finance service." endpoint="/finance" /></RoleRoute>} />
+            <Route path="/student/finance/payments" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="Payments" description="Review payment records associated with your clinical training applications." endpoint="/finance" /></RoleRoute>} />
+            <Route path="/student/finance/history" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="Payment History" description="Review the live payment history available to your account." endpoint="/finance" /></RoleRoute>} />
+            <Route path="/student/documents" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="My Documents" description="Upload and review documents required for application and placement clearance." endpoint="/documents" /></RoleRoute>} />
+            <Route path="/student/certificates" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="My Certificates" description="Review certificates issued for your completed clinical training." endpoint="/certificates" /></RoleRoute>} />
+            <Route path="/student/notifications" element={<RoleRoute roles={[UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT]}><PortalResourcePage eyebrow="Student" title="Notifications" description="Review account and placement updates delivered by the AIMN notification service." endpoint="/notifications" /></RoleRoute>} />
             <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />
 
             {/* Legacy routes for backward compatibility - redirect to new portals */}
