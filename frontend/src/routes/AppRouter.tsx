@@ -28,6 +28,7 @@ import { UniversityStudentJourneyPage } from '../pages/university/UniversityStud
 import { UniversityFinancialsPage } from '../pages/university/UniversityFinancialsPage';
 
 // Admin Management Pages
+import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
 import { UsersManagementPage } from '../pages/admin/UsersManagementPage';
 import { UniversitiesPage } from '../pages/admin/UniversitiesPage';
 import { UniversityDetailPage } from '../pages/admin/UniversityDetailPage';
@@ -87,15 +88,15 @@ export const AppRouter: React.FC = () => {
         <Route element={<ProtectedRoute />}>
           <Route element={<PortalLayout />}>
             {/* ADMIN PORTAL ROUTES - /admin/* */}
-            <Route path="/admin/dashboard" element={<PortalResourcePage eyebrow="Super Admin" title="System Overview" description="Monitor live universities, organizations, users, and platform activity." endpoint="/admin/dashboard" />} />
-            <Route path="/admin/users" element={<PortalResourcePage eyebrow="Super Admin" title="User Management" description="Review live user accounts and role assignments from the database." endpoint="/admin/users" />} />
-            <Route path="/admin/universities" element={<PortalResourcePage eyebrow="Super Admin" title="Universities" description="Review live university tenants registered with AIMN." endpoint="/admin/universities" />} />
-            <Route path="/admin/universities/:id" element={<PortalResourcePage eyebrow="Super Admin" title="University Details" description="Review the selected university record returned by the live API." endpoint="/admin/universities" />} />
-            <Route path="/admin/organizations" element={<PortalResourcePage eyebrow="Super Admin" title="Organizations" description="Review live healthcare organization tenants registered with AIMN." endpoint="/admin/organizations" />} />
-            <Route path="/admin/organizations/:id" element={<PortalResourcePage eyebrow="Super Admin" title="Organization Details" description="Review the selected organization record returned by the live API." endpoint="/admin/organizations" />} />
-            <Route path="/admin/supervisors" element={<PortalResourcePage eyebrow="Super Admin" title="Clinical Supervisors" description="Review live clinical supervisor records and assignments." endpoint="/admin/supervisors" />} />
-            <Route path="/admin/supervisors/:id" element={<PortalResourcePage eyebrow="Super Admin" title="Supervisor Details" description="Review the selected supervisor record returned by the live API." endpoint="/admin/supervisors" />} />
-            <Route path="/admin/audit-logs" element={<PortalResourcePage eyebrow="Super Admin" title="Audit Logs" description="Review live security and administrative activity records." endpoint="/admin/audit-logs" />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/users" element={<UsersManagementPage />} />
+            <Route path="/admin/universities" element={<UniversitiesPage />} />
+            <Route path="/admin/universities/:id" element={<UniversityDetailPage />} />
+            <Route path="/admin/organizations" element={<OrganizationsPage />} />
+            <Route path="/admin/organizations/:id" element={<OrganizationDetailPage />} />
+            <Route path="/admin/supervisors" element={<SupervisorsPage />} />
+            <Route path="/admin/supervisors/:id" element={<SupervisorDetailPage />} />
+            <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
             <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
             {/* UNIVERSITY PORTAL ROUTES - /university/* */}
