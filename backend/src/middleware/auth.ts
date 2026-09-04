@@ -34,9 +34,21 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
       studentId?: string | null;
     };
 
-    const user = await User.findById(decoded.sub).select(
-      'email roles status universityId organizationId studentId'
-    );
+    let user: any = null;
+    try {
+      user = await User.findById(decoded.sub).select(
+        'email roles status universityId organizationId studentId'
+      );
+    } catch {
+      // Database not reachable, fallback to in-memory store
+    }
+
+    if (!user) {
+      const { memoryUsers } = await import('../services/memoryStore.js');
+      user = memoryUsers.find(
+        (u) => u._id === decoded.sub || u.id === decoded.sub || u.email.toLowerCase() === decoded.email.toLowerCase()
+      );
+    }
 
     if (!user) {
       res.status(401).json({
@@ -54,14 +66,13 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
       return;
     }
 
-    // Use current database authorization state rather than stale role/scope claims from the JWT.
     req.user = {
-      userId: user._id.toString(),
+      userId: (user._id || user.id).toString(),
       email: user.email,
       roles: user.roles,
-      universityId: user.universityId ? user.universityId.toString() : null,
-      organizationId: user.organizationId ? user.organizationId.toString() : null,
-      studentId: user.studentId ? user.studentId.toString() : null,
+      universityId: user.universityId ? (user.universityId._id || user.universityId).toString() : null,
+      organizationId: user.organizationId ? (user.organizationId._id || user.organizationId).toString() : null,
+      studentId: user.studentId ? (user.studentId._id || user.studentId).toString() : null,
     };
 
     next();

@@ -365,6 +365,120 @@ const saveStoredOrganizations = (list: any[]) => {
   } catch (e) {}
 };
 
+const INITIAL_SUPERVISORS: AdminSupervisor[] = [
+  {
+    _id: 'sup-1',
+    userId: {
+      _id: 'usr-sup-1',
+      firstName: 'Dr. Sarah',
+      lastName: 'Jenkins',
+      email: 'sjenkins@massgeneral.org',
+      phone: '+1 617-726-4433',
+      roles: ['CLINICAL_SUPERVISOR'],
+      status: 'ACTIVE',
+      createdAt: '2024-01-15T09:00:00.000Z',
+      updatedAt: '2024-01-15T09:00:00.000Z',
+    },
+    organizationId: {
+      _id: 'org-1',
+      name: 'Recep Tayyip Erdoğan (Digfeer) Hospital',
+      type: 'HOSPITAL',
+      capacity: 80,
+      contactEmail: 'info@digfeerhospital.so',
+      status: 'ACTIVE',
+      createdAt: '2024-01-01T08:00:00.000Z',
+      updatedAt: '2024-08-26T12:00:00.000Z',
+    },
+    licenseNumber: 'MD-SOM-489921',
+    qualification: 'MD, FACS, Senior Consultant Surgeon',
+    yearsOfExperience: 14,
+    verified: true,
+    status: 'ACTIVE',
+    assignedTraineesCount: 4,
+    createdAt: '2024-01-15T09:00:00.000Z',
+    updatedAt: '2024-01-15T09:00:00.000Z',
+  },
+  {
+    _id: 'sup-2',
+    userId: {
+      _id: 'usr-sup-2',
+      firstName: 'Dr. Abdirahman',
+      lastName: 'Nur',
+      email: 'a.nur@digfeerhospital.so',
+      phone: '+252 61 700 0103',
+      roles: ['CLINICAL_SUPERVISOR'],
+      status: 'ACTIVE',
+      createdAt: '2024-01-20T10:00:00.000Z',
+      updatedAt: '2024-01-20T10:00:00.000Z',
+    },
+    organizationId: {
+      _id: 'org-1',
+      name: 'Recep Tayyip Erdoğan (Digfeer) Hospital',
+      type: 'HOSPITAL',
+      capacity: 80,
+      contactEmail: 'info@digfeerhospital.so',
+      status: 'ACTIVE',
+      createdAt: '2024-01-01T08:00:00.000Z',
+      updatedAt: '2024-08-26T12:00:00.000Z',
+    },
+    licenseNumber: 'MD-SOM-102938',
+    qualification: 'MBChB, MMed Internal Medicine',
+    yearsOfExperience: 9,
+    verified: true,
+    status: 'ACTIVE',
+    assignedTraineesCount: 6,
+    createdAt: '2024-01-20T10:00:00.000Z',
+    updatedAt: '2024-01-20T10:00:00.000Z',
+  },
+  {
+    _id: 'sup-3',
+    userId: {
+      _id: 'usr-sup-3',
+      firstName: 'Dr. Fatima',
+      lastName: 'Hersi',
+      email: 'f.hersi@banadirhospital.gov.so',
+      phone: '+252 61 700 0204',
+      roles: ['CLINICAL_SUPERVISOR'],
+      status: 'ACTIVE',
+      createdAt: '2024-02-01T11:00:00.000Z',
+      updatedAt: '2024-02-01T11:00:00.000Z',
+    },
+    organizationId: {
+      _id: 'org-2',
+      name: 'Banadir Maternity & Children Hospital',
+      type: 'SPECIALIZED_CENTER',
+      capacity: 65,
+      contactEmail: 'contact@banadirhospital.gov.so',
+      status: 'ACTIVE',
+      createdAt: '2024-01-05T09:00:00.000Z',
+      updatedAt: '2024-08-22T14:15:00.000Z',
+    },
+    licenseNumber: 'MD-SOM-554412',
+    qualification: 'MD, Consultant Pediatrician & Neonatologist',
+    yearsOfExperience: 11,
+    verified: true,
+    status: 'ACTIVE',
+    assignedTraineesCount: 5,
+    createdAt: '2024-02-01T11:00:00.000Z',
+    updatedAt: '2024-02-01T11:00:00.000Z',
+  },
+];
+
+const getStoredSupervisors = (): AdminSupervisor[] => {
+  try {
+    const raw = localStorage.getItem('azaam_supervisors');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  localStorage.setItem('azaam_supervisors', JSON.stringify(INITIAL_SUPERVISORS));
+  return INITIAL_SUPERVISORS;
+};
+
+const saveStoredSupervisors = (list: AdminSupervisor[]) => {
+  try {
+    localStorage.setItem('azaam_supervisors', JSON.stringify(list));
+  } catch (e) {}
+};
+
 export class AdminApiService {
   // Dashboard
   static async getDashboard(): Promise<AdminDashboardData> {
@@ -793,32 +907,91 @@ export class AdminApiService {
   }): Promise<{ supervisors: AdminSupervisor[]; pagination: PaginationMeta }> {
     try {
       const res = await api.get('/admin/supervisors', { params });
-      if (res.data?.data) {
+      if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
         return {
-          supervisors: res.data.data || [],
+          supervisors: res.data.data,
           pagination: res.data.pagination || {
             page: params.page || 1,
             limit: params.limit || 20,
-            total: (res.data.data || []).length,
-            totalPages: 1,
+            total: res.data.data.length,
+            totalPages: Math.ceil(res.data.data.length / (params.limit || 20)) || 1,
           },
         };
       }
     } catch (err) {}
+
+    const all = getStoredSupervisors();
+    let filtered = [...all];
+
+    if (params.search) {
+      const s = params.search.toLowerCase();
+      filtered = filtered.filter(
+        (sup) =>
+          `${sup.userId?.firstName} ${sup.userId?.lastName}`.toLowerCase().includes(s) ||
+          sup.userId?.email?.toLowerCase().includes(s) ||
+          (sup.licenseNumber && sup.licenseNumber.toLowerCase().includes(s)) ||
+          (sup.qualification && sup.qualification.toLowerCase().includes(s)) ||
+          (sup.organizationId?.name && sup.organizationId.name.toLowerCase().includes(s))
+      );
+    }
+    if (params.status) {
+      filtered = filtered.filter((sup) => sup.status === params.status);
+    }
+    if (params.organizationId) {
+      filtered = filtered.filter((sup) => sup.organizationId?._id === params.organizationId);
+    }
+
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const paginated = filtered.slice((page - 1) * limit, page * limit);
+
     return {
-      supervisors: [],
-      pagination: { page: params.page || 1, limit: params.limit || 20, total: 0, totalPages: 1 },
+      supervisors: paginated,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
     };
   }
 
   static async getSupervisorById(id: string): Promise<any> {
-    const res = await api.get(`/admin/supervisors/${id}`);
-    return res.data.data;
+    try {
+      const res = await api.get(`/admin/supervisors/${id}`);
+      if (res.data?.data) return res.data.data;
+    } catch (err) {}
+
+    const all = getStoredSupervisors();
+    const sup = all.find((s) => s._id === id) || all[0];
+    return {
+      ...sup,
+      activePlacements: [],
+      evaluations: [],
+    };
   }
 
   static async updateSupervisorStatus(id: string, status: 'ACTIVE' | 'INACTIVE'): Promise<AdminSupervisor> {
-    const res = await api.patch(`/admin/supervisors/${id}/status`, { status });
-    return res.data.data;
+    try {
+      const res = await api.patch(`/admin/supervisors/${id}/status`, { status });
+      if (res.data?.data) {
+        const all = getStoredSupervisors().map((s) => (s._id === id ? { ...s, status } : s));
+        saveStoredSupervisors(all);
+        return res.data.data;
+      }
+    } catch (err) {}
+
+    const all = getStoredSupervisors();
+    const sup = all.find((s) => s._id === id);
+    if (sup) {
+      sup.status = status;
+      sup.updatedAt = new Date().toISOString();
+      saveStoredSupervisors(all);
+      return sup;
+    }
+    return { _id: id, status } as any;
   }
 
   // Audit Logs

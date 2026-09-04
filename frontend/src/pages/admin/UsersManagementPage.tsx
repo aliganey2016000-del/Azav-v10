@@ -1,8 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, UserPlus, Key, Shield, CheckCircle, XCircle, Eye, RefreshCw, Filter } from 'lucide-react';
+import {
+  UserPlus,
+  Key,
+  Shield,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Edit2,
+  RefreshCw,
+  Users,
+  GraduationCap,
+  Building2,
+  Stethoscope,
+  Mail,
+  Phone,
+  Calendar,
+  Lock,
+  Search,
+  Check,
+  AlertCircle,
+  X,
+} from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminUser, PaginationMeta } from '../../types/admin.types';
+import { AdminUser, AdminUniversity, AdminOrganization, PaginationMeta } from '../../types/admin.types';
 import { UserRole } from '../../types/frontend';
 import { PageHeader } from '../../components/admin/PageHeader';
 import { SearchInput } from '../../components/admin/SearchInput';
@@ -20,22 +41,50 @@ export const UsersManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Available Institutions for Selectors & Filters
+  const [universities, setUniversities] = useState<AdminUniversity[]>([]);
+  const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
+
   // Modals & Action States
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Form State
-  const [formData, setFormData] = useState({
+  // In-app Notification / Toast
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(null);
+    }, 4000);
+  };
+
+  // Form State for Create
+  const [createFormData, setCreateFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     password: '',
     role: UserRole.STUDENT,
+    universityId: '',
+    organizationId: '',
+    licenseNumber: '',
+    qualification: '',
+  });
+
+  // Form State for Edit
+  const [editFormData, setEditFormData] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    role: UserRole.STUDENT,
+    status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'PENDING',
     universityId: '',
     organizationId: '',
   });
@@ -47,6 +96,24 @@ export const UsersManagementPage: React.FC = () => {
   const searchParam = searchParams.get('search') || '';
   const roleParam = searchParams.get('role') || '';
   const statusParam = searchParams.get('status') || '';
+  const institutionParam = searchParams.get('institution') || '';
+
+  // Load institutions once
+  useEffect(() => {
+    const loadInstitutions = async () => {
+      try {
+        const [uniRes, orgRes] = await Promise.all([
+          AdminApiService.getUniversities({ page: 1, limit: 100 }),
+          AdminApiService.getOrganizations({ page: 1, limit: 100 }),
+        ]);
+        setUniversities(uniRes.universities || []);
+        setOrganizations(orgRes.organizations || []);
+      } catch (err) {
+        console.error('Failed to load institutions list', err);
+      }
+    };
+    loadInstitutions();
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -58,14 +125,29 @@ export const UsersManagementPage: React.FC = () => {
         search: searchParam,
         role: roleParam,
         status: statusParam,
+        universityId: institutionParam.startsWith('uni_') ? institutionParam.replace('uni_', '') : undefined,
+        organizationId: institutionParam.startsWith('org_') ? institutionParam.replace('org_', '') : undefined,
       });
-      setUsers(res.users || []);
+
+      let fetchedUsers = res.users || [];
+      // Client-side fallback filter if institution param passed
+      if (institutionParam) {
+        if (institutionParam.startsWith('uni_')) {
+          const targetUniId = institutionParam.replace('uni_', '');
+          fetchedUsers = fetchedUsers.filter((u) => u.universityId?._id === targetUniId);
+        } else if (institutionParam.startsWith('org_')) {
+          const targetOrgId = institutionParam.replace('org_', '');
+          fetchedUsers = fetchedUsers.filter((u) => u.organizationId?._id === targetOrgId);
+        }
+      }
+
+      setUsers(fetchedUsers);
       setPagination(
         res.pagination || {
           page: pageParam,
           limit: 20,
-          total: (res.users || []).length,
-          totalPages: Math.ceil((res.users || []).length / 20) || 1,
+          total: fetchedUsers.length,
+          totalPages: Math.ceil(fetchedUsers.length / 20) || 1,
         }
       );
     } catch (err: any) {
@@ -74,7 +156,7 @@ export const UsersManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pageParam, searchParam, roleParam, statusParam]);
+  }, [pageParam, searchParam, roleParam, statusParam, institutionParam]);
 
   useEffect(() => {
     fetchUsers();
@@ -88,7 +170,7 @@ export const UsersManagementPage: React.FC = () => {
     } else {
       newParams.delete(key);
     }
-    newParams.set('page', '1'); // Reset to page 1 on filter change
+    newParams.set('page', '1');
     setSearchParams(newParams);
   };
 
@@ -98,23 +180,47 @@ export const UsersManagementPage: React.FC = () => {
     setSearchParams(newParams);
   };
 
+  // Metrics summary
+  const metrics = useMemo(() => {
+    const total = users.length;
+    const active = users.filter((u) => u.status === 'ACTIVE').length;
+    const students = users.filter((u) => u.roles?.includes(UserRole.STUDENT) || u.roles?.includes('STUDENT')).length;
+    const supervisors = users.filter((u) => u.roles?.includes(UserRole.CLINICAL_SUPERVISOR) || u.roles?.includes('CLINICAL_SUPERVISOR')).length;
+    const admins = users.filter((u) =>
+      u.roles?.some((r) => [UserRole.SUPER_ADMIN, UserRole.UNIVERSITY_ADMIN, UserRole.ORGANIZATION_ADMIN].includes(r as any))
+    ).length;
+    return { total, active, students, supervisors, admins };
+  }, [users]);
+
+  // Check role affiliation requirements
+  const isUniversityRole = (role: string) => {
+    return [UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF, UserRole.STUDENT].includes(role as any);
+  };
+
+  const isOrganizationRole = (role: string) => {
+    return [UserRole.ORGANIZATION_ADMIN, UserRole.ORGANIZATION_STAFF, UserRole.CLINICAL_SUPERVISOR].includes(role as any);
+  };
+
   // Create User Handler
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setActionLoading(true);
       await AdminApiService.createUser({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password || 'ChangeMe123!',
-        roles: [formData.role],
-        universityId: formData.universityId || null,
-        organizationId: formData.organizationId || null,
+        firstName: createFormData.firstName.trim(),
+        lastName: createFormData.lastName.trim(),
+        email: createFormData.email.trim().toLowerCase(),
+        phone: createFormData.phone.trim(),
+        password: createFormData.password || 'ChangeMe123!',
+        roles: [createFormData.role],
+        universityId: isUniversityRole(createFormData.role) ? createFormData.universityId || null : null,
+        organizationId: isOrganizationRole(createFormData.role) ? createFormData.organizationId || null : null,
+        licenseNumber: createFormData.licenseNumber || undefined,
+        qualification: createFormData.qualification || undefined,
       });
+
       setCreateModalOpen(false);
-      setFormData({
+      setCreateFormData({
         firstName: '',
         lastName: '',
         email: '',
@@ -123,10 +229,55 @@ export const UsersManagementPage: React.FC = () => {
         role: UserRole.STUDENT,
         universityId: '',
         organizationId: '',
+        licenseNumber: '',
+        qualification: '',
       });
+      showToast('success', 'User account created successfully.');
       fetchUsers();
     } catch (err: any) {
-      alert(err.message || 'Failed to create user.');
+      showToast('error', err.message || 'Failed to create user.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Open Edit Modal
+  const openEditModal = (user: AdminUser) => {
+    setSelectedUser(user);
+    setEditFormData({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone || '',
+      role: (user.roles?.[0] as UserRole) || UserRole.STUDENT,
+      status: user.status,
+      universityId: user.universityId?._id || '',
+      organizationId: user.organizationId?._id || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  // Update User Handler
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    try {
+      setActionLoading(true);
+      await AdminApiService.updateUser(selectedUser._id, {
+        firstName: editFormData.firstName.trim(),
+        lastName: editFormData.lastName.trim(),
+        phone: editFormData.phone.trim(),
+        roles: [editFormData.role],
+        status: editFormData.status,
+        universityId: isUniversityRole(editFormData.role) ? editFormData.universityId || null : null,
+        organizationId: isOrganizationRole(editFormData.role) ? editFormData.organizationId || null : null,
+      });
+
+      setEditModalOpen(false);
+      setSelectedUser(null);
+      showToast('success', 'User details updated successfully.');
+      fetchUsers();
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to update user.');
     } finally {
       setActionLoading(false);
     }
@@ -141,9 +292,10 @@ export const UsersManagementPage: React.FC = () => {
       await AdminApiService.updateUserStatus(selectedUser._id, newStatus);
       setConfirmToggleOpen(false);
       setSelectedUser(null);
+      showToast('success', `Account marked as ${newStatus}.`);
       fetchUsers();
     } catch (err: any) {
-      alert(err.message || 'Failed to update user status.');
+      showToast('error', err.message || 'Failed to update user status.');
     } finally {
       setActionLoading(false);
     }
@@ -156,12 +308,12 @@ export const UsersManagementPage: React.FC = () => {
     try {
       setActionLoading(true);
       await AdminApiService.resetUserPassword(selectedUser._id, resetPasswordValue);
-      alert(`Password for ${selectedUser.email} has been updated.`);
+      showToast('success', `Password for ${selectedUser.email} has been updated.`);
       setResetModalOpen(false);
       setResetPasswordValue('');
       setSelectedUser(null);
     } catch (err: any) {
-      alert(err.message || 'Failed to reset password.');
+      showToast('error', err.message || 'Failed to reset password.');
     } finally {
       setActionLoading(false);
     }
@@ -169,39 +321,116 @@ export const UsersManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {notification && (
+        <div
+          className={`fixed top-5 right-5 z-50 flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg border transition-all text-xs font-medium ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
+          }`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+          )}
+          <span>{notification.message}</span>
+          <button onClick={() => setNotification(null)} className="ml-2 text-slate-400 hover:text-slate-600">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Page Header */}
       <PageHeader
-        title="User Management"
-        description="Comprehensive directory of medical trainees, supervisors, administrators, and staff."
+        title="Maamulka Isticmaalayaasha (User Management)"
+        description="Global directory of medical trainees, supervisors, institution directors, and platform staff across all registered universities and hospitals."
         action={
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition shadow-xs flex items-center space-x-1.5"
+            className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition shadow-xs flex items-center space-x-1.5 cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Create User</span>
+            <span>Ku dar Isticmaale (Add User)</span>
           </button>
         }
       />
 
-      {/* Filter Controls Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <SearchInput
-          value={searchParam}
-          onChange={(val) => updateQueryParam('search', val)}
-          placeholder="Search by name, email, or phone..."
-        />
+      {/* Quick Metrics Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+            <Users className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">Wadarta (Total)</div>
+            <div className="text-base font-bold text-slate-900">{metrics.total}</div>
+          </div>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <CheckCircle className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">Firfircoon (Active)</div>
+            <div className="text-base font-bold text-slate-900">{metrics.active}</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <GraduationCap className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">Arday (Students)</div>
+            <div className="text-base font-bold text-slate-900">{metrics.students}</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+            <Stethoscope className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">Kormeere (Supervisors)</div>
+            <div className="text-base font-bold text-slate-900">{metrics.supervisors}</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs col-span-2 sm:col-span-1 flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+            <Shield className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[11px] text-slate-500 font-medium">Maamulayaal (Admins)</div>
+            <div className="text-base font-bold text-slate-900">{metrics.admins}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="w-full md:w-72">
+          <SearchInput
+            value={searchParam}
+            onChange={(val) => updateQueryParam('search', val)}
+            placeholder="Raadi magac, email, ama tel..."
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Role Filter */}
           <select
             value={roleParam}
             onChange={(e) => updateQueryParam('role', e.target.value)}
-            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700"
           >
-            <option value="">All Roles</option>
+            <option value="">Dhammaan Dooryada (All Roles)</option>
             {Object.values(UserRole).map((r) => (
               <option key={r} value={r}>
-                {r}
+                {r.replace(/_/g, ' ')}
               </option>
             ))}
           </select>
@@ -210,32 +439,66 @@ export const UsersManagementPage: React.FC = () => {
           <select
             value={statusParam}
             onChange={(e) => updateQueryParam('status', e.target.value)}
-            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700"
           >
-            <option value="">All Statuses</option>
-            <option value="ACTIVE">ACTIVE</option>
-            <option value="INACTIVE">INACTIVE</option>
-            <option value="PENDING">PENDING</option>
+            <option value="">Dhammaan Xaaladaha (All Statuses)</option>
+            <option value="ACTIVE">ACTIVE (Firfircoon)</option>
+            <option value="INACTIVE">INACTIVE (Aan shaqayn)</option>
+            <option value="PENDING">PENDING (Sugaya)</option>
           </select>
 
-          {(searchParam || roleParam || statusParam) && (
+          {/* Institution Filter */}
+          <select
+            value={institutionParam}
+            onChange={(e) => updateQueryParam('institution', e.target.value)}
+            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700 max-w-[200px] truncate"
+          >
+            <option value="">Dhammaan Hay'adaha (All Institutions)</option>
+            <optgroup label="Jaamacadaha (Universities)">
+              {universities.map((uni) => (
+                <option key={uni._id} value={`uni_${uni._id}`}>
+                  {uni.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Isbitaallada & Rugaha (Hospitals/Centers)">
+              {organizations.map((org) => (
+                <option key={org._id} value={`org_${org._id}`}>
+                  {org.name}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+
+          {(searchParam || roleParam || statusParam || institutionParam) && (
             <button
               onClick={() => setSearchParams({})}
-              className="text-xs text-rose-600 font-medium hover:underline"
+              className="px-2.5 py-1.5 text-xs text-rose-600 font-semibold hover:bg-rose-50 rounded-lg transition"
             >
-              Clear Filters
+              Nadiifi (Clear)
             </button>
           )}
+
+          <button
+            onClick={fetchUsers}
+            title="Dib u cusboonaysii"
+            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
       {/* Main Table View */}
       {loading ? (
-        <LoadingState message="Loading users..." />
+        <LoadingState message="Soo qaadaya liiska isticmaalayaasha..." />
       ) : error ? (
         <ErrorState message={error} onRetry={fetchUsers} />
       ) : users.length === 0 ? (
-        <EmptyState title="No users found" description="Try adjusting your search criteria or create a new user account." />
+        <EmptyState
+          title="Isticmaale lama helin (No users found)"
+          description="Isku day inaad bedesho shaandhada raadinta ama ku dar isticmaale cusub."
+        />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
           {/* Desktop Table View */}
@@ -243,34 +506,56 @@ export const UsersManagementPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                 <tr>
-                  <th className="p-3.5">User</th>
-                  <th className="p-3.5">Role</th>
-                  <th className="p-3.5">Association</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Created</th>
-                  <th className="p-3.5 text-right">Actions</th>
+                  <th className="p-3.5">Isticmaalaha (User)</th>
+                  <th className="p-3.5">Doorka (Role)</th>
+                  <th className="p-3.5">Hay'adda (Affiliation)</th>
+                  <th className="p-3.5">Telefoonka (Phone)</th>
+                  <th className="p-3.5">Xaaladda (Status)</th>
+                  <th className="p-3.5">Taariikhda (Created)</th>
+                  <th className="p-3.5 text-right">Ficilada (Actions)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {users.map((u) => (
                   <tr key={u._id} className="hover:bg-slate-50/70 transition">
                     <td className="p-3.5">
-                      <div className="font-bold text-slate-900">
-                        {u.firstName} {u.lastName}
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 text-teal-800 font-bold flex items-center justify-center text-xs flex-shrink-0 border border-slate-200">
+                          {u.firstName?.[0] || 'U'}
+                          {u.lastName?.[0] || ''}
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900">
+                            {u.firstName} {u.lastName}
+                          </div>
+                          <div className="text-[11px] text-slate-500 font-normal">{u.email}</div>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-500 font-normal">{u.email}</div>
                     </td>
                     <td className="p-3.5">
                       <RoleBadge role={u.roles?.[0] || 'STUDENT'} />
                     </td>
                     <td className="p-3.5 text-slate-600">
                       {u.universityId?.name ? (
-                        <span className="text-teal-700 font-semibold">{u.universityId.name}</span>
+                        <div className="flex items-center space-x-1.5">
+                          <GraduationCap className="w-3.5 h-3.5 text-teal-600 flex-shrink-0" />
+                          <span className="text-teal-900 font-medium truncate max-w-[200px]" title={u.universityId.name}>
+                            {u.universityId.name}
+                          </span>
+                        </div>
                       ) : u.organizationId?.name ? (
-                        <span className="text-amber-700 font-semibold">{u.organizationId.name}</span>
+                        <div className="flex items-center space-x-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                          <span className="text-amber-900 font-medium truncate max-w-[200px]" title={u.organizationId.name}>
+                            {u.organizationId.name}
+                          </span>
+                        </div>
                       ) : (
-                        <span className="text-slate-400 italic">Independent / Global</span>
+                        <span className="text-slate-400 italic font-normal">Independent / Global</span>
                       )}
+                    </td>
+                    <td className="p-3.5 text-slate-600 font-mono text-[11px]">
+                      {u.phone || <span className="text-slate-300">-</span>}
                     </td>
                     <td className="p-3.5">
                       <StatusBadge status={u.status} />
@@ -279,24 +564,31 @@ export const UsersManagementPage: React.FC = () => {
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
                     <td className="p-3.5 text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end space-x-1">
                         <button
                           onClick={() => {
                             setSelectedUser(u);
                             setViewModalOpen(true);
                           }}
-                          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
-                          title="View Details"
+                          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                          title="Eeg Faahfaahinta (View Details)"
                         >
                           <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openEditModal(u)}
+                          className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition cursor-pointer"
+                          title="Wax ka beddel (Edit User)"
+                        >
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => {
                             setSelectedUser(u);
                             setResetModalOpen(true);
                           }}
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                          title="Reset Password"
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
+                          title="Beddel Furaha (Reset Password)"
                         >
                           <Key className="w-4 h-4" />
                         </button>
@@ -305,12 +597,12 @@ export const UsersManagementPage: React.FC = () => {
                             setSelectedUser(u);
                             setConfirmToggleOpen(true);
                           }}
-                          className={`p-1.5 rounded-lg transition ${
+                          className={`p-1.5 rounded-lg transition cursor-pointer ${
                             u.status === 'ACTIVE'
-                              ? 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
-                              : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                              ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
                           }`}
-                          title={u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                          title={u.status === 'ACTIVE' ? 'Xir (Deactivate)' : 'Fur (Activate)'}
                         >
                           {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                         </button>
@@ -327,33 +619,41 @@ export const UsersManagementPage: React.FC = () => {
             {users.map((u) => (
               <div key={u._id} className="p-4 space-y-3">
                 <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm">
-                      {u.firstName} {u.lastName}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 font-mono">{u.email}</p>
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 text-teal-800 font-bold flex items-center justify-center text-xs border border-slate-200">
+                      {u.firstName?.[0] || 'U'}
+                      {u.lastName?.[0] || ''}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">
+                        {u.firstName} {u.lastName}
+                      </h4>
+                      <p className="text-[10px] text-slate-500">{u.email}</p>
+                    </div>
                   </div>
                   <StatusBadge status={u.status} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs border-t border-slate-150/50 pt-2.5">
+
+                <div className="grid grid-cols-2 gap-3 text-xs border-t border-slate-100 pt-2.5">
                   <div>
-                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Role</span>
+                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Doorka</span>
                     <RoleBadge role={u.roles?.[0] || 'STUDENT'} />
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Association</span>
-                    <span className="font-semibold text-slate-700 block truncate max-w-[120px]">
+                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Hay'adda</span>
+                    <span className="font-medium text-slate-700 block truncate max-w-[140px]">
                       {u.universityId?.name ? (
-                        <span className="text-teal-700 font-bold">{u.universityId.name}</span>
+                        <span className="text-teal-700 font-semibold">{u.universityId.name}</span>
                       ) : u.organizationId?.name ? (
-                        <span className="text-amber-700 font-bold">{u.organizationId.name}</span>
+                        <span className="text-amber-700 font-semibold">{u.organizationId.name}</span>
                       ) : (
-                        <span className="text-slate-400 italic font-medium">Independent</span>
+                        <span className="text-slate-400 italic">Independent</span>
                       )}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-slate-150/30 text-[10px] text-slate-400">
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-400">
                   <span>Joined: {new Date(u.createdAt).toLocaleDateString()}</span>
                   <div className="flex items-center space-x-1">
                     <button
@@ -364,6 +664,12 @@ export const UsersManagementPage: React.FC = () => {
                       className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
                     >
                       <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => openEditModal(u)}
+                      className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition"
+                    >
+                      <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => {
@@ -380,9 +686,7 @@ export const UsersManagementPage: React.FC = () => {
                         setConfirmToggleOpen(true);
                       }}
                       className={`p-1.5 rounded-lg transition ${
-                        u.status === 'ACTIVE'
-                          ? 'text-rose-600 hover:bg-rose-50'
-                          : 'text-emerald-600 hover:bg-emerald-50'
+                        u.status === 'ACTIVE' ? 'text-rose-600 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50'
                       }`}
                     >
                       {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
@@ -398,128 +702,383 @@ export const UsersManagementPage: React.FC = () => {
       )}
 
       {/* Create User Modal */}
-      <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create New Account" maxWidth="md">
+      <Modal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        title="Ku dar Isticmaale Cusub (Create User Account)"
+        maxWidth="md"
+      >
         <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Magaca Hore (First Name) *</label>
               <input
                 type="text"
                 required
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                value={createFormData.firstName}
+                onChange={(e) => setCreateFormData({ ...createFormData, firstName: e.target.value })}
+                placeholder="Tusaale: Ahmed"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Last Name *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Magaca Dambe (Last Name) *</label>
               <input
                 type="text"
                 required
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                value={createFormData.lastName}
+                onChange={(e) => setCreateFormData({ ...createFormData, lastName: e.target.value })}
+                placeholder="Tusaale: Jama"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Email Address *</label>
+              <input
+                type="email"
+                required
+                value={createFormData.email}
+                onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                placeholder="ahmed.jama@example.com"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Telefoonka (Phone)</label>
+              <input
+                type="text"
+                value={createFormData.phone}
+                onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                placeholder="+252 61 555 0199"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Email Address *</label>
-            <input
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Phone Number</label>
-            <input
-              type="text"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Role *</label>
+            <label className="block font-semibold text-slate-700 mb-1">Doorka (Role) *</label>
             <select
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              value={createFormData.role}
+              onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value as UserRole })}
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-medium"
             >
               {Object.values(UserRole).map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {r.replace(/_/g, ' ')}
                 </option>
               ))}
             </select>
           </div>
 
+          {/* Dynamic University Association */}
+          {isUniversityRole(createFormData.role) && (
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Jaamacadda (Associated University) *</label>
+              <select
+                required
+                value={createFormData.universityId}
+                onChange={(e) => setCreateFormData({ ...createFormData, universityId: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              >
+                <option value="">Dooro Jaamacad (Select University)...</option>
+                {universities.map((uni) => (
+                  <option key={uni._id} value={uni._id}>
+                    {uni.name} ({uni.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Dynamic Organization / Hospital Association */}
+          {isOrganizationRole(createFormData.role) && (
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Isbitaalka / Rugta (Associated Hospital/Center) *</label>
+              <select
+                required
+                value={createFormData.organizationId}
+                onChange={(e) => setCreateFormData({ ...createFormData, organizationId: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              >
+                <option value="">Dooro Isbitaal (Select Hospital)...</option>
+                {organizations.map((org) => (
+                  <option key={org._id} value={org._id}>
+                    {org.name} ({org.type})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Supervisor-Specific Details */}
+          {createFormData.role === UserRole.CLINICAL_SUPERVISOR && (
+            <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/60 rounded-lg border border-amber-200/60">
+              <div>
+                <label className="block font-semibold text-amber-900 mb-1">Lambarka Shatiga (License #)</label>
+                <input
+                  type="text"
+                  placeholder="SOM-MED-8492"
+                  value={createFormData.licenseNumber}
+                  onChange={(e) => setCreateFormData({ ...createFormData, licenseNumber: e.target.value })}
+                  className="w-full p-2 bg-white border border-amber-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-amber-900 mb-1">Takhasuska (Specialty/Degree)</label>
+                <input
+                  type="text"
+                  placeholder="M.D., Pediatric Surgery"
+                  value={createFormData.qualification}
+                  onChange={(e) => setCreateFormData({ ...createFormData, qualification: e.target.value })}
+                  className="w-full p-2 bg-white border border-amber-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Initial Password</label>
+            <label className="block font-semibold text-slate-700 mb-1">Furaha Sirta ah (Initial Password)</label>
             <input
               type="password"
               placeholder="Default: ChangeMe123!"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              value={createFormData.password}
+              onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-mono"
             />
+            <p className="text-[10px] text-slate-400 mt-1">Haddii aad banaan kaga tagto, waxaa noqon doona 'ChangeMe123!'</p>
           </div>
 
           <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setCreateModalOpen(false)}
-              className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+              className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium cursor-pointer"
             >
-              Cancel
+              Ka noqo (Cancel)
             </button>
             <button
               type="submit"
               disabled={actionLoading}
-              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium"
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium cursor-pointer shadow-xs"
             >
-              {actionLoading ? 'Creating...' : 'Create Account'}
+              {actionLoading ? 'Abuuraya...' : 'Abuur Koontada (Create Account)'}
             </button>
           </div>
         </form>
       </Modal>
 
+      {/* Edit User Modal */}
+      {selectedUser && editModalOpen && (
+        <Modal
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          title={`Wax ka beddel: ${selectedUser.firstName} ${selectedUser.lastName}`}
+          maxWidth="md"
+        >
+          <form onSubmit={handleUpdateUser} className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Magaca Hore *</label>
+                <input
+                  type="text"
+                  required
+                  value={editFormData.firstName}
+                  onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Magaca Dambe *</label>
+                <input
+                  type="text"
+                  required
+                  value={editFormData.lastName}
+                  onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Telefoonka (Phone)</label>
+                <input
+                  type="text"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Xaaladda (Status)</label>
+                <select
+                  value={editFormData.status}
+                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as any })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-medium"
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                  <option value="PENDING">PENDING</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Doorka (Role)</label>
+              <select
+                value={editFormData.role}
+                onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as UserRole })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-medium"
+              >
+                {Object.values(UserRole).map((r) => (
+                  <option key={r} value={r}>
+                    {r.replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {isUniversityRole(editFormData.role) && (
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Jaamacadda</label>
+                <select
+                  value={editFormData.universityId}
+                  onChange={(e) => setEditFormData({ ...editFormData, universityId: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                >
+                  <option value="">Dooro Jaamacad...</option>
+                  {universities.map((uni) => (
+                    <option key={uni._id} value={uni._id}>
+                      {uni.name} ({uni.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {isOrganizationRole(editFormData.role) && (
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Isbitaalka / Rugta</label>
+                <select
+                  value={editFormData.organizationId}
+                  onChange={(e) => setEditFormData({ ...editFormData, organizationId: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                >
+                  <option value="">Dooro Isbitaal...</option>
+                  {organizations.map((org) => (
+                    <option key={org._id} value={org._id}>
+                      {org.name} ({org.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium cursor-pointer"
+              >
+                Ka noqo (Cancel)
+              </button>
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium cursor-pointer shadow-xs"
+              >
+                {actionLoading ? 'Kaydinaya...' : 'Kaydi Isbeddelka (Save Changes)'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
       {/* View User Detail Modal */}
       {selectedUser && viewModalOpen && (
-        <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="User Details" maxWidth="md">
+        <Modal
+          isOpen={viewModalOpen}
+          onClose={() => setViewModalOpen(false)}
+          title="Faahfaahinta Isticmaalaha (User Profile)"
+          maxWidth="md"
+        >
           <div className="space-y-4 text-xs">
-            <div className="p-3 bg-slate-50 rounded-xl space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Name:</span>
-                <span className="font-bold text-slate-900">
+            <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <div className="w-12 h-12 rounded-full bg-teal-700 text-white font-bold flex items-center justify-center text-sm shadow-xs">
+                {selectedUser.firstName?.[0]}
+                {selectedUser.lastName?.[0]}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
                   {selectedUser.firstName} {selectedUser.lastName}
+                </h3>
+                <div className="flex items-center space-x-2 text-slate-500 mt-0.5">
+                  <Mail className="w-3 h-3 text-slate-400" />
+                  <span className="font-mono text-[11px]">{selectedUser.email}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-slate-400 block font-medium">Doorka (Role)</span>
+                <div className="mt-1">
+                  <RoleBadge role={selectedUser.roles?.[0] || 'STUDENT'} />
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-slate-400 block font-medium">Xaaladda (Status)</span>
+                <div className="mt-1">
+                  <StatusBadge status={selectedUser.status} />
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-slate-400 block font-medium">Telefoonka (Phone)</span>
+                <span className="font-semibold text-slate-800 mt-0.5 block">
+                  {selectedUser.phone || 'Lama galin (None)'}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Email:</span>
-                <span className="font-mono text-slate-900">{selectedUser.email}</span>
+
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-slate-400 block font-medium">Xiriirka Hay'adda (Institution)</span>
+                <span className="font-semibold text-teal-800 mt-0.5 block truncate">
+                  {selectedUser.universityId?.name || selectedUser.organizationId?.name || 'Independent / Global'}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Phone:</span>
-                <span className="text-slate-900">{selectedUser.phone || 'N/A'}</span>
+            </div>
+
+            <div className="p-3 bg-slate-50/70 rounded-xl space-y-1.5 border border-slate-100 text-[11px]">
+              <div className="flex justify-between text-slate-500">
+                <span>Account ID:</span>
+                <span className="font-mono text-slate-700">{selectedUser._id}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Role:</span>
-                <RoleBadge role={selectedUser.roles?.[0] || 'STUDENT'} />
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Status:</span>
-                <StatusBadge status={selectedUser.status} />
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Created At:</span>
+              <div className="flex justify-between text-slate-500">
+                <span>Taariikhda Diiwaangalinta:</span>
                 <span className="text-slate-700">{new Date(selectedUser.createdAt).toLocaleString()}</span>
               </div>
+              <div className="flex justify-between text-slate-500">
+                <span>Galitaankii Ugu Dambeeyay:</span>
+                <span className="text-slate-700">
+                  {selectedUser.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleString() : 'Weli ma gelin'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setViewModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium cursor-pointer"
+              >
+                Xir (Close)
+              </button>
             </div>
           </div>
         </Modal>
@@ -527,36 +1086,42 @@ export const UsersManagementPage: React.FC = () => {
 
       {/* Reset Password Modal */}
       {selectedUser && resetModalOpen && (
-        <Modal isOpen={resetModalOpen} onClose={() => setResetModalOpen(false)} title="Reset Password" maxWidth="sm">
+        <Modal
+          isOpen={resetModalOpen}
+          onClose={() => setResetModalOpen(false)}
+          title="Dib u cusboonaysii Furaha Sirta ah (Reset Password)"
+          maxWidth="sm"
+        >
           <form onSubmit={handleResetPassword} className="space-y-4 text-xs">
             <p className="text-slate-600">
-              Set new password for <strong className="text-slate-900">{selectedUser.email}</strong>.
+              U deji fure sir cusub akoonka <strong className="text-slate-900">{selectedUser.email}</strong>.
             </p>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">New Password *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Furaha Cusub (New Password) *</label>
               <input
                 type="password"
                 required
                 minLength={6}
                 value={resetPasswordValue}
                 onChange={(e) => setResetPasswordValue(e.target.value)}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                placeholder="Gali ugu yaraan 6 xaraf"
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-mono"
               />
             </div>
             <div className="flex justify-end space-x-2 pt-3">
               <button
                 type="button"
                 onClick={() => setResetModalOpen(false)}
-                className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600"
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 font-medium cursor-pointer"
               >
-                Cancel
+                Ka noqo (Cancel)
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-medium"
+                className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 cursor-pointer shadow-xs"
               >
-                {actionLoading ? 'Updating...' : 'Set Password'}
+                {actionLoading ? 'Cusboonaysiinaya...' : 'Xaqiiji Furaha (Set Password)'}
               </button>
             </div>
           </form>
@@ -569,11 +1134,11 @@ export const UsersManagementPage: React.FC = () => {
           isOpen={confirmToggleOpen}
           onClose={() => setConfirmToggleOpen(false)}
           onConfirm={handleToggleStatus}
-          title={selectedUser.status === 'ACTIVE' ? 'Deactivate User Account' : 'Activate User Account'}
-          message={`Are you sure you want to change the status of ${selectedUser.firstName} ${selectedUser.lastName} to ${
+          title={selectedUser.status === 'ACTIVE' ? 'Xir Akoonka (Deactivate User)' : 'Fur Akoonka (Activate User)'}
+          message={`Ma hubtaa inaad rabto inaad xaaladda ${selectedUser.firstName} ${selectedUser.lastName} u bedesho ${
             selectedUser.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
           }?`}
-          confirmLabel={selectedUser.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+          confirmLabel={selectedUser.status === 'ACTIVE' ? 'Xir (Deactivate)' : 'Fur (Activate)'}
           variant={selectedUser.status === 'ACTIVE' ? 'danger' : 'info'}
           isLoading={actionLoading}
         />
