@@ -8,6 +8,8 @@ export interface IUser extends Document {
   email: string;
   phone?: string;
   passwordHash: string;
+  passwordResetTokenHash?: string | null;
+  passwordResetExpiresAt?: Date | null;
   roles: UserRole[];
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
   avatar?: string;
@@ -27,6 +29,8 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     phone: { type: String, trim: true },
     passwordHash: { type: String, required: true },
+    passwordResetTokenHash: { type: String, default: null, select: false, index: true },
+    passwordResetExpiresAt: { type: Date, default: null, select: false },
     roles: [{ type: String, enum: Object.values(UserRole), default: [UserRole.STUDENT] }],
     status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'PENDING'], default: 'ACTIVE' },
     avatar: { type: String },
@@ -45,6 +49,8 @@ UserSchema.methods.comparePassword = async function (password: string): Promise<
 UserSchema.set('toJSON', {
   transform: (_doc, ret: any) => {
     delete ret.passwordHash;
+    delete ret.passwordResetTokenHash;
+    delete ret.passwordResetExpiresAt;
     return ret;
   },
 });
