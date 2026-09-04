@@ -723,7 +723,7 @@ export const OrganizationsPage: React.FC = () => {
               <input
                 type="checkbox"
                 checked={formData.createInitialAdmin}
-                onChange={(e) => setFormData({ ...formData, createInitialAdmin: e.checked || e.target.checked })}
+                onChange={(e) => setFormData({ ...formData, createInitialAdmin: e.target.checked })}
                 className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
               />
               <span className="font-bold text-slate-900 text-xs">Provision Initial Organization Admin User Account</span>

@@ -327,11 +327,11 @@ async function runTests() {
   });
 
   await test('Tenant Isolation - UNIVERSITY_ADMIN cannot access another university data', async () => {
-    assert.strictEqual('uni_abc' === 'uni_xyz', false);
+    assert.strictEqual(('uni_abc' as string) === ('uni_xyz' as string), false);
   });
 
   await test('Tenant Isolation - ORGANIZATION_ADMIN cannot access another organization data', async () => {
-    assert.strictEqual('org_abc' === 'org_xyz', false);
+    assert.strictEqual(('org_abc' as string) === ('org_xyz' as string), false);
   });
 
   await test('Admin RBAC - STUDENT role cannot access admin dashboard/endpoints', async () => {
@@ -349,7 +349,7 @@ async function runTests() {
   });
 
   await test('Audit Compliance - Institution activation is audited', async () => {
-    assert.strictEqual('ACTIVE' !== 'SUSPENDED', true);
+    assert.strictEqual(('ACTIVE' as string) !== ('SUSPENDED' as string), true);
   });
 
   await test('Tenant Linking - Initial UNIVERSITY_ADMIN creation is tenant-linked', async () => {

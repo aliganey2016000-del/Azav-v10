@@ -72,4 +72,6 @@ export interface UserProfile {
   universityId?: any;
   organizationId?: any;
   studentId?: any;
+  organizationName?: string;
+  universityName?: string;
 }

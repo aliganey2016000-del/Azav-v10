@@ -15,6 +15,10 @@ if (password.length < 8) {
 }
 
 async function main() {
+  if (!email || !password) {
+    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required.');
+  }
+
   await connectDatabase();
 
   const passwordHash = await bcrypt.hash(password, 12);

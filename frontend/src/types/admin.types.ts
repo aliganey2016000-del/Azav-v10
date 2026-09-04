@@ -54,13 +54,18 @@ export interface AdminUser {
 export interface AdminUniversity {
   _id: string;
   name: string;
+  officialName?: string;
   code: string;
   email: string;
   phone?: string;
   website?: string;
   address?: string;
+  city?: string;
+  country?: string;
+  accreditationNumber?: string;
+  accreditationStatus?: string;
   capacity: number;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED';
   studentsCount?: number;
   applicationsCount?: number;
   createdAt: string;
@@ -81,15 +86,20 @@ export interface AdminUniversityDetail {
 export interface AdminOrganization {
   _id: string;
   name: string;
+  legalName?: string;
   type: string;
   registrationNumber?: string;
+  accreditationNumber?: string;
+  accreditationStatus?: string;
   contactEmail: string;
   contactPhone?: string;
   website?: string;
   address?: string;
+  city?: string;
+  country?: string;
   capacity: number;
   description?: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED';
   occupiedSlots?: number;
   availableSlots?: number;
   utilizationPercentage?: number;

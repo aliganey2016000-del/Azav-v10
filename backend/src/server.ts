@@ -4,7 +4,7 @@ import { connectDatabase } from './config/database.js';
 
 async function start() {
   const app = createApp();
-  const PORT = env.PORT;
+  const PORT = 3000;
 
   await connectDatabase();
 

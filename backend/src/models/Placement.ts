@@ -27,8 +27,8 @@ const PlacementSchema = new Schema<IPlacement>(
       type: Date,
       required: true,
       validate: {
-        validator: function (this: IPlacement, value: Date) {
-          return !this.startDate || value >= this.startDate;
+        validator: function (this: any, value: Date) {
+          return !this?.startDate || value >= this.startDate;
         },
         message: 'endDate must be on or after startDate',
       },
@@ -76,8 +76,8 @@ const ClinicalAttachmentSchema = new Schema<IClinicalAttachment>(
       type: Date,
       required: true,
       validate: {
-        validator: function (this: IClinicalAttachment, value: Date) {
-          return !this.startDate || value >= this.startDate;
+        validator: function (this: any, value: Date) {
+          return !this?.startDate || value >= this.startDate;
         },
         message: 'endDate must be on or after startDate',
       },
