@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller.js';
+import { createAdminUser } from '../controllers/admin-user-create.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { UserRole } from '../types/index.js';
@@ -38,7 +39,7 @@ adminRouter.get(
 adminRouter.post(
   '/users',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN, UserRole.ORGANIZATION_ADMIN),
-  AdminController.createUser
+  createAdminUser
 );
 adminRouter.patch(
   '/users/:id',
