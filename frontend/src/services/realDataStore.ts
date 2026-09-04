@@ -220,6 +220,12 @@ export const RealDataStore = {
     RealDataStore.saveTrainees(updated);
     return updated;
   },
+  updateTrainee: (id: string, updates: Partial<RealTrainee>) => {
+    const list = RealDataStore.getTrainees();
+    const updated = list.map((t) => (t.id === id ? { ...t, ...updates } : t));
+    RealDataStore.saveTrainees(updated);
+    return updated;
+  },
   deleteTrainee: (id: string) => {
     const list = RealDataStore.getTrainees();
     const updated = list.filter((t) => t.id !== id);

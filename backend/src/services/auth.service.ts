@@ -80,7 +80,7 @@ export class AuthService {
     }
   }
 
-  static async requestPasswordReset(email: string) {
+  static async requestPasswordReset(email: string): Promise<{ message: string; resetToken?: string }> {
     const cleanEmail = email.toLowerCase().trim();
     const user = await User.findOne({ email: cleanEmail }).select('+passwordResetTokenHash +passwordResetExpiresAt');
     const generic = { message: 'If an account exists for this email, password reset instructions have been generated.' };

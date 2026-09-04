@@ -344,7 +344,7 @@ export const UsersManagementPage: React.FC = () => {
 
       {/* Page Header */}
       <PageHeader
-        title="Maamulka Isticmaalayaasha (User Management)"
+        title="User Management"
         description="Global directory of medical trainees, supervisors, institution directors, and platform staff across all registered universities and hospitals."
         action={
           <button
@@ -352,7 +352,7 @@ export const UsersManagementPage: React.FC = () => {
             className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition shadow-xs flex items-center space-x-1.5 cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Ku dar Isticmaale (Add User)</span>
+            <span>Add User</span>
           </button>
         }
       />
@@ -364,7 +364,7 @@ export const UsersManagementPage: React.FC = () => {
             <Users className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[11px] text-slate-500 font-medium">Wadarta (Total)</div>
+            <div className="text-[11px] text-slate-500 font-medium">Total Users</div>
             <div className="text-base font-bold text-slate-900">{metrics.total}</div>
           </div>
         </div>
@@ -374,7 +374,7 @@ export const UsersManagementPage: React.FC = () => {
             <CheckCircle className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[11px] text-slate-500 font-medium">Firfircoon (Active)</div>
+            <div className="text-[11px] text-slate-500 font-medium">Active</div>
             <div className="text-base font-bold text-slate-900">{metrics.active}</div>
           </div>
         </div>
@@ -384,7 +384,7 @@ export const UsersManagementPage: React.FC = () => {
             <GraduationCap className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[11px] text-slate-500 font-medium">Arday (Students)</div>
+            <div className="text-[11px] text-slate-500 font-medium">Students</div>
             <div className="text-base font-bold text-slate-900">{metrics.students}</div>
           </div>
         </div>
@@ -394,7 +394,7 @@ export const UsersManagementPage: React.FC = () => {
             <Stethoscope className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[11px] text-slate-500 font-medium">Kormeere (Supervisors)</div>
+            <div className="text-[11px] text-slate-500 font-medium">Supervisors</div>
             <div className="text-base font-bold text-slate-900">{metrics.supervisors}</div>
           </div>
         </div>
@@ -404,7 +404,7 @@ export const UsersManagementPage: React.FC = () => {
             <Shield className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[11px] text-slate-500 font-medium">Maamulayaal (Admins)</div>
+            <div className="text-[11px] text-slate-500 font-medium">Administrators</div>
             <div className="text-base font-bold text-slate-900">{metrics.admins}</div>
           </div>
         </div>
@@ -416,7 +416,7 @@ export const UsersManagementPage: React.FC = () => {
           <SearchInput
             value={searchParam}
             onChange={(val) => updateQueryParam('search', val)}
-            placeholder="Raadi magac, email, ama tel..."
+            placeholder="Search by name, email, or phone..."
           />
         </div>
 
@@ -427,7 +427,7 @@ export const UsersManagementPage: React.FC = () => {
             onChange={(e) => updateQueryParam('role', e.target.value)}
             className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700"
           >
-            <option value="">Dhammaan Dooryada (All Roles)</option>
+            <option value="">All Roles</option>
             {Object.values(UserRole).map((r) => (
               <option key={r} value={r}>
                 {r.replace(/_/g, ' ')}
@@ -441,10 +441,10 @@ export const UsersManagementPage: React.FC = () => {
             onChange={(e) => updateQueryParam('status', e.target.value)}
             className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700"
           >
-            <option value="">Dhammaan Xaaladaha (All Statuses)</option>
-            <option value="ACTIVE">ACTIVE (Firfircoon)</option>
-            <option value="INACTIVE">INACTIVE (Aan shaqayn)</option>
-            <option value="PENDING">PENDING (Sugaya)</option>
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="PENDING">Pending</option>
           </select>
 
           {/* Institution Filter */}
@@ -453,15 +453,15 @@ export const UsersManagementPage: React.FC = () => {
             onChange={(e) => updateQueryParam('institution', e.target.value)}
             className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700 max-w-[200px] truncate"
           >
-            <option value="">Dhammaan Hay'adaha (All Institutions)</option>
-            <optgroup label="Jaamacadaha (Universities)">
+            <option value="">All Institutions</option>
+            <optgroup label="Universities">
               {universities.map((uni) => (
                 <option key={uni._id} value={`uni_${uni._id}`}>
                   {uni.name}
                 </option>
               ))}
             </optgroup>
-            <optgroup label="Isbitaallada & Rugaha (Hospitals/Centers)">
+            <optgroup label="Hospitals & Centers">
               {organizations.map((org) => (
                 <option key={org._id} value={`org_${org._id}`}>
                   {org.name}
@@ -475,13 +475,13 @@ export const UsersManagementPage: React.FC = () => {
               onClick={() => setSearchParams({})}
               className="px-2.5 py-1.5 text-xs text-rose-600 font-semibold hover:bg-rose-50 rounded-lg transition"
             >
-              Nadiifi (Clear)
+              Clear Filters
             </button>
           )}
 
           <button
             onClick={fetchUsers}
-            title="Dib u cusboonaysii"
+            title="Refresh"
             className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -491,13 +491,13 @@ export const UsersManagementPage: React.FC = () => {
 
       {/* Main Table View */}
       {loading ? (
-        <LoadingState message="Soo qaadaya liiska isticmaalayaasha..." />
+        <LoadingState message="Loading user directory..." />
       ) : error ? (
         <ErrorState message={error} onRetry={fetchUsers} />
       ) : users.length === 0 ? (
         <EmptyState
-          title="Isticmaale lama helin (No users found)"
-          description="Isku day inaad bedesho shaandhada raadinta ama ku dar isticmaale cusub."
+          title="No users found"
+          description="Try adjusting your search filters or add a new user."
         />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
@@ -506,13 +506,13 @@ export const UsersManagementPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
                 <tr>
-                  <th className="p-3.5">Isticmaalaha (User)</th>
-                  <th className="p-3.5">Doorka (Role)</th>
-                  <th className="p-3.5">Hay'adda (Affiliation)</th>
-                  <th className="p-3.5">Telefoonka (Phone)</th>
-                  <th className="p-3.5">Xaaladda (Status)</th>
-                  <th className="p-3.5">Taariikhda (Created)</th>
-                  <th className="p-3.5 text-right">Ficilada (Actions)</th>
+                  <th className="p-3.5">User</th>
+                  <th className="p-3.5">Role</th>
+                  <th className="p-3.5">Affiliation</th>
+                  <th className="p-3.5">Phone</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5">Created</th>
+                  <th className="p-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -571,14 +571,14 @@ export const UsersManagementPage: React.FC = () => {
                             setViewModalOpen(true);
                           }}
                           className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                          title="Eeg Faahfaahinta (View Details)"
+                          title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openEditModal(u)}
                           className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition cursor-pointer"
-                          title="Wax ka beddel (Edit User)"
+                          title="Edit User"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -588,7 +588,7 @@ export const UsersManagementPage: React.FC = () => {
                             setResetModalOpen(true);
                           }}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
-                          title="Beddel Furaha (Reset Password)"
+                          title="Reset Password"
                         >
                           <Key className="w-4 h-4" />
                         </button>
@@ -602,7 +602,7 @@ export const UsersManagementPage: React.FC = () => {
                               ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
                               : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
                           }`}
-                          title={u.status === 'ACTIVE' ? 'Xir (Deactivate)' : 'Fur (Activate)'}
+                          title={u.status === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
                         >
                           {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                         </button>
@@ -636,11 +636,11 @@ export const UsersManagementPage: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3 text-xs border-t border-slate-100 pt-2.5">
                   <div>
-                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Doorka</span>
+                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Role</span>
                     <RoleBadge role={u.roles?.[0] || 'STUDENT'} />
                   </div>
                   <div>
-                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Hay'adda</span>
+                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Affiliation</span>
                     <span className="font-medium text-slate-700 block truncate max-w-[140px]">
                       {u.universityId?.name ? (
                         <span className="text-teal-700 font-semibold">{u.universityId.name}</span>
@@ -705,30 +705,30 @@ export const UsersManagementPage: React.FC = () => {
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Ku dar Isticmaale Cusub (Create User Account)"
+        title="Create User Account"
         maxWidth="md"
       >
         <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Magaca Hore (First Name) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
               <input
                 type="text"
                 required
                 value={createFormData.firstName}
                 onChange={(e) => setCreateFormData({ ...createFormData, firstName: e.target.value })}
-                placeholder="Tusaale: Ahmed"
+                placeholder="e.g. Ahmed"
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Magaca Dambe (Last Name) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Last Name *</label>
               <input
                 type="text"
                 required
                 value={createFormData.lastName}
                 onChange={(e) => setCreateFormData({ ...createFormData, lastName: e.target.value })}
-                placeholder="Tusaale: Jama"
+                placeholder="e.g. Jama"
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
               />
             </div>
@@ -748,7 +748,7 @@ export const UsersManagementPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Telefoonka (Phone)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Phone Number</label>
               <input
                 type="text"
                 value={createFormData.phone}
@@ -760,7 +760,7 @@ export const UsersManagementPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Doorka (Role) *</label>
+            <label className="block font-semibold text-slate-700 mb-1">Role *</label>
             <select
               value={createFormData.role}
               onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value as UserRole })}
@@ -777,14 +777,14 @@ export const UsersManagementPage: React.FC = () => {
           {/* Dynamic University Association */}
           {isUniversityRole(createFormData.role) && (
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Jaamacadda (Associated University) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Associated University *</label>
               <select
                 required
                 value={createFormData.universityId}
                 onChange={(e) => setCreateFormData({ ...createFormData, universityId: e.target.value })}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
               >
-                <option value="">Dooro Jaamacad (Select University)...</option>
+                <option value="">Select University...</option>
                 {universities.map((uni) => (
                   <option key={uni._id} value={uni._id}>
                     {uni.name} ({uni.code})
@@ -797,14 +797,14 @@ export const UsersManagementPage: React.FC = () => {
           {/* Dynamic Organization / Hospital Association */}
           {isOrganizationRole(createFormData.role) && (
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Isbitaalka / Rugta (Associated Hospital/Center) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Associated Hospital / Center *</label>
               <select
                 required
                 value={createFormData.organizationId}
                 onChange={(e) => setCreateFormData({ ...createFormData, organizationId: e.target.value })}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
               >
-                <option value="">Dooro Isbitaal (Select Hospital)...</option>
+                <option value="">Select Hospital / Center...</option>
                 {organizations.map((org) => (
                   <option key={org._id} value={org._id}>
                     {org.name} ({org.type})
@@ -818,7 +818,7 @@ export const UsersManagementPage: React.FC = () => {
           {createFormData.role === UserRole.CLINICAL_SUPERVISOR && (
             <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/60 rounded-lg border border-amber-200/60">
               <div>
-                <label className="block font-semibold text-amber-900 mb-1">Lambarka Shatiga (License #)</label>
+                <label className="block font-semibold text-amber-900 mb-1">License Number</label>
                 <input
                   type="text"
                   placeholder="SOM-MED-8492"
@@ -828,7 +828,7 @@ export const UsersManagementPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block font-semibold text-amber-900 mb-1">Takhasuska (Specialty/Degree)</label>
+                <label className="block font-semibold text-amber-900 mb-1">Specialty / Degree</label>
                 <input
                   type="text"
                   placeholder="M.D., Pediatric Surgery"
@@ -841,7 +841,7 @@ export const UsersManagementPage: React.FC = () => {
           )}
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Furaha Sirta ah (Initial Password)</label>
+            <label className="block font-semibold text-slate-700 mb-1">Initial Password</label>
             <input
               type="password"
               placeholder="Default: ChangeMe123!"
@@ -849,7 +849,7 @@ export const UsersManagementPage: React.FC = () => {
               onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-mono"
             />
-            <p className="text-[10px] text-slate-400 mt-1">Haddii aad banaan kaga tagto, waxaa noqon doona 'ChangeMe123!'</p>
+            <p className="text-[10px] text-slate-400 mt-1">If left blank, default password will be 'ChangeMe123!'</p>
           </div>
 
           <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
@@ -858,14 +858,14 @@ export const UsersManagementPage: React.FC = () => {
               onClick={() => setCreateModalOpen(false)}
               className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium cursor-pointer"
             >
-              Ka noqo (Cancel)
+              Cancel
             </button>
             <button
               type="submit"
               disabled={actionLoading}
               className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium cursor-pointer shadow-xs"
             >
-              {actionLoading ? 'Abuuraya...' : 'Abuur Koontada (Create Account)'}
+              {actionLoading ? 'Creating...' : 'Create Account'}
             </button>
           </div>
         </form>
@@ -876,13 +876,13 @@ export const UsersManagementPage: React.FC = () => {
         <Modal
           isOpen={editModalOpen}
           onClose={() => setEditModalOpen(false)}
-          title={`Wax ka beddel: ${selectedUser.firstName} ${selectedUser.lastName}`}
+          title={`Edit User: ${selectedUser.firstName} ${selectedUser.lastName}`}
           maxWidth="md"
         >
           <form onSubmit={handleUpdateUser} className="space-y-4 text-xs">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Magaca Hore *</label>
+                <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
                 <input
                   type="text"
                   required
@@ -892,7 +892,7 @@ export const UsersManagementPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Magaca Dambe *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Last Name *</label>
                 <input
                   type="text"
                   required
@@ -905,7 +905,7 @@ export const UsersManagementPage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Telefoonka (Phone)</label>
+                <label className="block font-semibold text-slate-700 mb-1">Phone Number</label>
                 <input
                   type="text"
                   value={editFormData.phone}
@@ -915,7 +915,7 @@ export const UsersManagementPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Xaaladda (Status)</label>
+                <label className="block font-semibold text-slate-700 mb-1">Account Status</label>
                 <select
                   value={editFormData.status}
                   onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as any })}
@@ -929,7 +929,7 @@ export const UsersManagementPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Doorka (Role)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Role</label>
               <select
                 value={editFormData.role}
                 onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as UserRole })}
@@ -945,13 +945,13 @@ export const UsersManagementPage: React.FC = () => {
 
             {isUniversityRole(editFormData.role) && (
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Jaamacadda</label>
+                <label className="block font-semibold text-slate-700 mb-1">Associated University</label>
                 <select
                   value={editFormData.universityId}
                   onChange={(e) => setEditFormData({ ...editFormData, universityId: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
                 >
-                  <option value="">Dooro Jaamacad...</option>
+                  <option value="">Select University...</option>
                   {universities.map((uni) => (
                     <option key={uni._id} value={uni._id}>
                       {uni.name} ({uni.code})
@@ -963,13 +963,13 @@ export const UsersManagementPage: React.FC = () => {
 
             {isOrganizationRole(editFormData.role) && (
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Isbitaalka / Rugta</label>
+                <label className="block font-semibold text-slate-700 mb-1">Associated Hospital / Center</label>
                 <select
                   value={editFormData.organizationId}
                   onChange={(e) => setEditFormData({ ...editFormData, organizationId: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
                 >
-                  <option value="">Dooro Isbitaal...</option>
+                  <option value="">Select Hospital / Center...</option>
                   {organizations.map((org) => (
                     <option key={org._id} value={org._id}>
                       {org.name} ({org.type})
@@ -985,14 +985,14 @@ export const UsersManagementPage: React.FC = () => {
                 onClick={() => setEditModalOpen(false)}
                 className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium cursor-pointer"
               >
-                Ka noqo (Cancel)
+                Cancel
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
                 className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium cursor-pointer shadow-xs"
               >
-                {actionLoading ? 'Kaydinaya...' : 'Kaydi Isbeddelka (Save Changes)'}
+                {actionLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -1004,7 +1004,7 @@ export const UsersManagementPage: React.FC = () => {
         <Modal
           isOpen={viewModalOpen}
           onClose={() => setViewModalOpen(false)}
-          title="Faahfaahinta Isticmaalaha (User Profile)"
+          title="User Profile Details"
           maxWidth="md"
         >
           <div className="space-y-4 text-xs">
@@ -1026,28 +1026,28 @@ export const UsersManagementPage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-slate-400 block font-medium">Doorka (Role)</span>
+                <span className="text-slate-400 block font-medium">Role</span>
                 <div className="mt-1">
                   <RoleBadge role={selectedUser.roles?.[0] || 'STUDENT'} />
                 </div>
               </div>
 
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-slate-400 block font-medium">Xaaladda (Status)</span>
+                <span className="text-slate-400 block font-medium">Status</span>
                 <div className="mt-1">
                   <StatusBadge status={selectedUser.status} />
                 </div>
               </div>
 
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-slate-400 block font-medium">Telefoonka (Phone)</span>
+                <span className="text-slate-400 block font-medium">Phone Number</span>
                 <span className="font-semibold text-slate-800 mt-0.5 block">
-                  {selectedUser.phone || 'Lama galin (None)'}
+                  {selectedUser.phone || 'Not provided'}
                 </span>
               </div>
 
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-slate-400 block font-medium">Xiriirka Hay'adda (Institution)</span>
+                <span className="text-slate-400 block font-medium">Affiliated Institution</span>
                 <span className="font-semibold text-teal-800 mt-0.5 block truncate">
                   {selectedUser.universityId?.name || selectedUser.organizationId?.name || 'Independent / Global'}
                 </span>
@@ -1060,13 +1060,13 @@ export const UsersManagementPage: React.FC = () => {
                 <span className="font-mono text-slate-700">{selectedUser._id}</span>
               </div>
               <div className="flex justify-between text-slate-500">
-                <span>Taariikhda Diiwaangalinta:</span>
+                <span>Registered Date:</span>
                 <span className="text-slate-700">{new Date(selectedUser.createdAt).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-slate-500">
-                <span>Galitaankii Ugu Dambeeyay:</span>
+                <span>Last Login:</span>
                 <span className="text-slate-700">
-                  {selectedUser.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleString() : 'Weli ma gelin'}
+                  {selectedUser.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleString() : 'Never'}
                 </span>
               </div>
             </div>
@@ -1077,7 +1077,7 @@ export const UsersManagementPage: React.FC = () => {
                 onClick={() => setViewModalOpen(false)}
                 className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium cursor-pointer"
               >
-                Xir (Close)
+                Close
               </button>
             </div>
           </div>
@@ -1089,22 +1089,22 @@ export const UsersManagementPage: React.FC = () => {
         <Modal
           isOpen={resetModalOpen}
           onClose={() => setResetModalOpen(false)}
-          title="Dib u cusboonaysii Furaha Sirta ah (Reset Password)"
+          title="Reset User Password"
           maxWidth="sm"
         >
           <form onSubmit={handleResetPassword} className="space-y-4 text-xs">
             <p className="text-slate-600">
-              U deji fure sir cusub akoonka <strong className="text-slate-900">{selectedUser.email}</strong>.
+              Set a new password for user <strong className="text-slate-900">{selectedUser.email}</strong>.
             </p>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Furaha Cusub (New Password) *</label>
+              <label className="block font-semibold text-slate-700 mb-1">New Password *</label>
               <input
                 type="password"
                 required
                 minLength={6}
                 value={resetPasswordValue}
                 onChange={(e) => setResetPasswordValue(e.target.value)}
-                placeholder="Gali ugu yaraan 6 xaraf"
+                placeholder="Enter at least 6 characters"
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-mono"
               />
             </div>
@@ -1114,14 +1114,14 @@ export const UsersManagementPage: React.FC = () => {
                 onClick={() => setResetModalOpen(false)}
                 className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 font-medium cursor-pointer"
               >
-                Ka noqo (Cancel)
+                Cancel
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
                 className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 cursor-pointer shadow-xs"
               >
-                {actionLoading ? 'Cusboonaysiinaya...' : 'Xaqiiji Furaha (Set Password)'}
+                {actionLoading ? 'Updating...' : 'Set Password'}
               </button>
             </div>
           </form>
@@ -1134,11 +1134,11 @@ export const UsersManagementPage: React.FC = () => {
           isOpen={confirmToggleOpen}
           onClose={() => setConfirmToggleOpen(false)}
           onConfirm={handleToggleStatus}
-          title={selectedUser.status === 'ACTIVE' ? 'Xir Akoonka (Deactivate User)' : 'Fur Akoonka (Activate User)'}
-          message={`Ma hubtaa inaad rabto inaad xaaladda ${selectedUser.firstName} ${selectedUser.lastName} u bedesho ${
+          title={selectedUser.status === 'ACTIVE' ? 'Deactivate User Account' : 'Activate User Account'}
+          message={`Are you sure you want to change the status of ${selectedUser.firstName} ${selectedUser.lastName} to ${
             selectedUser.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
           }?`}
-          confirmLabel={selectedUser.status === 'ACTIVE' ? 'Xir (Deactivate)' : 'Fur (Activate)'}
+          confirmLabel={selectedUser.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
           variant={selectedUser.status === 'ACTIVE' ? 'danger' : 'info'}
           isLoading={actionLoading}
         />

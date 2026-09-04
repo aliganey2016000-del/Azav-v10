@@ -147,3 +147,98 @@ export interface AuditLogItem {
   userAgent?: string;
   createdAt: string;
 }
+
+export interface AdminStudent {
+  _id: string;
+  studentNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  gender?: string;
+  nationality?: string;
+  passportNumber?: string;
+  university: { _id: string; name: string; code?: string };
+  studyYear: string;
+  specialty: string;
+  status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'INACTIVE';
+  applicationStatus: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACCEPTED' | 'REJECTED';
+  nominationDate?: string;
+  documentsCount?: number;
+  documentsVerified?: boolean;
+  paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING' | 'WAIVED';
+  totalFees?: number;
+  paidFees?: number;
+  visaStatus: 'NOT_REQUIRED' | 'APPLIED' | 'EMBASSY_PROCESSING' | 'GRANTED' | 'REJECTED';
+  visaReference?: string;
+  residenceStatus: 'NOT_REQUIRED' | 'COORDINATING' | 'CONFIRMED' | 'CHECKED_IN';
+  residenceAddress?: string;
+  hospitalPlacement: { _id?: string; name: string; department?: string; cityCountry?: string };
+  assignedSupervisor?: { name: string; title: string; email?: string; phone?: string };
+  rotationSchedule?: string;
+  startDate: string;
+  endDate: string;
+  durationWeeks: number;
+  attendancePercent: number;
+  attendanceDays: { attended: number; total: number };
+  logbookSigned: number;
+  logbookRequired: number;
+  evaluationScore: number | null;
+  evaluationGrade: string | null;
+  evaluationStatus: 'PENDING' | 'MID_TERM_COMPLETED' | 'FINAL_COMPLETED';
+  completionStatus: 'IN_PROGRESS' | 'SATISFACTORY' | 'DISTINCTION' | 'INCOMPLETE';
+  certificateIssued: boolean;
+  certificateCode?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminStudentJourney {
+  student: AdminStudent;
+  timeline: {
+    stage: string;
+    title: string;
+    description: string;
+    status: 'COMPLETED' | 'IN_PROGRESS' | 'PENDING' | 'FLAGGED';
+    date?: string;
+    actor?: string;
+  }[];
+  documents: {
+    name: string;
+    type: string;
+    uploadedAt: string;
+    status: 'VERIFIED' | 'PENDING' | 'REJECTED';
+    url?: string;
+  }[];
+  financials: {
+    studentFeeDue: number;
+    studentFeePaid: number;
+    currency: string;
+    status: 'PAID' | 'PARTIAL' | 'PENDING';
+    invoiceNumber: string;
+    receipts: { date: string; amount: number; reference: string }[];
+  };
+  attendanceLog: {
+    date: string;
+    department: string;
+    supervisor: string;
+    status: 'PRESENT' | 'ABSENT' | 'EXCUSED' | 'LATE';
+    hours: number;
+  }[];
+  logbookEntries: {
+    date: string;
+    procedure: string;
+    category: string;
+    role: 'PERFORMED' | 'ASSISTED' | 'OBSERVED';
+    supervisorStatus: 'APPROVED' | 'PENDING' | 'REVISION_REQUESTED';
+  }[];
+  evaluation: {
+    clinicalKnowledge: number;
+    practicalSkills: number;
+    professionalism: number;
+    patientCare: number;
+    overallGrade: string;
+    supervisorRemarks: string;
+    completedAt?: string;
+  };
+}

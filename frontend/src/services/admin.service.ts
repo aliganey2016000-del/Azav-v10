@@ -7,9 +7,12 @@ import {
   AdminOrganization,
   AdminOrganizationDetail,
   AdminSupervisor,
+  AdminStudent,
+  AdminStudentJourney,
   AuditLogItem,
   PaginationMeta,
 } from '../types/admin.types';
+import { RealDataStore, RealTrainee } from './realDataStore';
 
 // Initial seed data for fallback / demo preview
 const INITIAL_UNIVERSITIES: (AdminUniversity & { officialName?: string; abbreviation?: string; country?: string; city?: string; state?: string; accreditationNumber?: string; accreditationStatus?: string; contactPersonName?: string; contactPersonEmail?: string; contactPersonPhone?: string; notes?: string })[] = [
@@ -1023,5 +1026,280 @@ export class AdminApiService {
       logs: [],
       pagination: { page: params.page || 1, limit: params.limit || 20, total: 0, totalPages: 1 },
     };
+  }
+
+  // Students & Complete Journey Management
+  static async getStudents(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    universityId?: string;
+    hospitalId?: string;
+    visaStatus?: string;
+    completionStatus?: string;
+  }): Promise<{ students: AdminStudent[]; pagination: PaginationMeta }> {
+    try {
+      const res = await api.get('/admin/students', { params });
+      if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        return {
+          students: res.data.data,
+          pagination: res.data.pagination || {
+            page: params.page || 1,
+            limit: params.limit || 20,
+            total: res.data.data.length,
+            totalPages: Math.ceil(res.data.data.length / (params.limit || 20)) || 1,
+          },
+        };
+      }
+    } catch (err) {}
+
+    // Fallback: Map real trainees into full AdminStudent objects
+    const trainees = RealDataStore.getTrainees();
+    const unis = getStoredUniversities();
+
+    let students: AdminStudent[] = trainees.map((t, idx) => {
+      const uni = unis[idx % unis.length] || { _id: 'uni-1', name: 'Somali National University', code: 'SNU-MED-01' };
+      const [fName, ...lNameParts] = (t.studentName || 'Student Name').split(' ');
+      const lName = lNameParts.join(' ') || 'Candidate';
+
+      let status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'INACTIVE' = 'ACTIVE';
+      if (t.certificateIssued) status = 'COMPLETED';
+      else if (t.applicationStatus === 'SUBMITTED' || t.applicationStatus === 'UNDER_REVIEW') status = 'PENDING';
+
+      return {
+        _id: t.id,
+        studentNumber: t.studentId || `MED-2025-${idx + 101}`,
+        firstName: fName,
+        lastName: lName,
+        email: t.email,
+        phone: t.phone,
+        gender: idx % 2 === 0 ? 'Female' : 'Male',
+        nationality: t.visaStatus !== 'NOT_REQUIRED' ? 'International' : 'Somali',
+        passportNumber: t.visaReference ? `P${t.visaReference}` : undefined,
+        university: { _id: uni._id, name: uni.name, code: uni.code },
+        studyYear: t.studyYear || '5th Year Clinical Clerkship',
+        specialty: t.specialty || 'General Surgery & Trauma',
+        status,
+        applicationStatus: t.applicationStatus || 'ACCEPTED',
+        nominationDate: t.createdAt || '2025-01-10T08:00:00.000Z',
+        documentsCount: 4,
+        documentsVerified: true,
+        paymentStatus: idx % 3 === 0 ? 'PARTIAL' : 'PAID',
+        totalFees: 1200,
+        paidFees: idx % 3 === 0 ? 600 : 1200,
+        visaStatus: t.visaStatus || 'NOT_REQUIRED',
+        visaReference: t.visaReference,
+        residenceStatus: t.visaStatus !== 'NOT_REQUIRED' ? 'CONFIRMED' : 'NOT_REQUIRED',
+        residenceAddress: t.visaStatus !== 'NOT_REQUIRED' ? 'AZAAM International Resident Hall, Suite 304, Mogadishu' : undefined,
+        hospitalPlacement: {
+          _id: `org-${(idx % 4) + 1}`,
+          name: t.targetHospital || 'Recep Tayyip Erdoğan (Digfeer) Hospital',
+          department: t.specialty,
+          cityCountry: t.cityCountry || 'Mogadishu, Somalia',
+        },
+        assignedSupervisor: t.assignedSupervisor,
+        rotationSchedule: t.rotationSchedule || 'Sun - Thu (08:00 - 15:00)',
+        startDate: t.startDate || '2025-02-01',
+        endDate: t.endDate || '2025-04-30',
+        durationWeeks: t.durationWeeks || 12,
+        attendancePercent: t.attendancePercent || 92,
+        attendanceDays: t.attendanceDays || { attended: 46, total: 50 },
+        logbookSigned: t.logbookProceduresSigned || 38,
+        logbookRequired: t.logbookRequired || 40,
+        evaluationScore: t.evaluationScore,
+        evaluationGrade: t.evaluationGrade,
+        evaluationStatus: t.evaluationStatus || 'PENDING',
+        completionStatus: t.certificateIssued ? 'DISTINCTION' : 'IN_PROGRESS',
+        certificateIssued: t.certificateIssued || false,
+        certificateCode: t.certificateNumber,
+        createdAt: t.createdAt || new Date().toISOString(),
+        updatedAt: t.createdAt || new Date().toISOString(),
+      };
+    });
+
+    if (params.search) {
+      const q = params.search.toLowerCase();
+      students = students.filter(
+        (s) =>
+          `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
+          s.studentNumber.toLowerCase().includes(q) ||
+          s.email.toLowerCase().includes(q) ||
+          s.university.name.toLowerCase().includes(q) ||
+          s.hospitalPlacement.name.toLowerCase().includes(q) ||
+          s.specialty.toLowerCase().includes(q)
+      );
+    }
+    if (params.status && params.status !== 'ALL') {
+      students = students.filter((s) => s.status === params.status);
+    }
+    if (params.visaStatus && params.visaStatus !== 'ALL') {
+      students = students.filter((s) => s.visaStatus === params.visaStatus);
+    }
+    if (params.universityId && params.universityId !== 'ALL') {
+      students = students.filter((s) => s.university._id === params.universityId);
+    }
+
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const total = students.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const paginated = students.slice((page - 1) * limit, page * limit);
+
+    return {
+      students: paginated,
+      pagination: { page, limit, total, totalPages },
+    };
+  }
+
+  static async getStudentById(id: string): Promise<AdminStudentJourney> {
+    try {
+      const res = await api.get(`/admin/students/${id}`);
+      if (res.data?.data) return res.data.data;
+    } catch (err) {}
+
+    const { students } = await this.getStudents({ limit: 100 });
+    const student = students.find((s) => s._id === id) || students[0];
+
+    const timeline: AdminStudentJourney['timeline'] = [
+      {
+        stage: 'Nomination',
+        title: 'Nominated by Academic Partner',
+        description: `Official batch nomination received from ${student.university.name} Dean's office.`,
+        status: 'COMPLETED',
+        date: student.nominationDate || '2025-01-10',
+        actor: student.university.name,
+      },
+      {
+        stage: 'Documentation',
+        title: 'Credentials & Clinical Prerequisites Verified',
+        description: 'Transcripts, Hepatitis B titer, CPR certification, and passport approved.',
+        status: student.documentsVerified ? 'COMPLETED' : 'IN_PROGRESS',
+        date: '2025-01-14',
+        actor: 'AZAAM Registrar',
+      },
+      {
+        stage: 'Fees & Tuition',
+        title: 'Placement Tuition & Administration Settlement',
+        description: `Financial clearance: ${student.paymentStatus} ($${student.paidFees} of $${student.totalFees})`,
+        status: student.paymentStatus === 'PAID' ? 'COMPLETED' : 'IN_PROGRESS',
+        date: '2025-01-16',
+        actor: 'AZAAM Finance Department',
+      },
+      {
+        stage: 'Visa & Residency',
+        title: student.visaStatus === 'NOT_REQUIRED' ? 'Local Residency (No Visa Required)' : `Visa Status: ${student.visaStatus}`,
+        description: student.visaStatus === 'NOT_REQUIRED' ? 'Somali national student; standard clinical badge clearance.' : `Immigration clearance ref: ${student.visaReference || 'Pending'}. Residence coordinated.`,
+        status: student.visaStatus === 'GRANTED' || student.visaStatus === 'NOT_REQUIRED' ? 'COMPLETED' : 'IN_PROGRESS',
+        date: '2025-01-20',
+        actor: 'AZAAM Liaison Office',
+      },
+      {
+        stage: 'Hospital Placement',
+        title: `Clinical Induction at ${student.hospitalPlacement.name}`,
+        description: `Department: ${student.specialty}. Supervisor assigned: ${student.assignedSupervisor?.name || 'Assigned Consultant'}.`,
+        status: 'COMPLETED',
+        date: student.startDate,
+        actor: student.hospitalPlacement.name,
+      },
+      {
+        stage: 'Attendance & Logbook',
+        title: `Clinical Rotation Training (${student.attendancePercent}% Attendance)`,
+        description: `${student.logbookSigned} of ${student.logbookRequired} clinical procedural competency log entries authenticated.`,
+        status: student.attendancePercent >= 85 ? 'COMPLETED' : 'IN_PROGRESS',
+        date: '2025-03-01',
+        actor: student.assignedSupervisor?.name,
+      },
+      {
+        stage: 'Clinical Evaluation',
+        title: `Final Evaluation (${student.evaluationGrade || 'In Progress'})`,
+        description: student.evaluationScore ? `Score achieved: ${student.evaluationScore}/100. Grade: ${student.evaluationGrade}.` : 'Mid-term and final evaluation assessments in progress.',
+        status: student.evaluationStatus === 'FINAL_COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
+        date: '2025-04-25',
+        actor: student.assignedSupervisor?.name,
+      },
+      {
+        stage: 'Certificate & Graduation',
+        title: student.certificateIssued ? 'Certificate of Clinical Competence Issued' : 'Graduation & Certification Review',
+        description: student.certificateIssued ? `Verified certificate #${student.certificateCode || 'AZ-MED-2025'} generated with QR hash authenticity.` : 'Awaiting completion of all rotation prerequisites.',
+        status: student.certificateIssued ? 'COMPLETED' : 'PENDING',
+        date: student.certificateIssued ? '2025-05-01' : undefined,
+        actor: 'AZAAM Academic Board',
+      },
+    ];
+
+    const documents = [
+      { name: 'Official Medical School Transcript.pdf', type: 'Academic Record', uploadedAt: '2025-01-10', status: 'VERIFIED' as const },
+      { name: 'Immunization & Health Clearance.pdf', type: 'Medical Record', uploadedAt: '2025-01-11', status: 'VERIFIED' as const },
+      { name: 'Valid Passport / National ID Copy.pdf', type: 'Identification', uploadedAt: '2025-01-11', status: 'VERIFIED' as const },
+      { name: 'Dean Nomination Recommendation.pdf', type: 'Nomination', uploadedAt: '2025-01-10', status: 'VERIFIED' as const },
+    ];
+
+    const financials = {
+      studentFeeDue: student.totalFees || 1200,
+      studentFeePaid: student.paidFees || 1200,
+      currency: 'USD',
+      status: student.paymentStatus === 'PAID' ? ('PAID' as const) : ('PARTIAL' as const),
+      invoiceNumber: `INV-2025-${student.studentNumber.slice(-4)}`,
+      receipts: [
+        { date: '2025-01-16', amount: student.paidFees || 1200, reference: `REC-AZ-${Date.now().toString().slice(-5)}` },
+      ],
+    };
+
+    const attendanceLog = [
+      { date: '2025-02-02', department: student.specialty, supervisor: student.assignedSupervisor?.name || 'Supervisor', status: 'PRESENT' as const, hours: 7 },
+      { date: '2025-02-03', department: student.specialty, supervisor: student.assignedSupervisor?.name || 'Supervisor', status: 'PRESENT' as const, hours: 8 },
+      { date: '2025-02-04', department: student.specialty, supervisor: student.assignedSupervisor?.name || 'Supervisor', status: 'PRESENT' as const, hours: 7 },
+      { date: '2025-02-05', department: student.specialty, supervisor: student.assignedSupervisor?.name || 'Supervisor', status: 'PRESENT' as const, hours: 8 },
+      { date: '2025-02-06', department: student.specialty, supervisor: student.assignedSupervisor?.name || 'Supervisor', status: 'PRESENT' as const, hours: 6 },
+    ];
+
+    const logbookEntries = [
+      { date: '2025-02-05', procedure: 'Direct arterial line cannulation in ICU', category: 'Critical Care', role: 'PERFORMED' as const, supervisorStatus: 'APPROVED' as const },
+      { date: '2025-02-08', procedure: 'Emergency exploratory laparotomy assistant', category: 'General Surgery', role: 'ASSISTED' as const, supervisorStatus: 'APPROVED' as const },
+      { date: '2025-02-12', procedure: 'Chest tube thoracostomy insertion', category: 'Trauma', role: 'ASSISTED' as const, supervisorStatus: 'APPROVED' as const },
+      { date: '2025-02-18', procedure: 'Ultrasound FAST scan in Acute Trauma Bay', category: 'Diagnostic Imaging', role: 'PERFORMED' as const, supervisorStatus: 'APPROVED' as const },
+    ];
+
+    const evaluation = {
+      clinicalKnowledge: 92,
+      practicalSkills: 88,
+      professionalism: 96,
+      patientCare: 94,
+      overallGrade: student.evaluationGrade || 'A (Excellent)',
+      supervisorRemarks: 'Outstanding clinical discipline, exceptional punctuality, meticulous patient history documentation, and excellent bedside manner during emergency surgical rounds.',
+      completedAt: '2025-04-28T14:00:00.000Z',
+    };
+
+    return {
+      student,
+      timeline,
+      documents,
+      financials,
+      attendanceLog,
+      logbookEntries,
+      evaluation,
+    };
+  }
+
+  static async updateStudentJourney(
+    id: string,
+    updates: Partial<AdminStudent>
+  ): Promise<AdminStudent> {
+    const trainees = RealDataStore.getTrainees();
+    const trIndex = trainees.findIndex((t) => t.id === id);
+    if (trIndex !== -1) {
+      const tr = trainees[trIndex];
+      if (updates.status === 'COMPLETED' || updates.certificateIssued) {
+        tr.certificateIssued = true;
+        tr.certificateNumber = tr.certificateNumber || `AZ-MED-2025-${Date.now().toString().slice(-4)}`;
+      }
+      if (updates.visaStatus) tr.visaStatus = updates.visaStatus as any;
+      if (updates.evaluationScore) tr.evaluationScore = updates.evaluationScore;
+      if (updates.evaluationGrade) tr.evaluationGrade = updates.evaluationGrade;
+      RealDataStore.saveTrainees(trainees);
+    }
+    const { students } = await this.getStudents({ limit: 100 });
+    return students.find((s) => s._id === id) || students[0];
   }
 }

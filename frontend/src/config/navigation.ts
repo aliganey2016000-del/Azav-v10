@@ -79,6 +79,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.SUPER_ADMIN],
       },
       {
+        label: 'Students & Trainees',
+        path: '/admin/students',
+        icon: Users,
+        roles: [UserRole.SUPER_ADMIN],
+      },
+      {
         label: 'Universities',
         path: '/admin/universities',
         icon: GraduationCap,

@@ -15,7 +15,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc -p frontend/tsconfig.json --noEmit",
     "seed": "tsx backend/src/seed.ts",
-    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts && tsx backend/src/tests/dbIntegrityTests.ts && tsx backend/src/tests/passwordResetTests.ts"
+    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts && tsx backend/src/tests/dbIntegrityTests.ts && tsx backend/src/tests/passwordResetTests.ts && tsx backend/src/tests/authFlowVerificationTests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

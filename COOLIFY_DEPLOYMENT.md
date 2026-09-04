@@ -34,6 +34,14 @@ Mark `NODE_ENV`, `PORT`, `MONGODB_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and `CLIENT
 
 The frontend Dockerfile embeds `VITE_API_URL` during the Vite build. The application then calls the backend at `${VITE_API_URL}/api/v1`.
 
+## Container Security & Isolation
+
+Neither the backend (Node.js/Express) nor frontend (Nginx) require elevated Linux capabilities or host hardware device mounts.
+
+- **Do NOT use `--cap-add SYS_ADMIN`**: The application does not perform kernel mount operations, sandbox container management, or system trace actions. Granting `SYS_ADMIN` introduces unnecessary security exposure.
+- **Do NOT mount host devices (`--device=/dev/...`)**: The application does not interact with host hardware or GPU devices. Standard Docker container isolation must be preserved.
+- In Coolify container configuration settings, leave custom capability additions and device mounts empty.
+
 ## Contabo checklist
 
 1. Install Coolify on the Contabo VPS.

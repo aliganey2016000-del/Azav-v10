@@ -29,7 +29,7 @@ async function run() {
     assert.notStrictEqual(saved.passwordResetTokenHash, requested.resetToken, 'Stored reset value must not equal raw token');
     assert.ok(saved.passwordResetExpiresAt && saved.passwordResetExpiresAt.getTime() > Date.now(), 'Reset token must expire in the future');
 
-    const result = await AuthService.resetPassword(requested.resetToken, 'NewSecurePassword123!');
+    const result = await AuthService.resetPassword(requested.resetToken!, 'NewSecurePassword123!');
     assert.strictEqual(result.message.includes('reset successfully'), true);
     assert.strictEqual(saved.passwordResetTokenHash, null, 'Reset token must be single-use');
     assert.strictEqual(saved.passwordResetExpiresAt, null, 'Reset expiry must be cleared after use');
