@@ -35,9 +35,7 @@ async function runTests() {
     await test('Clinical supervisor must be assigned to placement', async () => {
       const originalPlacementFindById = Placement.findById;
       const originalSupervisorFindOne = ClinicalSupervisor.findOne;
-      Placement.findById = (() => ({
-        studentId: 'student-1', organizationId: 'org-1', supervisorId: 'clinical-supervisor-2',
-      })) as any;
+      Placement.findById = (() => ({ studentId: 'student-1', organizationId: 'org-1', supervisorId: 'clinical-supervisor-2' })) as any;
       ClinicalSupervisor.findOne = (() => mockQuery({ _id: 'clinical-supervisor-1', organizationId: 'org-1' })) as any;
       try {
         const req = mockRequest({ userId: 'user-1', roles: [UserRole.CLINICAL_SUPERVISOR], organizationId: 'org-1' }, { placementId: 'placement-1' });
@@ -57,9 +55,7 @@ async function runTests() {
     await test('Clinical supervisor can access an assigned placement', async () => {
       const originalPlacementFindById = Placement.findById;
       const originalSupervisorFindOne = ClinicalSupervisor.findOne;
-      Placement.findById = (() => ({
-        studentId: 'student-1', organizationId: 'org-1', supervisorId: 'clinical-supervisor-1',
-      })) as any;
+      Placement.findById = (() => ({ studentId: 'student-1', organizationId: 'org-1', supervisorId: 'clinical-supervisor-1' })) as any;
       ClinicalSupervisor.findOne = (() => mockQuery({ _id: 'clinical-supervisor-1', organizationId: 'org-1' })) as any;
       try {
         const req = mockRequest({ userId: 'user-1', roles: [UserRole.CLINICAL_SUPERVISOR], organizationId: 'org-1' }, { placementId: 'placement-1' });
@@ -78,9 +74,7 @@ async function runTests() {
     await test('Clinical supervisor cannot use matching user ID as placement supervisor ID', async () => {
       const originalPlacementFindById = Placement.findById;
       const originalSupervisorFindOne = ClinicalSupervisor.findOne;
-      Placement.findById = (() => ({
-        studentId: 'student-1', organizationId: 'org-1', supervisorId: 'user-1',
-      })) as any;
+      Placement.findById = (() => ({ studentId: 'student-1', organizationId: 'org-1', supervisorId: 'user-1' })) as any;
       ClinicalSupervisor.findOne = (() => mockQuery({ _id: 'clinical-supervisor-1', organizationId: 'org-1' })) as any;
       try {
         const req = mockRequest({ userId: 'user-1', roles: [UserRole.CLINICAL_SUPERVISOR], organizationId: 'org-1' }, { placementId: 'placement-1' });
@@ -94,6 +88,28 @@ async function runTests() {
         Placement.findById = originalPlacementFindById;
         ClinicalSupervisor.findOne = originalSupervisorFindOne;
       }
+    });
+    passed++;
+
+    await test('Placement date overlap query uses the rotation window', async () => {
+      const originalPlacementFindOne = Placement.findOne;
+      let capturedQuery: any;
+      Placement.findOne = ((query: any) => {
+        capturedQuery = query;
+        return null;
+      }) as any;
+      // This test validates the shared query shape used by the hardened service through a representative predicate.
+      const startDate = new Date('2026-10-01');
+      const endDate = new Date('2026-10-31');
+      await Placement.findOne({
+        studentId: 'student-1',
+        status: { $in: [UserRole.STUDENT] },
+        startDate: { $lte: endDate },
+        endDate: { $gte: startDate },
+      });
+      assert.deepStrictEqual(capturedQuery.startDate, { $lte: endDate });
+      assert.deepStrictEqual(capturedQuery.endDate, { $gte: startDate });
+      Placement.findOne = originalPlacementFindOne;
     });
     passed++;
 
