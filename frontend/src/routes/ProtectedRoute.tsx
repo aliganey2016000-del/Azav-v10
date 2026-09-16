@@ -1,8 +1,14 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getPortalRoot } from '../config/navigation';
+import { UserRole } from '../types/frontend';
 
-export const ProtectedRoute: React.FC = () => {
+interface ProtectedRouteProps {
+  allowedRoles?: UserRole[];
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -15,6 +21,15 @@ export const ProtectedRoute: React.FC = () => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles?.length) {
+    const hasAllowedRole = user.roles?.some((role) => allowedRoles.includes(role));
+    if (!hasAllowedRole) {
+      const primaryRole = user.roles?.[0];
+      const safePortal = primaryRole ? `${getPortalRoot(primaryRole)}/dashboard` : '/';
+      return <Navigate to={safePortal} replace />;
+    }
   }
 
   return <Outlet />;
