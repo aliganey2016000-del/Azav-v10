@@ -1,5 +1,6 @@
 import { Placement } from '../models/Placement.js';
 import { ClinicalAttachment } from '../models/Placement.js';
+import { Application } from '../models/Application.js';
 import { Organization } from '../models/Organization.js';
 import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
 import { ApplicationService } from './application.service.js';
@@ -16,7 +17,23 @@ export class PlacementService {
     startDate: Date;
     endDate: Date;
   }) {
-    // 1. Check Organization capacity backend-side
+    // 1. Bind placement to the student recorded on the application.
+    const application = await Application.findById(data.applicationId).select('studentId');
+    if (!application) {
+      const err: any = new Error('Application not found');
+      err.statusCode = 404;
+      err.code = 'APPLICATION_NOT_FOUND';
+      throw err;
+    }
+
+    if (application.studentId.toString() !== data.studentId.toString()) {
+      const err: any = new Error('Placement student does not match the student on the application.');
+      err.statusCode = 400;
+      err.code = 'APPLICATION_STUDENT_MISMATCH';
+      throw err;
+    }
+
+    // 2. Check Organization capacity backend-side
     const organization = await Organization.findById(data.organizationId);
     if (!organization) {
       const err: any = new Error('Healthcare Organization not found');
@@ -38,7 +55,7 @@ export class PlacementService {
       throw err;
     }
 
-    // 2. Protect against overlapping student rotations
+    // 3. Protect against overlapping student rotations
     const overlappingPlacements = await Placement.findOne({
       studentId: data.studentId,
       status: { $in: [PlacementStatus.PENDING, PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE] },
@@ -54,7 +71,7 @@ export class PlacementService {
       throw err;
     }
 
-    // 3. CRITICAL RULE: Supervisor assigned MUST belong to the same organization hosting that placement
+    // 4. CRITICAL RULE: Supervisor assigned MUST belong to the same organization hosting that placement
     if (data.supervisorId) {
       const supervisor = await ClinicalSupervisor.findById(data.supervisorId);
       if (!supervisor) {
