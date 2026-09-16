@@ -22,7 +22,18 @@ placementRouter.post(
 
 export const attendanceRouter = Router();
 attendanceRouter.use(authenticate);
-attendanceRouter.post('/', validateAttachmentAccess, AttendanceController.record);
+attendanceRouter.post(
+  '/',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.ORGANIZATION_ADMIN,
+    UserRole.ORGANIZATION_STAFF,
+    UserRole.CLINICAL_SUPERVISOR
+  ),
+  validateAttachmentAccess,
+  AttendanceController.record
+);
 attendanceRouter.get('/attachment/:attachmentId', validateAttachmentAccess, AttendanceController.listByAttachment);
 
 export const logbookRouter = Router();
@@ -65,6 +76,7 @@ certificateRouter.get('/', CertificateController.list);
 certificateRouter.post(
   '/',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
+  validateAttachmentAccess,
   CertificateController.issue
 );
 certificateRouter.post(
