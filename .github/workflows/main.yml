@@ -87,7 +87,7 @@ jobs:
               --retry-all-errors \
               --connect-timeout 10 \
               --max-time 60 \
-              --request GET "$webhook" \
+              --request POST "$webhook" \
               --header "Authorization: Bearer ${COOLIFY_TOKEN}"
             echo
           }
