@@ -24,7 +24,7 @@ export interface IStorageProvider {
 export class LocalStorageProvider implements IStorageProvider {
   private uploadDir: string;
 
-  constructor(uploadDirRelative = 'uploads') {
+  constructor(uploadDirRelative = process.env.STORAGE_LOCAL_DIR || 'uploads') {
     this.uploadDir = path.resolve(process.cwd(), uploadDirRelative);
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
@@ -73,29 +73,27 @@ export class LocalStorageProvider implements IStorageProvider {
   }
 }
 
-// 2. S3 Storage Provider Abstraction (Fallback/Configurable)
+// 2. S3 provider placeholder. Do not silently fall back to local disk: doing so
+// would make operators believe documents are durable in object storage when they
+// are actually tied to an ephemeral container filesystem.
 export class S3StorageProvider implements IStorageProvider {
-  private bucket: string;
-
-  constructor() {
-    this.bucket = process.env.STORAGE_BUCKET || 'azaam-documents';
+  private unavailable(): never {
+    const err: any = new Error('S3 storage is not implemented in this build. Configure STORAGE_PROVIDER=local with persistent storage, or install a real S3 provider before selecting s3.');
+    err.statusCode = 503;
+    err.code = 'STORAGE_PROVIDER_UNAVAILABLE';
+    throw err;
   }
 
-  async uploadFile(file: FilePayload): Promise<StorageUploadResult> {
-    // If AWS SDK is not configured, fallback to LocalStorageProvider
-    console.warn('[S3StorageProvider] S3 AWS credentials not directly linked; using Local Storage Provider fallback.');
-    const local = new LocalStorageProvider();
-    return local.uploadFile(file);
+  async uploadFile(_file: FilePayload): Promise<StorageUploadResult> {
+    return this.unavailable();
   }
 
-  async getFile(storageKey: string): Promise<Buffer> {
-    const local = new LocalStorageProvider();
-    return local.getFile(storageKey);
+  async getFile(_storageKey: string): Promise<Buffer> {
+    return this.unavailable();
   }
 
-  async deleteFile(storageKey: string): Promise<void> {
-    const local = new LocalStorageProvider();
-    return local.deleteFile(storageKey);
+  async deleteFile(_storageKey: string): Promise<void> {
+    return this.unavailable();
   }
 }
 
@@ -105,11 +103,16 @@ export class StorageService {
 
   static getProvider(): IStorageProvider {
     if (!this.provider) {
-      const providerType = process.env.STORAGE_PROVIDER || 'local';
-      if (providerType === 's3' && process.env.AWS_ACCESS_KEY_ID) {
+      const providerType = (process.env.STORAGE_PROVIDER || env.STORAGE_PROVIDER || 'local').toLowerCase();
+      if (providerType === 'local') {
+        this.provider = new LocalStorageProvider();
+      } else if (providerType === 's3') {
         this.provider = new S3StorageProvider();
       } else {
-        this.provider = new LocalStorageProvider();
+        const err: any = new Error(`Unsupported storage provider: ${providerType}`);
+        err.statusCode = 500;
+        err.code = 'INVALID_STORAGE_PROVIDER';
+        throw err;
       }
     }
     return this.provider;

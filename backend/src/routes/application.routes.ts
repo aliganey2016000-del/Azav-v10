@@ -9,8 +9,23 @@ export const applicationRouter = Router();
 
 applicationRouter.use(authenticate);
 
-applicationRouter.post('/', ApplicationController.create);
-applicationRouter.get('/', ApplicationController.list);
+applicationRouter.post(
+  '/',
+  requireRole(UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT),
+  ApplicationController.create
+);
+applicationRouter.get(
+  '/',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.UNIVERSITY_ADMIN,
+    UserRole.UNIVERSITY_STAFF,
+    UserRole.STUDENT,
+    UserRole.INDEPENDENT_APPLICANT
+  ),
+  ApplicationController.list
+);
 applicationRouter.get('/:id', validateApplicationAccess, ApplicationController.getById);
 
 applicationRouter.patch(

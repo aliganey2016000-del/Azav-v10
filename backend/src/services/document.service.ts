@@ -35,14 +35,54 @@ export class DocumentService {
       originalname: sanitizedName,
     });
 
-    // 3. Resolve Owner Scope & Tenant References
+    // 3. Resolve Owner Scope & Tenant References. Never trust tenant references
+    // supplied by a student-like account.
     let targetStudentId = metadata.studentId || null;
     let targetAppId = metadata.applicationId || null;
     let targetUniId = metadata.universityId || actor.universityId || null;
     let targetOrgId = metadata.organizationId || actor.organizationId || null;
 
-    if (actor.roles.includes(UserRole.STUDENT) && actor.studentId) {
+    const isStudentLike =
+      actor.roles.includes(UserRole.STUDENT) || actor.roles.includes(UserRole.INDEPENDENT_APPLICANT);
+
+    if (isStudentLike) {
+      if (!actor.studentId) {
+        const err: any = new Error('Student profile is required before uploading documents.');
+        err.statusCode = 403;
+        err.code = 'STUDENT_PROFILE_REQUIRED';
+        throw err;
+      }
+
       targetStudentId = actor.studentId;
+      const student = await Student.findById(actor.studentId).select('universityId');
+      targetUniId = student?.universityId?.toString() || null;
+
+      if (targetAppId) {
+        const application = await Application.findById(targetAppId).select('studentId');
+        if (!application || application.studentId.toString() !== actor.studentId.toString()) {
+          const err: any = new Error('You cannot attach a document to another student application.');
+          err.statusCode = 403;
+          err.code = 'FORBIDDEN_APPLICATION_SCOPE';
+          throw err;
+        }
+      }
+
+      // A student can associate an organization only when they have a placement there.
+      if (metadata.organizationId) {
+        const hasPlacement = await Placement.exists({
+          studentId: actor.studentId,
+          organizationId: metadata.organizationId,
+        });
+        if (!hasPlacement) {
+          const err: any = new Error('You cannot associate a document with an unrelated organization.');
+          err.statusCode = 403;
+          err.code = 'FORBIDDEN_ORGANIZATION_SCOPE';
+          throw err;
+        }
+        targetOrgId = metadata.organizationId;
+      } else {
+        targetOrgId = null;
+      }
     }
 
     if (targetStudentId && !targetUniId) {
@@ -52,8 +92,12 @@ export class DocumentService {
       }
     }
 
-    const resolvedOwnerType = metadata.ownerType || DocumentOwnerType.STUDENT;
-    const resolvedOwnerId = metadata.ownerId || targetStudentId || actor.userId;
+    const resolvedOwnerType = isStudentLike
+      ? DocumentOwnerType.STUDENT
+      : (metadata.ownerType || DocumentOwnerType.STUDENT);
+    const resolvedOwnerId = isStudentLike
+      ? targetStudentId
+      : (metadata.ownerId || targetStudentId || actor.userId);
 
     // 4. Create Document Model Entry
     const doc = new DocumentModel({
@@ -244,6 +288,8 @@ export class DocumentService {
       // University restricted to university scope
       if (actor.universityId) {
         filter.universityId = actor.universityId;
+      } else {
+        filter._id = null;
       }
     } else if (
       actor.roles.includes(UserRole.ORGANIZATION_ADMIN) ||
@@ -252,6 +298,8 @@ export class DocumentService {
       // Organization restricted to healthcare organization scope
       if (actor.organizationId) {
         filter.organizationId = actor.organizationId;
+      } else {
+        filter._id = null;
       }
     } else if (actor.roles.includes(UserRole.CLINICAL_SUPERVISOR)) {
       // Clinical Supervisor: get assigned students
@@ -263,6 +311,8 @@ export class DocumentService {
       } else {
         filter.uploadedBy = actor.userId;
       }
+    } else {
+      filter._id = null;
     }
 
     if (query.type) filter.type = query.type.toUpperCase();
@@ -270,11 +320,20 @@ export class DocumentService {
 
     if (query.search) {
       const searchRegex = new RegExp(query.search.trim(), 'i');
-      filter.$or = [
+      const searchScope = [
         { originalName: searchRegex },
         { fileName: searchRegex },
         { type: searchRegex },
       ];
+
+      // Preserve a pre-existing tenant/ownership $or instead of overwriting it.
+      if (filter.$or) {
+        const ownershipScope = filter.$or;
+        delete filter.$or;
+        filter.$and = [{ $or: ownershipScope }, { $or: searchScope }];
+      } else {
+        filter.$or = searchScope;
+      }
     }
 
     const [documents, total] = await Promise.all([
@@ -393,5 +452,10 @@ export class DocumentService {
       err.code = 'FORBIDDEN_SUPERVISOR_SCOPE';
       throw err;
     }
+
+    const err: any = new Error('Access denied: role has no document scope.');
+    err.statusCode = 403;
+    err.code = 'FORBIDDEN_SCOPE';
+    throw err;
   }
 }

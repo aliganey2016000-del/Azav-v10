@@ -1,5 +1,7 @@
 import { Certificate, ICertificate } from '../models/Certificate.js';
 import { ClinicalAttachment, Placement } from '../models/Placement.js';
+import { Student } from '../models/Student.js';
+import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
 import { ApplicationService } from './application.service.js';
 import { AuditLog } from '../models/Notification.js';
 import { CertificateStatus, ClinicalAttachmentStatus, ApplicationStatus, AuthUser, UserRole } from '../types/index.js';
@@ -139,26 +141,45 @@ export class CertificateService {
     const skip = (page - 1) * limit;
 
     const filter: any = {};
+    const isGlobalAdmin = actor.roles.includes(UserRole.SUPER_ADMIN) || actor.roles.includes(UserRole.AZAAM_STAFF);
 
-    if (actor.roles.includes(UserRole.ORGANIZATION_ADMIN) || actor.roles.includes(UserRole.ORGANIZATION_STAFF)) {
-      if (actor.organizationId) {
-        filter.organizationId = actor.organizationId;
-      }
-    } else if (actor.roles.includes(UserRole.UNIVERSITY_ADMIN) || actor.roles.includes(UserRole.UNIVERSITY_STAFF)) {
-      // University scope can view certificates of their students
-      if (actor.universityId) {
-        // We can filter by students belonging to university
-      }
-    } else if (actor.roles.includes(UserRole.STUDENT)) {
-      if (actor.studentId) {
-        filter.studentId = actor.studentId;
+    if (!isGlobalAdmin) {
+      if (actor.roles.includes(UserRole.ORGANIZATION_ADMIN) || actor.roles.includes(UserRole.ORGANIZATION_STAFF)) {
+        if (actor.organizationId) {
+          filter.organizationId = actor.organizationId;
+        } else {
+          filter._id = null;
+        }
+      } else if (actor.roles.includes(UserRole.UNIVERSITY_ADMIN) || actor.roles.includes(UserRole.UNIVERSITY_STAFF)) {
+        if (actor.universityId) {
+          const students = await Student.find({ universityId: actor.universityId }).select('_id');
+          filter.studentId = { $in: students.map((student) => student._id) };
+        } else {
+          filter._id = null;
+        }
+      } else if (actor.roles.includes(UserRole.STUDENT) || actor.roles.includes(UserRole.INDEPENDENT_APPLICANT)) {
+        if (actor.studentId) {
+          filter.studentId = actor.studentId;
+        } else {
+          filter._id = null;
+        }
+      } else if (actor.roles.includes(UserRole.CLINICAL_SUPERVISOR)) {
+        const supervisor = await ClinicalSupervisor.findOne({ userId: actor.userId }).select('_id');
+        if (supervisor) {
+          const attachments = await ClinicalAttachment.find({ supervisorId: supervisor._id }).select('_id');
+          filter.attachmentId = { $in: attachments.map((attachment) => attachment._id) };
+        } else {
+          filter._id = null;
+        }
+      } else {
+        filter._id = null;
       }
     }
 
     if (query.status) {
       filter.status = query.status.toUpperCase();
     }
-    if (query.organizationId && (actor.roles.includes(UserRole.SUPER_ADMIN) || actor.roles.includes(UserRole.AZAAM_STAFF))) {
+    if (query.organizationId && isGlobalAdmin) {
       filter.organizationId = query.organizationId;
     }
 
