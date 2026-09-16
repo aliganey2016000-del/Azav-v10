@@ -1,4 +1,4 @@
-name: AZAAM CI
+name: AZAAM CI/CD
 
 on:
   push:
@@ -9,10 +9,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: azaam-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
+    name: Validate application
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -32,8 +37,81 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Typecheck frontend
+        run: pnpm run typecheck
+
       - name: Run tests
         run: pnpm test
 
       - name: Build application
         run: pnpm run build
+
+      - name: Build backend container
+        run: docker build -t azaam-backend:ci ./backend
+
+      - name: Build frontend container
+        run: docker build --build-arg VITE_API_URL=https://api.example.invalid -t azaam-frontend:ci ./frontend
+
+  deploy-production:
+    name: Deploy production to Coolify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger Coolify deployment after successful checks
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+          COOLIFY_FRONTEND_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_FRONTEND_DEPLOY_WEBHOOK }}
+          COOLIFY_BACKEND_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_BACKEND_DEPLOY_WEBHOOK }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if [ -z "${COOLIFY_TOKEN:-}" ]; then
+            echo "::error::COOLIFY_TOKEN is not configured in GitHub Actions secrets."
+            exit 1
+          fi
+
+          trigger_deploy() {
+            local label="$1"
+            local webhook="$2"
+            echo "Triggering ${label} deployment..."
+            curl \
+              --fail-with-body \
+              --silent \
+              --show-error \
+              --retry 3 \
+              --retry-all-errors \
+              --connect-timeout 10 \
+              --max-time 60 \
+              --request GET "$webhook" \
+              --header "Authorization: Bearer ${COOLIFY_TOKEN}"
+            echo
+          }
+
+          # A single tag/service webhook may deploy the whole stack. If it is
+          # configured, it takes precedence over per-application webhooks.
+          if [ -n "${COOLIFY_DEPLOY_WEBHOOK:-}" ]; then
+            trigger_deploy "AZAAM production" "$COOLIFY_DEPLOY_WEBHOOK"
+            exit 0
+          fi
+
+          deployed=0
+
+          if [ -n "${COOLIFY_BACKEND_DEPLOY_WEBHOOK:-}" ]; then
+            trigger_deploy "backend" "$COOLIFY_BACKEND_DEPLOY_WEBHOOK"
+            deployed=1
+          fi
+
+          if [ -n "${COOLIFY_FRONTEND_DEPLOY_WEBHOOK:-}" ]; then
+            trigger_deploy "frontend" "$COOLIFY_FRONTEND_DEPLOY_WEBHOOK"
+            deployed=1
+          fi
+
+          if [ "$deployed" -eq 0 ]; then
+            echo "::error::Configure COOLIFY_DEPLOY_WEBHOOK, or both per-application Coolify deploy webhook secrets."
+            exit 1
+          fi
