@@ -5,11 +5,14 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 
+const DEVELOPMENT_JWT_SECRET = 'azaam_default_jwt_secret_key_2026_dev';
+const DEVELOPMENT_MONGODB_URI = 'mongodb://127.0.0.1:27017/azaam_medics_db';
+
 const envSchema = z.object({
-  NODE_ENV: z.string().default('development'),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
-  MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/azaam_medics_db'),
-  JWT_SECRET: z.string().default('azaam_default_jwt_secret_key_2026_dev'),
+  MONGODB_URI: z.string().min(1).default(DEVELOPMENT_MONGODB_URI),
+  JWT_SECRET: z.string().min(1).default(DEVELOPMENT_JWT_SECRET),
   JWT_EXPIRES_IN: z.string().default('7d'),
   CLIENT_URL: z.string().default('http://localhost:3000'),
   CORS_ORIGIN: z.string().default('*'),
@@ -39,12 +42,24 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
+// Production must fail closed. Never allow the application to boot with
+// development credentials or an unrestricted cross-origin policy.
 if (env.NODE_ENV === 'production') {
-  if (env.JWT_SECRET === 'azaam_default_jwt_secret_key_2026_dev') {
-    console.warn('[Security Warning] Using default JWT_SECRET in production. Set JWT_SECRET in environment for production deployments.');
+  const productionErrors: string[] = [];
+
+  if (env.JWT_SECRET === DEVELOPMENT_JWT_SECRET || env.JWT_SECRET.length < 32) {
+    productionErrors.push('JWT_SECRET must be explicitly configured and at least 32 characters long');
   }
 
-  if (env.CORS_ORIGIN === '*') {
-    console.warn('[Security Warning] CORS_ORIGIN is set to * in production.');
+  if (env.CORS_ORIGIN.trim() === '*') {
+    productionErrors.push('CORS_ORIGIN must be an explicit trusted origin in production');
+  }
+
+  if (env.MONGODB_URI === DEVELOPMENT_MONGODB_URI) {
+    productionErrors.push('MONGODB_URI must be explicitly configured in production');
+  }
+
+  if (productionErrors.length > 0) {
+    throw new Error(`Unsafe production environment configuration: ${productionErrors.join('; ')}`);
   }
 }
