@@ -1,3 +1,4 @@
+import path from 'path';
 import bcrypt from 'bcryptjs';
 import { connectDatabase, closeDatabase } from './config/database.js';
 import { User } from './models/User.js';
@@ -9,7 +10,7 @@ import { Student } from './models/Student.js';
 import { Programme, Specialty, Country, City } from './models/Programme.js';
 import { UserRole, ApplicantType, OrganizationType } from './types/index.js';
 
-function assertSeedIsSafe(): string {
+export function assertSeedIsSafe(): string {
   const nodeEnv = process.env.NODE_ENV || 'development';
   if (nodeEnv === 'production') {
     throw new Error('[Seed] Refusing to seed while NODE_ENV=production.');
@@ -226,7 +227,8 @@ export async function seedDatabase() {
   console.log('[Seed] Seed account password came from SEED_PASSWORD and was not printed.');
 }
 
-if (process.argv[1]?.includes('seed')) {
+const entryFile = path.basename(process.argv[1] || '');
+if (entryFile === 'seed.ts' || entryFile === 'seed.js') {
   seedDatabase()
     .then(() => closeDatabase())
     .catch(async (error) => {
