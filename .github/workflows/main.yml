@@ -52,10 +52,118 @@ jobs:
       - name: Build frontend container
         run: docker build --build-arg VITE_API_URL=https://api.example.invalid -t azaam-frontend:ci ./frontend
 
+  e2e:
+    name: Browser role acceptance tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      PORT: 5000
+      MONGODB_URI: mongodb://127.0.0.1:27017/azaam_e2e
+      JWT_SECRET: azaam_e2e_only_jwt_secret_2026_at_least_32_chars
+      JWT_EXPIRES_IN: 1h
+      CLIENT_URL: http://127.0.0.1:4173
+      CORS_ORIGIN: http://127.0.0.1:4173
+      VITE_API_URL: http://127.0.0.1:5000
+      ALLOW_DATABASE_SEED: 'true'
+      E2E_BASE_URL: http://127.0.0.1:4173
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Generate ephemeral E2E credential
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "E2E_PASSWORD=AZAAM-E2E-${GITHUB_RUN_ID}-Secure9!" >> "$GITHUB_ENV"
+          echo "SEED_PASSWORD=AZAAM-E2E-${GITHUB_RUN_ID}-Secure9!" >> "$GITHUB_ENV"
+
+      - name: Seed isolated E2E database
+        run: pnpm seed
+
+      - name: Start isolated backend and frontend
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          nohup pnpm dev:backend > /tmp/azaam-backend-e2e.log 2>&1 &
+          nohup pnpm exec vite frontend --host 127.0.0.1 --port 4173 > /tmp/azaam-frontend-e2e.log 2>&1 &
+
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:5000/api/ready >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 45 ]; then
+              echo "::error::Backend did not become ready."
+              cat /tmp/azaam-backend-e2e.log || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          for attempt in {1..45}; do
+            if curl --fail --silent http://127.0.0.1:4173/login >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 45 ]; then
+              echo "::error::Frontend did not become ready."
+              cat /tmp/azaam-frontend-e2e.log || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run browser acceptance tests
+        run: pnpm test:e2e
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo '--- backend ---'
+          cat /tmp/azaam-backend-e2e.log || true
+          echo '--- frontend ---'
+          cat /tmp/azaam-frontend-e2e.log || true
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
   deploy-production:
     name: Deploy production to Coolify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build-and-test
+    needs: [build-and-test, e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -92,8 +200,6 @@ jobs:
             echo
           }
 
-          # A single tag/service webhook may deploy the whole stack. If it is
-          # configured, it takes precedence over per-application webhooks.
           if [ -n "${COOLIFY_DEPLOY_WEBHOOK:-}" ]; then
             trigger_deploy "AZAAM production" "$COOLIFY_DEPLOY_WEBHOOK"
             exit 0
