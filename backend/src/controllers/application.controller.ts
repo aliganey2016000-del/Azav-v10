@@ -29,15 +29,24 @@ export class ApplicationController {
       }
 
       const queryFilters: any = {};
+      const isGlobalAdmin = req.user.roles.includes(UserRole.SUPER_ADMIN) || req.user.roles.includes(UserRole.AZAAM_STAFF);
 
-      // Tenant isolation
-      if (req.user.roles.includes(UserRole.STUDENT) || req.user.roles.includes(UserRole.INDEPENDENT_APPLICANT)) {
-        if (req.user.studentId) {
+      if (!isGlobalAdmin) {
+        if (req.user.roles.includes(UserRole.STUDENT) || req.user.roles.includes(UserRole.INDEPENDENT_APPLICANT)) {
+          if (!req.user.studentId) {
+            res.status(403).json({ success: false, error: { code: 'FORBIDDEN_SCOPE', message: 'Student profile is required to list applications.' } });
+            return;
+          }
           queryFilters.studentId = req.user.studentId;
-        }
-      } else if (req.user.roles.includes(UserRole.UNIVERSITY_ADMIN) || req.user.roles.includes(UserRole.UNIVERSITY_STAFF)) {
-        if (req.user.universityId) {
+        } else if (req.user.roles.includes(UserRole.UNIVERSITY_ADMIN) || req.user.roles.includes(UserRole.UNIVERSITY_STAFF)) {
+          if (!req.user.universityId) {
+            res.status(403).json({ success: false, error: { code: 'FORBIDDEN_TENANT', message: 'University scope is not configured for this account.' } });
+            return;
+          }
           queryFilters.universityId = req.user.universityId;
+        } else {
+          res.status(403).json({ success: false, error: { code: 'FORBIDDEN_SCOPE', message: 'Your role cannot list applications.' } });
+          return;
         }
       }
 
