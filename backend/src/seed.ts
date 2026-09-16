@@ -1,3 +1,4 @@
+import path from 'path';
 import bcrypt from 'bcryptjs';
 import { connectDatabase, closeDatabase } from './config/database.js';
 import { User } from './models/User.js';
@@ -9,15 +10,34 @@ import { Student } from './models/Student.js';
 import { Programme, Specialty, Country, City } from './models/Programme.js';
 import { UserRole, ApplicantType, OrganizationType } from './types/index.js';
 
+export function assertSeedIsSafe(): string {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  if (nodeEnv === 'production') {
+    throw new Error('[Seed] Refusing to seed while NODE_ENV=production.');
+  }
+
+  if (process.env.ALLOW_DATABASE_SEED !== 'true') {
+    throw new Error('[Seed] Set ALLOW_DATABASE_SEED=true explicitly for a non-production seed run.');
+  }
+
+  const seedPassword = process.env.SEED_PASSWORD;
+  if (!seedPassword || seedPassword.length < 12) {
+    throw new Error('[Seed] SEED_PASSWORD must be explicitly provided and contain at least 12 characters.');
+  }
+
+  return seedPassword;
+}
+
 export async function seedDatabase() {
-  console.log('[Seed] Initializing Mongoose Seed Data...');
+  const seedPassword = assertSeedIsSafe();
+  console.log('[Seed] Initializing non-production Mongoose seed data...');
   const connected = await connectDatabase();
   if (!connected) {
     console.warn('[Seed] MongoDB not reachable. Skipping database seed persistence.');
     return;
   }
 
-  const defaultPasswordHash = await bcrypt.hash('Password123!', 10);
+  const defaultPasswordHash = await bcrypt.hash(seedPassword, 10);
 
   // 1. Seed Countries & Cities
   let country = await Country.findOne({ code: 'US' });
@@ -143,6 +163,11 @@ export async function seedDatabase() {
         status: 'ACTIVE',
       });
       console.log(`[Seed] Created User: ${user.email} (${user.roles.join(', ')})`);
+    } else {
+      // Explicit seed runs reset only these non-production seeded accounts to
+      // the operator-provided password; the password itself is never logged.
+      user.passwordHash = defaultPasswordHash;
+      await user.save();
     }
 
     // Create supervisor record if role is CLINICAL_SUPERVISOR
@@ -198,19 +223,17 @@ export async function seedDatabase() {
     }
   }
 
-  console.log('[Seed] Development Seed Completed Successfully!');
-  console.log('--------------------------------------------------');
-  console.log('Development Credentials (Password for all: Password123!):');
-  console.log('Super Admin: admin@azaammedics.org');
-  console.log('AZAAM Staff: staff@azaammedics.org');
-  console.log('University Admin: admin@hms.harvard.edu');
-  console.log('Org Admin: admin@massgeneral.org');
-  console.log('Supervisor: sjenkins@massgeneral.org');
-  console.log('University Student: student.harvard@azaammedics.org');
-  console.log('Independent Applicant: independent.student@azaammedics.org');
-  console.log('--------------------------------------------------');
+  console.log('[Seed] Non-production seed completed successfully.');
+  console.log('[Seed] Seed account password came from SEED_PASSWORD and was not printed.');
 }
 
-if (process.argv[1]?.includes('seed')) {
-  seedDatabase().then(() => closeDatabase());
+const entryFile = path.basename(process.argv[1] || '');
+if (entryFile === 'seed.ts' || entryFile === 'seed.js') {
+  seedDatabase()
+    .then(() => closeDatabase())
+    .catch(async (error) => {
+      console.error(error?.message || error);
+      await closeDatabase();
+      process.exitCode = 1;
+    });
 }

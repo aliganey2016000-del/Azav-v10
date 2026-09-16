@@ -6,8 +6,8 @@ import { useAuth } from '../context/AuthContext';
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@azaammedics.org');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
