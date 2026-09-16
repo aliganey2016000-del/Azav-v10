@@ -1,6 +1,8 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { PlacementService } from '../services/placement.service.js';
+import { Student } from '../models/Student.js';
+import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
 import { UserRole } from '../types/index.js';
 
 export class PlacementController {
@@ -19,6 +21,16 @@ export class PlacementController {
           error: { code: 'VALIDATION_ERROR', message: 'applicationId, studentId, organizationId, startDate, endDate are required' },
         });
         return;
+      }
+
+      if (req.user.roles.includes(UserRole.ORGANIZATION_ADMIN)) {
+        if (!req.user.organizationId || req.user.organizationId.toString() !== organizationId.toString()) {
+          res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN_TENANT', message: 'Organization administrators can only create placements for their own organization.' },
+          });
+          return;
+        }
       }
 
       const result = await PlacementService.createPlacement(req.user.userId, {
@@ -48,10 +60,38 @@ export class PlacementController {
       }
 
       const queryFilters: any = {};
-      if (req.user.roles.includes(UserRole.STUDENT) || req.user.roles.includes(UserRole.INDEPENDENT_APPLICANT)) {
-        if (req.user.studentId) queryFilters.studentId = req.user.studentId;
-      } else if (req.user.roles.includes(UserRole.ORGANIZATION_ADMIN) || req.user.roles.includes(UserRole.ORGANIZATION_STAFF)) {
-        if (req.user.organizationId) queryFilters.organizationId = req.user.organizationId;
+      const isGlobalAdmin = req.user.roles.includes(UserRole.SUPER_ADMIN) || req.user.roles.includes(UserRole.AZAAM_STAFF);
+
+      if (!isGlobalAdmin) {
+        if (req.user.roles.includes(UserRole.STUDENT) || req.user.roles.includes(UserRole.INDEPENDENT_APPLICANT)) {
+          if (!req.user.studentId) {
+            queryFilters._id = null;
+          } else {
+            queryFilters.studentId = req.user.studentId;
+          }
+        } else if (req.user.roles.includes(UserRole.ORGANIZATION_ADMIN) || req.user.roles.includes(UserRole.ORGANIZATION_STAFF)) {
+          if (!req.user.organizationId) {
+            queryFilters._id = null;
+          } else {
+            queryFilters.organizationId = req.user.organizationId;
+          }
+        } else if (req.user.roles.includes(UserRole.UNIVERSITY_ADMIN) || req.user.roles.includes(UserRole.UNIVERSITY_STAFF)) {
+          if (!req.user.universityId) {
+            queryFilters._id = null;
+          } else {
+            const students = await Student.find({ universityId: req.user.universityId }).select('_id');
+            queryFilters.studentId = { $in: students.map((student) => student._id) };
+          }
+        } else if (req.user.roles.includes(UserRole.CLINICAL_SUPERVISOR)) {
+          const supervisor = await ClinicalSupervisor.findOne({ userId: req.user.userId }).select('_id');
+          if (!supervisor) {
+            queryFilters._id = null;
+          } else {
+            queryFilters.supervisorId = supervisor._id;
+          }
+        } else {
+          queryFilters._id = null;
+        }
       }
 
       const placements = await PlacementService.getPlacements(queryFilters);
