@@ -162,7 +162,7 @@ export interface AdminStudent {
   studyYear: string;
   specialty: string;
   status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'INACTIVE';
-  applicationStatus: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACCEPTED' | 'REJECTED';
+  applicationStatus: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACCEPTED' | 'REJECTED' | 'CORRECTION_REQUESTED';
   nominationDate?: string;
   documentsCount?: number;
   documentsVerified?: boolean;
