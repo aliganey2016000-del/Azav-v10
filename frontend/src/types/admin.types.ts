@@ -201,6 +201,8 @@ export interface AdminJourneyStage {
   actedAt?: string;
   title: string;
   description: string;
+  fee?: number;
+  documents?: { id: string; name: string; type: string; dataUrl?: string }[];
 }
 
 export interface AdminStudentJourney {
