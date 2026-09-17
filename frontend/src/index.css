@@ -57,6 +57,12 @@ html.dark [class*="bg-[#f5f8fb]"] {
   background-color: #08111f !important;
 }
 
+/* Dark equivalent for the Super Admin light hero gradient. */
+html.dark [class*="from-[#eefbff]"] {
+  background-image: linear-gradient(90deg, #0f2238 0%, #101d30 52%, #0c2b2a 100%) !important;
+  border-color: #27364d !important;
+}
+
 html.dark .text-slate-950,
 html.dark .text-slate-900,
 html.dark .text-slate-800,
