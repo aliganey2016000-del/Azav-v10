@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
+import { authorizeManagedUserTarget, validateManagedUserCreate } from '../middleware/adminUserGuard.js';
 import { UserRole } from '../types/index.js';
 
 export const adminRouter = Router();
@@ -33,21 +34,25 @@ adminRouter.get(
 adminRouter.get(
   '/users/:id',
   requireRole(...ADMIN_ROLES),
+  authorizeManagedUserTarget,
   AdminController.getUserById
 );
 adminRouter.post(
   '/users',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN, UserRole.ORGANIZATION_ADMIN),
+  validateManagedUserCreate,
   AdminController.createUser
 );
 adminRouter.patch(
   '/users/:id',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN, UserRole.ORGANIZATION_ADMIN),
+  authorizeManagedUserTarget,
   AdminController.updateUser
 );
 adminRouter.patch(
   '/users/:id/status',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN, UserRole.ORGANIZATION_ADMIN),
+  authorizeManagedUserTarget,
   AdminController.updateUserStatus
 );
 adminRouter.post(
