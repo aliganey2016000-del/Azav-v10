@@ -3,6 +3,7 @@ import { AdminController } from '../controllers/admin.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { authorizeManagedUserTarget, validateManagedUserCreate } from '../middleware/adminUserGuard.js';
+import { validateAdminPasswordReset, validateInstitutionInitialAdminPassword } from '../middleware/credentialGuard.js';
 import { UserRole } from '../types/index.js';
 
 export const adminRouter = Router();
@@ -58,6 +59,7 @@ adminRouter.patch(
 adminRouter.post(
   '/users/:id/reset-password',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  validateAdminPasswordReset,
   AdminController.resetUserPassword
 );
 
@@ -75,6 +77,7 @@ adminRouter.get(
 adminRouter.post(
   '/universities',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  validateInstitutionInitialAdminPassword,
   AdminController.createUniversity
 );
 adminRouter.patch(
@@ -117,6 +120,7 @@ adminRouter.get(
 adminRouter.post(
   '/organizations',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  validateInstitutionInitialAdminPassword,
   AdminController.createOrganization
 );
 adminRouter.patch(
