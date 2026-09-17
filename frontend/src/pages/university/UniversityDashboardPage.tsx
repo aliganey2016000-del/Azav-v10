@@ -1,399 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Users,
-  GraduationCap,
-  Building2,
-  UserPlus,
-  ArrowUpRight,
-  ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Sparkles,
-  FileCheck2,
-  DollarSign,
-  Plane,
-  ChevronRight,
-  BookOpen,
-  Award,
-  Search,
-  ExternalLink,
+  Award, Building2, CalendarDays, ChevronRight, DollarSign, FileCheck2,
+  GraduationCap, Search, ShieldCheck, UserPlus, Users, Activity, Bell,
+  BookOpen, CheckCircle2, Clock3, Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { RealDataStore, RealTrainee, RealMouConfig, RealInvoice } from '../../services/realDataStore';
+import { RealDataStore, RealInvoice, RealMouConfig, RealTrainee } from '../../services/realDataStore';
 
 export const UniversityDashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const partnerName = user?.organizationName || 'Faculty of Medicine & Health Sciences';
-
+  const universityName = user?.universityName || user?.organizationName || 'University';
+  const adminName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'University Admin';
   const [trainees, setTrainees] = useState<RealTrainee[]>([]);
   const [invoices, setInvoices] = useState<RealInvoice[]>([]);
-  const [mouConfig, setMouConfig] = useState<RealMouConfig>(() => RealDataStore.getMouConfig(partnerName));
+  const [mouConfig, setMouConfig] = useState<RealMouConfig>(() => RealDataStore.getMouConfig(universityName));
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     setTrainees(RealDataStore.getTrainees());
     setInvoices(RealDataStore.getInvoices());
-    setMouConfig(RealDataStore.getMouConfig(partnerName));
-  }, [partnerName]);
+    setMouConfig(RealDataStore.getMouConfig(universityName));
+  }, [universityName]);
 
-  // Derived metrics
-  const totalEnrolled = trainees.length;
-  const quotaUsed = totalEnrolled;
+  const totalStudents = trainees.length;
   const quotaTotal = mouConfig.annualQuota || 60;
-  const internationalCount = trainees.filter((t) => t.visaStatus !== 'NOT_REQUIRED').length;
-  const activeRotationsCount = trainees.filter(
-    (t) => t.hospitalPlacementStatus === 'CONFIRMED' && !t.certificateIssued
-  ).length;
-  const completedCount = trainees.filter((t) => t.certificateIssued).length;
-
-  const totalBilled = invoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+  const activeRotations = trainees.filter(t => t.hospitalPlacementStatus === 'CONFIRMED' && !t.certificateIssued).length;
+  const certificates = trainees.filter(t => t.certificateIssued).length;
   const totalPaid = invoices.reduce((sum, inv) => sum + (inv.paidAmount || 0), 0);
-  const totalBalance = invoices.reduce((sum, inv) => sum + (inv.balanceAmount || 0), 0);
+  const filtered = trainees.filter(t => {
+    const q = searchQuery.toLowerCase();
+    return t.studentName.toLowerCase().includes(q) || t.studentId.toLowerCase().includes(q) || t.specialty.toLowerCase().includes(q) || t.targetHospital.toLowerCase().includes(q);
+  });
 
-  const filteredTrainees = trainees.filter((t) =>
-    t.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.targetHospital.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const quickActions = [
+    { to: '/university/nominate-student', label: 'Nominate Student', sub: 'New trainee', icon: UserPlus, box: 'bg-blue-50 text-blue-700 border-blue-100' },
+    { to: '/university/students', label: 'Manage Students', sub: 'Student tracking', icon: Users, box: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+    { to: '/university/student-status', label: 'Clinical Rotations', sub: 'Status & placement', icon: Building2, box: 'bg-orange-50 text-orange-700 border-orange-100' },
+    { to: '/university/mou', label: 'Bilateral MoU', sub: 'Quota & agreement', icon: FileCheck2, box: 'bg-violet-50 text-violet-700 border-violet-100' },
+    { to: '/university/financials', label: 'Financials', sub: 'Invoices & receipts', icon: DollarSign, box: 'bg-pink-50 text-pink-700 border-pink-100' },
+    { to: '/university/certificates', label: 'Certificates', sub: `${certificates} issued`, icon: Award, box: 'bg-sky-50 text-sky-700 border-sky-100' },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-sky-950 via-slate-900 to-indigo-950 rounded-2xl p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="bg-sky-500/20 text-sky-300 font-bold px-2.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-sky-400/30">
-              University Academic Portal
-            </span>
-            <span className="bg-emerald-500/20 text-emerald-300 font-semibold px-2.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-emerald-400/30 flex items-center gap-1">
-              <GraduationCap className="w-3.5 h-3.5" />
-              {partnerName}
-            </span>
-            {mouConfig.isSigned ? (
-              <span className="bg-indigo-500/20 text-indigo-300 font-semibold px-2.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-indigo-400/30 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                MoU Active ({quotaUsed} / {quotaTotal} Quota)
-              </span>
-            ) : (
-              <span className="bg-amber-500/20 text-amber-300 font-semibold px-2.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-amber-400/30 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                MoU Pending Signature
-              </span>
-            )}
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Academic Partner Dashboard
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
-            Oversight of nominated medical trainees, clinical hospital rotations, attendance compliance,
-            e-logbook endorsements, and institutional financial accounts under AZAAM coordination.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            to="/university/nominate-student"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>+ Nominate Student</span>
-          </Link>
-          <Link
-            to="/university/mou"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold border border-white/20 transition"
-          >
-            <FileCheck2 className="w-4 h-4 text-sky-300" />
-            <span>Bilateral MoU</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* MoU Alert Banner if not signed */}
-      {!mouConfig.isSigned && (
-        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
-              <FileCheck2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-amber-950 text-sm">
-                Institutional Bilateral MoU Signature Required
-              </h3>
-              <p className="text-xs text-amber-800 mt-1 max-w-2xl leading-relaxed">
-                Unlock your university's annual clinical placement quota ({quotaTotal} student slots)
-                and activate teaching hospital department access.
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/university/mou"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow transition shrink-0"
-          >
-            <span>Sign MoU Agreement</span>
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-      )}
-
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Nominated Students</span>
-            <Users className="w-4 h-4 text-sky-600" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900">{totalEnrolled}</p>
-          <div className="flex items-center justify-between text-[11px] text-slate-500">
-            <span>Quota: {quotaUsed} / {quotaTotal}</span>
-            <span className="font-semibold text-emerald-600 font-mono">
-              {Math.round((quotaUsed / quotaTotal) * 100)}%
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Active Hospital Rotations</span>
-            <Building2 className="w-4 h-4 text-teal-600" />
-          </div>
-          <p className="text-2xl font-bold text-teal-700">{activeRotationsCount}</p>
-          <div className="text-[11px] text-teal-600 font-medium">
-            Clinical wards & OR placements
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>International Visa Pipeline</span>
-            <Plane className="w-4 h-4 text-indigo-600" />
-          </div>
-          <p className="text-2xl font-bold text-indigo-700">{internationalCount} Students</p>
-          <div className="text-[11px] text-indigo-600 font-medium">
-            Embassy clearance active
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Financials (Paid / Billed)</span>
-            <DollarSign className="w-4 h-4 text-amber-600" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900">
-            ${totalPaid.toLocaleString()}
-          </p>
-          <div className="flex items-center justify-between text-[11px] text-slate-500">
-            <span>Total: ${totalBilled.toLocaleString()}</span>
-            <span className="font-semibold text-amber-600">
-              ${totalBalance.toLocaleString()} Due
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Navigation Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Link
-          to="/university/nominate-student"
-          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm transition text-center space-y-1.5 group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center mx-auto group-hover:scale-110 transition">
-            <UserPlus className="w-4 h-4" />
-          </div>
-          <div className="text-xs font-bold text-slate-800">Nominate</div>
-          <div className="text-[10px] text-slate-500">New Trainee</div>
-        </Link>
-
-        <Link
-          to="/university/students"
-          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm transition text-center space-y-1.5 group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto group-hover:scale-110 transition">
-            <Users className="w-4 h-4" />
-          </div>
-          <div className="text-xs font-bold text-slate-800">Students</div>
-          <div className="text-[10px] text-slate-500">A-Z Tracking</div>
-        </Link>
-
-        <Link
-          to="/university/student-status"
-          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm transition text-center space-y-1.5 group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto group-hover:scale-110 transition">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <div className="text-xs font-bold text-slate-800">Status Grid</div>
-          <div className="text-[10px] text-slate-500">Stage Checklist</div>
-        </Link>
-
-        <Link
-          to="/university/mou"
-          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm transition text-center space-y-1.5 group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center mx-auto group-hover:scale-110 transition">
-            <FileCheck2 className="w-4 h-4" />
-          </div>
-          <div className="text-xs font-bold text-slate-800">Bilateral MoU</div>
-          <div className="text-[10px] text-slate-500">Quota & Agreement</div>
-        </Link>
-
-        <Link
-          to="/university/financials"
-          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm transition text-center space-y-1.5 group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mx-auto group-hover:scale-110 transition">
-            <DollarSign className="w-4 h-4" />
-          </div>
-          <div className="text-xs font-bold text-slate-800">Financials</div>
-          <div className="text-[10px] text-slate-500">Invoices & Receipts</div>
-        </Link>
-
-        <Link
-          to="/university/certificates"
-          className="p-4 rounded-xl border border-slate-200 bg-white hover:border-sky-300 hover:shadow-sm transition text-center space-y-1.5 group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mx-auto group-hover:scale-110 transition">
-            <Award className="w-4 h-4" />
-          </div>
-          <div className="text-xs font-bold text-slate-800">Certificates</div>
-          <div className="text-[10px] text-slate-500">{completedCount} Issued</div>
-        </Link>
-      </div>
-
-      {/* Trainees Live Roster */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 pb-8">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-800 via-sky-600 to-teal-400 text-white shadow-xl">
+        <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10" />
+        <div className="absolute right-28 bottom-[-80px] h-56 w-56 rounded-full bg-indigo-500/20" />
+        <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[1.5fr_.7fr] lg:items-center">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Enrolled Medical Trainees</h2>
-            <p className="text-xs text-slate-500">Real-time status of university students in clinical attachments</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search students, hospital, specialty..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
+            <div className="mb-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/20 bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider">University Portal</span>
+              <span className="flex items-center gap-1 rounded-full border border-emerald-200/30 bg-emerald-300/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider"><ShieldCheck className="h-3.5 w-3.5" /> Secure Institutional Access</span>
             </div>
-            <Link
-              to="/university/students"
-              className="text-xs font-bold text-sky-600 hover:text-sky-800 inline-flex items-center gap-1"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
+            <p className="text-sm font-medium text-sky-100">Welcome back,</p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">{adminName}</h1>
+            <div className="mt-2 flex items-center gap-2 text-lg font-bold sm:text-xl"><GraduationCap className="h-6 w-6" /> {universityName} — University Portal</div>
+            <p className="mt-4 max-w-2xl text-xs leading-6 text-blue-50 sm:text-sm">Manage nominated students, clinical rotations, institutional agreements, financials and certificates from one responsive workspace.</p>
+          </div>
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm">
+            <div className="flex items-center gap-3"><div className="rounded-xl bg-white/15 p-3"><GraduationCap className="h-7 w-7" /></div><div><div className="text-xs text-sky-100">Institution</div><div className="text-xl font-extrabold">{universityName}</div></div></div>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-xs"><div className="rounded-xl bg-black/10 p-3"><div className="text-sky-100">Student quota</div><div className="mt-1 text-lg font-black">{totalStudents} / {quotaTotal}</div></div><div className="rounded-xl bg-black/10 p-3"><div className="text-sky-100">MoU Status</div><div className="mt-1 font-bold">{mouConfig.isSigned ? 'Active' : 'Pending'}</div></div></div>
           </div>
         </div>
+      </section>
 
-        {filteredTrainees.length === 0 ? (
-          <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 space-y-3">
-            <GraduationCap className="w-8 h-8 text-slate-400 mx-auto" />
-            <p className="text-xs text-slate-600">No medical trainees nominated yet.</p>
-            <Link
-              to="/university/nominate-student"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-700 transition"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Nominate First Student</span>
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-semibold uppercase text-[10px]">
-                  <th className="pb-3 font-semibold">Student</th>
-                  <th className="pb-3 font-semibold">Specialty & Rotation</th>
-                  <th className="pb-3 font-semibold">Hospital & City</th>
-                  <th className="pb-3 font-semibold">Supervisor</th>
-                  <th className="pb-3 font-semibold">Attendance</th>
-                  <th className="pb-3 font-semibold">Logbook</th>
-                  <th className="pb-3 font-semibold">Status</th>
-                  <th className="pb-3 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {filteredTrainees.slice(0, 8).map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3 pr-2">
-                      <div className="font-bold text-slate-900">{t.studentName}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">{t.studentId} • {t.studyYear}</div>
-                    </td>
-                    <td className="py-3 pr-2">
-                      <div className="font-semibold text-slate-800">{t.specialty}</div>
-                      <div className="text-[10px] text-slate-500">{t.durationWeeks} Weeks ({t.startDate} - {t.endDate})</div>
-                    </td>
-                    <td className="py-3 pr-2">
-                      <div className="font-medium text-slate-800">{t.targetHospital}</div>
-                      <div className="text-[10px] text-slate-500">{t.cityCountry}</div>
-                    </td>
-                    <td className="py-3 pr-2">
-                      <div className="font-medium text-slate-800">{t.assignedSupervisor.name}</div>
-                      <div className="text-[10px] text-slate-500 truncate max-w-[140px]">{t.assignedSupervisor.title}</div>
-                    </td>
-                    <td className="py-3 pr-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-slate-800">{t.attendancePercent}%</span>
-                      </div>
-                      <div className="w-16 bg-slate-200 rounded-full h-1 mt-1">
-                        <div
-                          className="bg-indigo-600 h-1 rounded-full"
-                          style={{ width: `${t.attendancePercent}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td className="py-3 pr-2">
-                      <div className="font-mono font-bold text-slate-800">
-                        {t.logbookProceduresSigned} / {t.logbookRequired}
-                      </div>
-                      <div className="w-16 bg-slate-200 rounded-full h-1 mt-1">
-                        <div
-                          className="bg-emerald-600 h-1 rounded-full"
-                          style={{ width: `${Math.min(100, (t.logbookProceduresSigned / t.logbookRequired) * 100)}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td className="py-3 pr-2">
-                      {t.certificateIssued ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Certified
-                        </span>
-                      ) : t.hospitalPlacementStatus === 'CONFIRMED' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold">
-                          <Clock className="w-3 h-3" />
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
-                          <Clock className="w-3 h-3" />
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 text-right">
-                      <Link
-                        to={`/university/students/${t.id}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-600 hover:text-sky-800"
-                      >
-                        <span>Journey</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {!mouConfig.isSigned && <section className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><div className="rounded-xl bg-amber-500 p-2.5 text-white"><FileCheck2 className="h-5 w-5" /></div><div><h2 className="text-sm font-extrabold text-amber-950">Institutional Bilateral MoU Signature Required</h2><p className="mt-1 text-xs text-amber-800">Activate your university's clinical placement quota and partner-hospital access.</p></div></div><Link to="/university/mou" className="inline-flex items-center justify-center gap-1 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700">Sign MoU Agreement <ChevronRight className="h-4 w-4" /></Link></section>}
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ['Total Students', totalStudents, Users, 'from-blue-50 to-sky-50', 'text-blue-700'],
+          ['Active Rotations', activeRotations, Building2, 'from-emerald-50 to-teal-50', 'text-emerald-700'],
+          ['Certificates Issued', certificates, Award, 'from-violet-50 to-purple-50', 'text-violet-700'],
+          ['Financials Paid', `$${totalPaid.toLocaleString()}`, DollarSign, 'from-orange-50 to-amber-50', 'text-orange-700'],
+        ].map(([label, value, Icon, gradient, tone]: any) => <div key={label} className={`rounded-2xl border border-slate-200 bg-gradient-to-br ${gradient} p-5 shadow-sm`}><div className="flex items-start justify-between"><div><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-2 text-3xl font-black text-slate-900">{value}</p></div><div className={`rounded-2xl bg-white p-3 shadow-sm ${tone}`}><Icon className="h-6 w-6" /></div></div></div>)}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><div className="mb-4 flex items-center justify-between"><div><h2 className="font-extrabold text-slate-900">Quick Actions</h2><p className="text-xs text-slate-500">Common university tasks and activities</p></div></div><div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">{quickActions.map(({to,label,sub,icon:Icon,box}) => <Link key={label} to={to} className={`rounded-2xl border p-4 text-center transition hover:-translate-y-0.5 hover:shadow-md ${box}`}><div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-white/80"><Icon className="h-5 w-5" /></div><div className="text-xs font-extrabold">{label}</div><div className="mt-1 text-[10px] opacity-70">{sub}</div></Link>)}</div></section>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-extrabold text-slate-900">Enrolled Medical Trainees</h2><p className="text-xs text-slate-500">Live university student status</p></div><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Search students..." className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs outline-none focus:ring-2 focus:ring-blue-500 sm:w-64"/></div></div>{filtered.length === 0 ? <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center"><GraduationCap className="mx-auto h-9 w-9 text-slate-300"/><p className="mt-2 text-xs text-slate-500">No medical trainees nominated yet.</p><Link to="/university/nominate-student" className="mt-3 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white"><UserPlus className="h-4 w-4"/> Nominate First Student</Link></div> : <div className="mt-4 space-y-2">{filtered.slice(0,5).map(t=><div key={t.studentId} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"><div><div className="text-xs font-bold text-slate-900">{t.studentName}</div><div className="text-[10px] text-slate-500">{t.studentId} • {t.specialty}</div></div><div className="text-[10px] font-semibold text-blue-700">{t.targetHospital}</div></div>)}</div>}</div>
+
+        <div className="space-y-4"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Megaphone className="h-5 w-5 text-violet-600"/><h2 className="font-extrabold text-slate-900">Announcements</h2></div><div className="mt-4 space-y-3 text-xs"><div className="rounded-xl bg-violet-50 p-3"><b>Clinical Rotation Placement</b><p className="mt-1 text-slate-500">New rotation slots and updates appear here.</p></div><div className="rounded-xl bg-blue-50 p-3"><b>University Portal</b><p className="mt-1 text-slate-500">Institution: {universityName}</p></div></div></div><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-blue-600"/><h2 className="font-extrabold text-slate-900">Academic Calendar</h2></div><div className="mt-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 p-4"><div className="text-xs font-bold text-slate-900">September 2026</div><div className="mt-3 grid grid-cols-7 gap-1 text-center text-[10px] text-slate-500">{['M','T','W','T','F','S','S'].map((d,i)=><span key={`${d}-${i}`} className="font-bold">{d}</span>)}{Array.from({length:28},(_,i)=><span key={i} className={`rounded-md py-1 ${i===14?'bg-blue-600 text-white font-bold':''}`}>{i+1}</span>)}</div></div></div></div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3"><div className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-2 text-emerald-700"><CheckCircle2 className="h-5 w-5"/><b className="text-sm">Institution Connected</b></div><p className="mt-2 text-xs text-slate-500">This account is assigned to {universityName}.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-2 text-blue-700"><Activity className="h-5 w-5"/><b className="text-sm">Portal Activity</b></div><p className="mt-2 text-xs text-slate-500">University operations are available from the sidebar.</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-center gap-2 text-violet-700"><Bell className="h-5 w-5"/><b className="text-sm">Notifications</b></div><p className="mt-2 text-xs text-slate-500">Important placement and document updates will appear here.</p></div></section>
     </div>
   );
 };
