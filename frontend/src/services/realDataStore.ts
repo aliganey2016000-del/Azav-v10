@@ -12,6 +12,15 @@ export interface RealTraineeDocument {
   uploadedAt: string;
 }
 
+export interface RealTraineeStage {
+  stageKey: string;
+  status: 'LOCKED' | 'CURRENT' | 'COMPLETED' | 'REJECTED' | 'CORRECTION_REQUESTED';
+  reason?: string;
+  fee?: number;
+  documents?: RealTraineeDocument[];
+  actedAt?: string;
+}
+
 export interface RealTrainee {
   id: string;
   studentName: string;
@@ -29,6 +38,7 @@ export interface RealTrainee {
   documents?: RealTraineeDocument[];
   reviewReason?: string;
   reviewedAt?: string;
+  stages?: RealTraineeStage[];
   visaStatus: 'NOT_REQUIRED' | 'APPLIED' | 'EMBASSY_PROCESSING' | 'GRANTED' | 'REJECTED';
   visaReference?: string;
   hospitalPlacementStatus: 'PENDING' | 'CONFIRMED';

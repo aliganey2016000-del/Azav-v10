@@ -251,6 +251,21 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                           <span className="font-black">AZAAM comment:</span> {stage.reason}
                         </p>
                       )}
+                      {(stage.fee !== undefined || (stage.documents && stage.documents.length > 0)) && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {stage.fee !== undefined && (
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-800">
+                              <DollarSign className="h-3.5 w-3.5" /> Fee charged: ${stage.fee}
+                            </span>
+                          )}
+                          {stage.documents?.map((doc) => (
+                            <span key={doc.id} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1 text-[11px] font-bold text-blue-800">
+                              <FileText className="h-3.5 w-3.5" />
+                              {doc.dataUrl ? <a href={doc.dataUrl} target="_blank" rel="noreferrer" className="hover:underline">{doc.name}</a> : doc.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

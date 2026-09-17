@@ -1,15 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, DollarSign, Download, Eye, Loader2, Upload } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
 import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
 import { useAuth } from '../../context/AuthContext';
-import { RealDataStore } from '../../services/realDataStore';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, buildDisplayStages } from '../../utils/journeyStages';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, actOnMockStage, buildDisplayStages } from '../../utils/journeyStages';
 
 type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
+
+const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result as string);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 export const StudentJourneyAdminPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,9 +28,11 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [formState, setFormState] = useState<Record<string, { action: ActionType; reason: string }>>({});
+  const [formState, setFormState] = useState<Record<string, { action: ActionType; reason: string; fee: string; files: File[] }>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const emptyDraft = { action: 'APPROVE' as ActionType, reason: '', fee: '', files: [] as File[] };
 
   const applyMockJourney = (studentId: string) => {
     const { stages, documents: docs } = loadMockJourney(studentId);
@@ -63,8 +71,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
 
   const handleAction = async (stageKey: string) => {
     if (!id) return;
-    const draft = formState[stageKey];
-    if (!draft) return;
+    const draft = formState[stageKey] || emptyDraft;
     if ((draft.action === 'REQUEST_CORRECTION' || draft.action === 'REJECT') && !draft.reason.trim()) {
       setActionError('A reason/comment is required for Request Correction or Reject.');
       return;
@@ -73,15 +80,26 @@ export const StudentJourneyAdminPage: React.FC = () => {
     setSubmitting(stageKey);
     try {
       if (isMockId(id)) {
-        const reason = draft.reason.trim() || undefined;
-        const newStatus = draft.action === 'APPROVE' ? 'ACCEPTED' : draft.action === 'REQUEST_CORRECTION' ? 'CORRECTION_REQUESTED' : 'REJECTED';
-        RealDataStore.updateTrainee(id, { applicationStatus: newStatus as any, reviewReason: newStatus === 'ACCEPTED' ? undefined : reason, reviewedAt: new Date().toISOString() });
-        applyMockJourney(id);
+        const fee = draft.fee.trim() ? Number(draft.fee) : undefined;
+        const docs = await Promise.all(
+          draft.files.map(async (file) => ({
+            id: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name: file.name,
+            type: file.type || 'application/octet-stream',
+            dataUrl: await readFileAsDataUrl(file),
+            uploadedAt: new Date().toISOString(),
+          }))
+        );
+        const { stages } = actOnMockStage(id, stageKey, draft.action, draft.reason.trim() || undefined, {
+          fee: draft.action === 'APPROVE' ? fee : undefined,
+          documents: draft.action === 'APPROVE' ? docs : undefined,
+        });
+        setAzaamStages(stages);
       } else {
         const updated = await AdminApiService.actOnJourneyStage(id, stageKey, draft.action, draft.reason.trim() || undefined);
         setAzaamStages(updated);
       }
-      setFormState((prev) => ({ ...prev, [stageKey]: { action: 'APPROVE', reason: '' } }));
+      setFormState((prev) => ({ ...prev, [stageKey]: emptyDraft }));
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || e.message || 'Failed to update stage.');
     } finally {
@@ -166,7 +184,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
           {stages.map((stage, index) => {
             const Icon = icons[index];
             const complete = stage.uiStatus === 'COMPLETED';
-            const draft = formState[stage.key] || { action: 'APPROVE' as ActionType, reason: '' };
+            const draft = formState[stage.key] || emptyDraft;
             return (
               <div key={stage.key} className={`relative rounded-2xl border p-4 transition ${STATUS_STYLE[stage.uiStatus]}`}>
                 <div className="flex items-start gap-4">
@@ -184,6 +202,22 @@ export const StudentJourneyAdminPage: React.FC = () => {
                       <p className="mt-2 rounded-lg bg-white/70 border border-current/20 p-2 text-[11px] font-semibold text-slate-700">
                         <span className="font-black">AZAAM comment:</span> {stage.reason}
                       </p>
+                    )}
+
+                    {(stage.fee !== undefined || (stage.documents && stage.documents.length > 0)) && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {stage.fee !== undefined && (
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-800">
+                            <DollarSign className="h-3.5 w-3.5" /> Fee charged: ${stage.fee}
+                          </span>
+                        )}
+                        {stage.documents?.map((doc) => (
+                          <span key={doc.id} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1 text-[11px] font-bold text-blue-800">
+                            <FileText className="h-3.5 w-3.5" />
+                            {doc.dataUrl ? <a href={doc.dataUrl} target="_blank" rel="noreferrer" className="hover:underline">{doc.name}</a> : doc.name}
+                          </span>
+                        ))}
+                      </div>
                     )}
 
                     {stage.key === 'DOCUMENTS_SUBMITTED' && documents.length > 0 && (
@@ -209,33 +243,64 @@ export const StudentJourneyAdminPage: React.FC = () => {
                     )}
 
                     {stage.actionable && (
-                      <div className="mt-3 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-start">
-                        <select
-                          value={draft.action}
-                          onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, action: e.target.value as ActionType } }))}
-                          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold text-slate-800"
-                        >
-                          <option value="APPROVE">Approve</option>
-                          <option value="REQUEST_CORRECTION">Request Correction</option>
-                          <option value="REJECT">Reject</option>
-                        </select>
-                        {draft.action !== 'APPROVE' && (
-                          <input
-                            type="text"
-                            value={draft.reason}
-                            onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, reason: e.target.value } }))}
-                            placeholder="Reason / comment (required)"
-                            className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
-                          />
+                      <div className="mt-3 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                          <select
+                            value={draft.action}
+                            onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, action: e.target.value as ActionType } }))}
+                            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold text-slate-800"
+                          >
+                            <option value="APPROVE">Approve</option>
+                            <option value="REQUEST_CORRECTION">Request Correction</option>
+                            <option value="REJECT">Reject</option>
+                          </select>
+                          {draft.action !== 'APPROVE' && (
+                            <input
+                              type="text"
+                              value={draft.reason}
+                              onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, reason: e.target.value } }))}
+                              placeholder="Reason / comment (required)"
+                              className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                            />
+                          )}
+                          <button
+                            onClick={() => handleAction(stage.key)}
+                            disabled={submitting === stage.key}
+                            className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700 disabled:opacity-50"
+                          >
+                            {submitting === stage.key && <Loader2 className="h-3 w-3 animate-spin" />}
+                            Submit
+                          </button>
+                        </div>
+
+                        {id && isMockId(id) && draft.action === 'APPROVE' && (stage.inputKind === 'fee' || stage.inputKind === 'fee_and_document') && (
+                          <label className="flex items-center gap-2 text-xs">
+                            <DollarSign className="h-3.5 w-3.5 text-violet-600" />
+                            <span className="font-bold text-slate-700">Fee to charge (optional):</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={draft.fee}
+                              onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, fee: e.target.value } }))}
+                              placeholder="0.00"
+                              className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                            />
+                          </label>
                         )}
-                        <button
-                          onClick={() => handleAction(stage.key)}
-                          disabled={submitting === stage.key}
-                          className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700 disabled:opacity-50"
-                        >
-                          {submitting === stage.key && <Loader2 className="h-3 w-3 animate-spin" />}
-                          Submit
-                        </button>
+
+                        {id && isMockId(id) && draft.action === 'APPROVE' && (stage.inputKind === 'document' || stage.inputKind === 'fee_and_document') && (
+                          <label className="flex cursor-pointer items-center gap-2 text-xs">
+                            <Upload className="h-3.5 w-3.5 text-blue-600" />
+                            <span className="font-bold text-slate-700">Attach document (optional):</span>
+                            <input
+                              type="file"
+                              multiple
+                              onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, files: Array.from(e.target.files || []) } }))}
+                              className="text-[11px]"
+                            />
+                            {draft.files.length > 0 && <span className="font-semibold text-blue-700">{draft.files.length} file(s) selected</span>}
+                          </label>
+                        )}
                       </div>
                     )}
                   </div>
