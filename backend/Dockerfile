@@ -13,6 +13,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Coolify Dockerfile healthchecks require curl or wget inside the runtime image.
+RUN apk add --no-cache curl
+
 COPY package*.json ./
 RUN npm install --omit=dev
 
