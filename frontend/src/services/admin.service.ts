@@ -9,6 +9,7 @@ import {
   AdminSupervisor,
   AdminStudent,
   AdminStudentJourney,
+  AdminJourneyStage,
   AuditLogItem,
   PaginationMeta,
 } from '../types/admin.types';
@@ -1301,5 +1302,37 @@ export class AdminApiService {
     }
     const { students } = await this.getStudents({ limit: 100 });
     return students.find((s) => s._id === id) || students[0];
+  }
+
+  static async getStudentDocuments(studentId: string): Promise<any[]> {
+    const res = await api.get('/documents', { params: { studentId, limit: 100 } });
+    return res.data.data.documents || [];
+  }
+
+  static async downloadDocument(documentId: string, fileName: string): Promise<void> {
+    const res = await api.get(`/documents/${documentId}/download`, { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  static async getStudentAzaamJourney(id: string): Promise<AdminJourneyStage[]> {
+    const res = await api.get(`/admin/students/${id}/journey`);
+    return res.data.data.stages;
+  }
+
+  static async actOnJourneyStage(
+    id: string,
+    stageKey: string,
+    action: 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT',
+    reason?: string
+  ): Promise<AdminJourneyStage[]> {
+    const res = await api.post(`/admin/students/${id}/journey/${stageKey}/action`, { action, reason });
+    return res.data.data.stages;
   }
 }

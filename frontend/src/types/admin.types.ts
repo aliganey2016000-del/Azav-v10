@@ -193,6 +193,16 @@ export interface AdminStudent {
   updatedAt: string;
 }
 
+export interface AdminJourneyStage {
+  stageKey: string;
+  order: number;
+  status: 'LOCKED' | 'CURRENT' | 'COMPLETED' | 'REJECTED' | 'CORRECTION_REQUESTED';
+  reason?: string;
+  actedAt?: string;
+  title: string;
+  description: string;
+}
+
 export interface AdminStudentJourney {
   student: AdminStudent;
   timeline: {

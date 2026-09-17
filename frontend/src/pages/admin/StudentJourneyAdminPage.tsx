@@ -1,81 +1,151 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Clock, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, DollarSign } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminStudentJourney } from '../../types/admin.types';
+import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
 import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
+import { useAuth } from '../../context/AuthContext';
 
-type JourneyState = 'COMPLETED' | 'CURRENT' | 'PENDING';
+type UiStatus = 'COMPLETED' | 'CURRENT' | 'PENDING' | 'REJECTED' | 'CORRECTION_REQUESTED';
+type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
 
-type Stage = {
+type DisplayStage = {
+  key: string;
   title: string;
   description: string;
-  state: JourneyState;
-  fee?: number;
-  feeLabel?: string;
-  document?: string;
+  uiStatus: UiStatus;
+  reason?: string;
+  actionable: boolean;
+};
+
+const STATUS_LABEL: Record<UiStatus, string> = {
+  COMPLETED: 'COMPLETED',
+  CURRENT: 'PENDING AZAAM ACTION',
+  PENDING: 'UPCOMING',
+  REJECTED: 'REJECTED',
+  CORRECTION_REQUESTED: 'CORRECTION REQUESTED',
+};
+
+const STATUS_STYLE: Record<UiStatus, string> = {
+  COMPLETED: 'border-emerald-200 bg-emerald-50/60',
+  CURRENT: 'border-amber-300 bg-amber-50 shadow-sm',
+  PENDING: 'border-slate-200 bg-slate-50/70',
+  REJECTED: 'border-red-300 bg-red-50 shadow-sm',
+  CORRECTION_REQUESTED: 'border-orange-300 bg-orange-50 shadow-sm',
+};
+
+const BADGE_STYLE: Record<UiStatus, string> = {
+  COMPLETED: 'bg-emerald-100 text-emerald-800',
+  CURRENT: 'bg-amber-100 text-amber-800',
+  PENDING: 'bg-slate-200 text-slate-600',
+  REJECTED: 'bg-red-100 text-red-800',
+  CORRECTION_REQUESTED: 'bg-orange-100 text-orange-800',
 };
 
 export const StudentJourneyAdminPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const canAct = Boolean(user?.roles?.some((r) => r === 'AZAAM_STAFF' || r === 'SUPER_ADMIN'));
+
   const [data, setData] = useState<AdminStudentJourney | null>(null);
+  const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [formState, setFormState] = useState<Record<string, { action: ActionType; reason: string }>>({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const loadJourney = async (studentId: string) => {
+    const [stages, docs] = await Promise.all([
+      AdminApiService.getStudentAzaamJourney(studentId).catch(() => []),
+      AdminApiService.getStudentDocuments(studentId).catch(() => []),
+    ]);
+    setAzaamStages(stages);
+    setDocuments(docs);
+  };
 
   useEffect(() => {
     if (!id) return;
     AdminApiService.getStudentById(id)
-      .then(setData)
+      .then((d) => {
+        setData(d);
+        return loadJourney(id);
+      })
       .catch((e: any) => setError(e.message || 'Failed to load student journey.'))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const stages = useMemo<Stage[]>(() => {
-    if (!data) return [];
-    const s: any = data.student;
-    const docs: any[] = (data as any).documents || [];
-    const financials: any = (data as any).financials || {};
-    const timeline: any[] = (data as any).timeline || [];
-    const done = (terms: string[]) => timeline.some((x: any) => {
-      const text = `${x.stage || ''} ${x.title || ''}`.toLowerCase();
-      return x.status === 'COMPLETED' && terms.some(t => text.includes(t));
-    });
-    const docsSubmitted = docs.length > 0;
-    const approved = ['APPROVED','ACTIVE','PLACED','IN_ROTATION','COMPLETED'].includes(String(s.applicationStatus || s.status || '').toUpperCase());
-    const acceptance = done(['acceptance','permit','host']);
-    const entryVisa = ['GRANTED','APPROVED'].includes(String(s.visaStatus || '').toUpperCase()) || done(['entry visa','visa']);
-    const residence = ['APPROVED','ACTIVE','GRANTED'].includes(String(s.residenceStatus || '').toUpperCase()) || done(['residence']);
-    const transport = done(['transport','arrival','travel']);
-    const placement = Boolean(s.hospitalPlacement?.name) && !/pending|not assigned|n\/a/i.test(s.hospitalPlacement.name);
-    const training = Number(s.attendancePercent || 0) > 0 || Number(s.logbookSigned || 0) > 0;
-    const completed = Boolean(s.certificateIssued) || String(s.status || '').toUpperCase() === 'COMPLETED';
-    const flags = [true, docsSubmitted, approved, acceptance, entryVisa, residence, transport, placement, training, completed];
-    const firstPending = flags.findIndex(v => !v);
-    const stateAt = (i: number): JourneyState => flags[i] ? 'COMPLETED' : i === firstPending ? 'CURRENT' : 'PENDING';
-    const total = Number(financials.studentFeeDue || s.totalFees || 0);
-
-    return [
-      { title: 'Nomination', description: 'Student nominated by the university and submitted to AZAAM.', state: stateAt(0) },
-      { title: 'Documents Submitted', description: docsSubmitted ? `${docs.length} supporting document(s) received.` : 'Waiting for required supporting documents.', state: stateAt(1) },
-      { title: 'AZAAM Review & Approval', description: approved ? 'AZAAM review completed and process approved.' : 'AZAAM verifies documents and may Approve, Reject or Request Correction.', state: stateAt(2) },
-      { title: 'Permit / Host Acceptance Letter', description: acceptance ? 'Host acceptance / permit has been issued.' : 'Issued after AZAAM approval by the host institution.', state: stateAt(3), document: acceptance ? 'Acceptance / Permit available' : undefined },
-      { title: 'Entry Visa', description: entryVisa ? 'Entry visa stage completed.' : 'Entry visa processing follows host acceptance.', state: stateAt(4), feeLabel: 'Visa Fee', fee: entryVisa ? total : undefined },
-      { title: 'Residence Visa', description: residence ? 'Residence visa stage completed.' : 'Residence permit/visa and applicable fee will appear here.', state: stateAt(5), feeLabel: 'Residence Visa Fee' },
-      { title: 'Travel & Transportation', description: transport ? 'Arrival and transportation confirmed by AZAAM.' : 'AZAAM confirms arrival/transport after the student reaches the destination.', state: stateAt(6), feeLabel: 'Transportation Fee' },
-      { title: 'Hospital Placement', description: placement ? `Placed at ${s.hospitalPlacement.name}.` : 'AZAAM assigns the approved teaching hospital and department.', state: stateAt(7), feeLabel: 'Placement Fee' },
-      { title: 'Clinical Training', description: training ? `Attendance ${s.attendancePercent || 0}% • Logbook ${s.logbookSigned || 0}/${s.logbookRequired || 0}.` : 'Attendance, logbook and supervisor evaluation begin after placement.', state: stateAt(8) },
-      { title: 'Completion & Certificate', description: completed ? `Completed${s.certificateCode ? ` • Certificate ${s.certificateCode}` : ''}.` : 'Final evaluation and certificate are completed at the end of training.', state: stateAt(9) },
+  const stages = useMemo<DisplayStage[]>(() => {
+    const docsSubmitted = documents.length > 0;
+    const list: DisplayStage[] = [
+      {
+        key: 'NOMINATION',
+        title: 'Nomination',
+        description: 'Student nominated by the university and submitted to AZAAM.',
+        uiStatus: 'COMPLETED',
+        actionable: false,
+      },
+      {
+        key: 'DOCUMENTS_SUBMITTED',
+        title: 'Documents Submitted',
+        description: docsSubmitted ? `${documents.length} supporting document(s) received.` : 'Waiting for required supporting documents.',
+        uiStatus: docsSubmitted ? 'COMPLETED' : 'CURRENT',
+        actionable: false,
+      },
     ];
-  }, [data]);
+    azaamStages.forEach((s) => {
+      const uiStatus: UiStatus = s.status === 'LOCKED' ? 'PENDING' : (s.status as UiStatus);
+      list.push({
+        key: s.stageKey,
+        title: s.title,
+        description: s.description,
+        uiStatus,
+        reason: s.reason,
+        actionable: canAct && (uiStatus === 'CURRENT' || uiStatus === 'REJECTED' || uiStatus === 'CORRECTION_REQUESTED'),
+      });
+    });
+    return list;
+  }, [documents, azaamStages, canAct]);
+
+  const handleAction = async (stageKey: string) => {
+    if (!id) return;
+    const draft = formState[stageKey];
+    if (!draft) return;
+    if ((draft.action === 'REQUEST_CORRECTION' || draft.action === 'REJECT') && !draft.reason.trim()) {
+      setActionError('A reason/comment is required for Request Correction or Reject.');
+      return;
+    }
+    setActionError(null);
+    setSubmitting(stageKey);
+    try {
+      const updated = await AdminApiService.actOnJourneyStage(id, stageKey, draft.action, draft.reason.trim() || undefined);
+      setAzaamStages(updated);
+      setFormState((prev) => ({ ...prev, [stageKey]: { action: 'APPROVE', reason: '' } }));
+    } catch (e: any) {
+      setActionError(e?.response?.data?.error?.message || e.message || 'Failed to update stage.');
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const handleDownload = async (doc: any) => {
+    try {
+      await AdminApiService.downloadDocument(doc._id, doc.originalName);
+    } catch (e: any) {
+      setActionError(e?.response?.data?.error?.message || 'Failed to download document.');
+    }
+  };
 
   if (loading) return <LoadingState message="Loading student journey..." />;
   if (error) return <ErrorState message={error} />;
   if (!data) return null;
 
   const s: any = data.student;
-  const completedCount = stages.filter(x => x.state === 'COMPLETED').length;
-  const current = stages.find(x => x.state === 'CURRENT');
+  const completedCount = stages.filter((x) => x.uiStatus === 'COMPLETED').length;
+  const current = stages.find((x) => x.uiStatus !== 'COMPLETED');
   const icons = [FileText, FileText, ShieldCheck, FileText, Plane, Home, Car, Building2, Stethoscope, Award];
 
   return (
@@ -115,6 +185,10 @@ export const StudentJourneyAdminPage: React.FC = () => {
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4"><p className="text-xs font-bold text-blue-700">UNIVERSITY</p><p className="mt-1 text-sm font-black text-blue-950">{s.university?.name || 'University'}</p></div>
       </div>
 
+      {actionError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">{actionError}</div>
+      )}
+
       <section className="rounded-3xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div><h2 className="text-lg font-black text-slate-950">Full Student Journey</h2><p className="text-xs text-slate-500">Completed stages show a green tick. The next stage is highlighted; future stages remain numbered.</p></div>
@@ -124,24 +198,79 @@ export const StudentJourneyAdminPage: React.FC = () => {
         <div className="relative space-y-3 md:pl-2">
           {stages.map((stage, index) => {
             const Icon = icons[index];
-            const complete = stage.state === 'COMPLETED';
-            const active = stage.state === 'CURRENT';
+            const complete = stage.uiStatus === 'COMPLETED';
+            const draft = formState[stage.key] || { action: 'APPROVE' as ActionType, reason: '' };
             return (
-              <div key={stage.title} className={`relative rounded-2xl border p-4 transition ${complete ? 'border-emerald-200 bg-emerald-50/60' : active ? 'border-amber-300 bg-amber-50 shadow-sm' : 'border-slate-200 bg-slate-50/70'}`}>
+              <div key={stage.key} className={`relative rounded-2xl border p-4 transition ${STATUS_STYLE[stage.uiStatus]}`}>
                 <div className="flex items-start gap-4">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-black ${complete ? 'bg-emerald-600 text-white' : active ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-black ${complete ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
                     {complete ? <Check className="h-5 w-5" /> : index + 1}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-2"><Icon className={`h-4 w-4 ${complete ? 'text-emerald-700' : active ? 'text-amber-700' : 'text-slate-500'}`} /><h3 className="text-sm font-black text-slate-900">{stage.title}</h3></div>
-                      <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-black ${complete ? 'bg-emerald-100 text-emerald-800' : active ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'}`}>{complete ? 'COMPLETED' : active ? 'PENDING AZAAM ACTION' : 'UPCOMING'}</span>
+                      <div className="flex items-center gap-2"><Icon className="h-4 w-4 text-slate-500" /><h3 className="text-sm font-black text-slate-900">{stage.title}</h3></div>
+                      <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-black ${BADGE_STYLE[stage.uiStatus]}`}>{STATUS_LABEL[stage.uiStatus]}</span>
                     </div>
                     <p className="mt-1 text-xs leading-5 text-slate-600">{stage.description}</p>
-                    {(stage.document || stage.feeLabel) && <div className="mt-3 flex flex-wrap gap-2">
-                      {stage.document && <span className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1 text-[11px] font-bold text-blue-800"><FileText className="h-3.5 w-3.5" />{stage.document}</span>}
-                      {stage.feeLabel && <span className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-800"><DollarSign className="h-3.5 w-3.5" />{stage.feeLabel}: {stage.fee !== undefined ? `$${stage.fee}` : 'Pending'}</span>}
-                    </div>}
+
+                    {stage.reason && (stage.uiStatus === 'REJECTED' || stage.uiStatus === 'CORRECTION_REQUESTED') && (
+                      <p className="mt-2 rounded-lg bg-white/70 border border-current/20 p-2 text-[11px] font-semibold text-slate-700">
+                        <span className="font-black">AZAAM comment:</span> {stage.reason}
+                      </p>
+                    )}
+
+                    {stage.key === 'DOCUMENTS_SUBMITTED' && documents.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {documents.map((doc) => (
+                          <div key={doc._id} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-slate-200 px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-3.5 w-3.5 shrink-0 text-blue-700" />
+                              <span className="truncate text-xs font-bold text-slate-800">{doc.originalName}</span>
+                              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{doc.type}</span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <button onClick={() => handleDownload(doc)} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-200">
+                                <Eye className="h-3 w-3" /> View
+                              </button>
+                              <button onClick={() => handleDownload(doc)} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200">
+                                <Download className="h-3 w-3" /> Download
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {stage.actionable && (
+                      <div className="mt-3 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-start">
+                        <select
+                          value={draft.action}
+                          onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, action: e.target.value as ActionType } }))}
+                          className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold text-slate-800"
+                        >
+                          <option value="APPROVE">Approve</option>
+                          <option value="REQUEST_CORRECTION">Request Correction</option>
+                          <option value="REJECT">Reject</option>
+                        </select>
+                        {draft.action !== 'APPROVE' && (
+                          <input
+                            type="text"
+                            value={draft.reason}
+                            onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, reason: e.target.value } }))}
+                            placeholder="Reason / comment (required)"
+                            className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                          />
+                        )}
+                        <button
+                          onClick={() => handleAction(stage.key)}
+                          disabled={submitting === stage.key}
+                          className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700 disabled:opacity-50"
+                        >
+                          {submitting === stage.key && <Loader2 className="h-3 w-3 animate-spin" />}
+                          Submit
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
