@@ -29,12 +29,15 @@ import {
 } from 'lucide-react';
 import { RealDataStore, RealTrainee } from '../../services/realDataStore';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminStudentJourney } from '../../types/admin.types';
+import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, buildDisplayStages } from '../../utils/journeyStages';
 
 export const UniversityStudentJourneyPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [trainee, setTrainee] = useState<RealTrainee | null>(null);
   const [adminJourney, setAdminJourney] = useState<AdminStudentJourney | null>(null);
+  const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
+  const [journeyDocuments, setJourneyDocuments] = useState<DisplayDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
     'journey' | 'profile' | 'documents' | 'financials' | 'visa' | 'placement' | 'attendance' | 'logbook' | 'evaluation' | 'certificate'
@@ -56,7 +59,24 @@ export const UniversityStudentJourneyPage: React.FC = () => {
       .then((res) => setAdminJourney(res))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // 3. Load the real AZAAM-controlled journey + submitted documents (mock or backend)
+    if (isMockId(id)) {
+      const { stages, documents } = loadMockJourney(id);
+      setAzaamStages(stages);
+      setJourneyDocuments(documents);
+    } else {
+      Promise.all([
+        AdminApiService.getStudentAzaamJourney(id).catch(() => []),
+        AdminApiService.getStudentDocuments(id).catch(() => []),
+      ]).then(([stages, docs]) => {
+        setAzaamStages(stages);
+        setJourneyDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
+      });
+    }
   }, [id]);
+
+  const realStages = buildDisplayStages(journeyDocuments, azaamStages, false);
 
   if (loading) {
     return (
@@ -94,19 +114,6 @@ export const UniversityStudentJourneyPage: React.FC = () => {
   const evaluationScore = trainee?.evaluationScore ?? adminStudent?.evaluationScore ?? 92;
   const certificateIssued = trainee?.certificateIssued ?? adminStudent?.certificateIssued ?? false;
   const certificateNumber = trainee?.certificateNumber || adminStudent?.certificateCode || 'AZAAM-CERT-2025-VERIFIED';
-
-  const stages = [
-    { title: '1. Student Nominated', desc: 'Accredited University Nomination Submitted', status: 'COMPLETED', date: 'Day 1' },
-    { title: '2. Documents Vetted', desc: 'Passport, transcripts, health clearances verified', status: 'COMPLETED', date: 'Day 3' },
-    { title: '3. Fees Settled', desc: 'AZAAM invoice paid & financial clearance confirmed', status: 'COMPLETED', date: 'Day 5' },
-    { title: '4. Visa & Housing', desc: 'Entry permit & residency accommodation assigned', status: 'COMPLETED', date: 'Day 10' },
-    { title: '5. Hospital Placement', desc: `${targetHospital} (${specialty})`, status: 'COMPLETED', date: startDate },
-    { title: '6. Supervisor Assigned', desc: `${supervisor.name} (${supervisor.title})`, status: 'COMPLETED', date: startDate },
-    { title: '7. Attendance Compliance', desc: `${attendancePercent}% biometric/QR check-in rate`, status: attendancePercent >= 85 ? 'COMPLETED' : 'IN_PROGRESS', date: 'Ongoing' },
-    { title: '8. E-Logbook Verified', desc: `${logbookSigned} of ${logbookRequired} clinical procedures endorsed`, status: logbookSigned >= logbookRequired ? 'COMPLETED' : 'IN_PROGRESS', date: 'Ongoing' },
-    { title: '9. Evaluation & Grading', desc: `${evaluationGrade} (${evaluationScore}%) consultant assessment`, status: evaluationScore ? 'COMPLETED' : 'IN_PROGRESS', date: 'End of Rotation' },
-    { title: '10. Certificate Issuance', desc: certificateIssued ? `Issued (#${certificateNumber})` : 'Pending final graduation sign-off', status: certificateIssued ? 'COMPLETED' : 'PENDING', date: endDate },
-  ];
 
   return (
     <div className="space-y-6">
@@ -209,67 +216,46 @@ export const UniversityStudentJourneyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* TAB CONTENT: 1. 10-Stage Journey */}
+      {/* TAB CONTENT: 1. Live AZAAM Journey */}
       {activeTab === 'journey' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-900">10-Stage End-to-End Trainee Journey</h2>
+              <h2 className="text-base font-bold text-slate-900">Full Student Journey</h2>
               <p className="text-xs text-slate-500">
-                Transparent milestones tracked in real time under AZAAM institutional coordination.
+                Live status of every AZAAM-controlled milestone, exactly as AZAAM sees it.
               </p>
             </div>
             <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-              Active Rotation
+              Live AZAAM Tracking
             </span>
           </div>
 
-          <div className="space-y-4">
-            {stages.map((stage, idx) => (
-              <div
-                key={idx}
-                className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                  stage.status === 'COMPLETED'
-                    ? 'border-emerald-200 bg-emerald-50/50'
-                    : stage.status === 'IN_PROGRESS'
-                    ? 'border-sky-200 bg-sky-50/50'
-                    : 'border-slate-200 bg-slate-50/40'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
-                      stage.status === 'COMPLETED'
-                        ? 'bg-emerald-600 text-white'
-                        : stage.status === 'IN_PROGRESS'
-                        ? 'bg-sky-600 text-white'
-                        : 'bg-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {stage.status === 'COMPLETED' ? <Check className="w-4 h-4" /> : idx + 1}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">{stage.title}</h3>
-                    <p className="text-xs text-slate-600 mt-0.5">{stage.desc}</p>
+          <div className="space-y-3">
+            {realStages.map((stage, idx) => {
+              const complete = stage.uiStatus === 'COMPLETED';
+              return (
+                <div key={stage.key} className={`p-4 rounded-xl border ${STATUS_STYLE[stage.uiStatus]}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${complete ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                      {complete ? <Check className="w-4 h-4" /> : idx + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 className="text-sm font-bold text-slate-900">{stage.title}</h3>
+                        <span className={`w-fit text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${BADGE_STYLE[stage.uiStatus]}`}>{STATUS_LABEL[stage.uiStatus]}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-0.5">{stage.description}</p>
+                      {stage.reason && (stage.uiStatus === 'REJECTED' || stage.uiStatus === 'CORRECTION_REQUESTED') && (
+                        <p className="mt-2 rounded-lg bg-white/70 border border-current/20 p-2 text-[11px] font-semibold text-slate-700">
+                          <span className="font-black">AZAAM comment:</span> {stage.reason}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3 sm:text-right shrink-0">
-                  <span className="text-xs text-slate-500 font-mono">{stage.date}</span>
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                      stage.status === 'COMPLETED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : stage.status === 'IN_PROGRESS'
-                        ? 'bg-sky-100 text-sky-800'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {stage.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -351,35 +337,46 @@ export const UniversityStudentJourneyPage: React.FC = () => {
       {activeTab === 'documents' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900">Verified Compliance Documents</h2>
-            <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-bold">
-              100% Cleared
+            <h2 className="text-base font-bold text-slate-900">Submitted Documents</h2>
+            <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-bold">
+              {journeyDocuments.length} file{journeyDocuments.length === 1 ? '' : 's'} submitted
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-            {[
-              { name: 'Passport & Identity Verification', size: '2.4 MB', type: 'PDF' },
-              { name: 'University Dean Letter & Nomination', size: '1.1 MB', type: 'PDF' },
-              { name: 'Official Medical Transcripts (Y1-Y4)', size: '4.8 MB', type: 'PDF' },
-              { name: 'Immunization & Health Clearance', size: '1.6 MB', type: 'PDF' },
-              { name: 'Malpractice & Observer Indemnity Insurance', size: '920 KB', type: 'PDF' },
-              { name: 'AZAAM Clinical Placement Agreement', size: '1.4 MB', type: 'PDF' },
-            ].map((doc, i) => (
-              <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                <div className="flex items-start justify-between">
-                  <div className="p-2 rounded-lg bg-white border border-slate-200 text-sky-600">
-                    <FileText className="w-5 h-5" />
+          {journeyDocuments.length === 0 ? (
+            <p className="text-xs text-slate-500">No documents have been uploaded for this student yet. Add them from the Nominate/Edit Student form.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              {journeyDocuments.map((doc) => (
+                <div key={doc.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="p-2 rounded-lg bg-white border border-slate-200 text-sky-600">
+                      <FileText className="w-5 h-5" />
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                    Verified
-                  </span>
+                  <div className="font-bold text-slate-900 truncate">{doc.name}</div>
+                  <div className="text-[11px] text-slate-500">{doc.type}</div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => doc.dataUrl && window.open(doc.dataUrl, '_blank')}
+                      className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-200"
+                    >
+                      <ExternalLink className="h-3 w-3" /> View
+                    </button>
+                    {doc.dataUrl && (
+                      <a
+                        href={doc.dataUrl}
+                        download={doc.name}
+                        className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
+                      >
+                        <Download className="h-3 w-3" /> Download
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <div className="font-bold text-slate-900">{doc.name}</div>
-                <div className="text-[11px] text-slate-500">{doc.size} • {doc.type}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
