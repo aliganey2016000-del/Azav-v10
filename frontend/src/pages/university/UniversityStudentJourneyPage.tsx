@@ -26,11 +26,19 @@ import {
   Check,
   Home,
   FileCheck2,
+  Upload,
 } from 'lucide-react';
 import { RealDataStore, RealTrainee } from '../../services/realDataStore';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, buildDisplayStages } from '../../utils/journeyStages';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, addMockPaymentProof, buildDisplayStages } from '../../utils/journeyStages';
+
+const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result as string);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 export const UniversityStudentJourneyPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,9 +47,27 @@ export const UniversityStudentJourneyPage: React.FC = () => {
   const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
   const [journeyDocuments, setJourneyDocuments] = useState<DisplayDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingStage, setUploadingStage] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     'journey' | 'profile' | 'documents' | 'financials' | 'visa' | 'placement' | 'attendance' | 'logbook' | 'evaluation' | 'certificate'
   >('journey');
+
+  const loadJourneyData = (studentId: string) => {
+    if (isMockId(studentId)) {
+      const { stages, documents } = loadMockJourney(studentId);
+      setAzaamStages(stages);
+      setJourneyDocuments(documents);
+    } else {
+      Promise.all([
+        AdminApiService.getStudentAzaamJourney(studentId).catch(() => []),
+        AdminApiService.getStudentDocuments(studentId).catch(() => []),
+      ]).then(([stages, docs]) => {
+        setAzaamStages(stages);
+        setJourneyDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
+      });
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -61,20 +87,31 @@ export const UniversityStudentJourneyPage: React.FC = () => {
       .finally(() => setLoading(false));
 
     // 3. Load the real AZAAM-controlled journey + submitted documents (mock or backend)
-    if (isMockId(id)) {
-      const { stages, documents } = loadMockJourney(id);
-      setAzaamStages(stages);
-      setJourneyDocuments(documents);
-    } else {
-      Promise.all([
-        AdminApiService.getStudentAzaamJourney(id).catch(() => []),
-        AdminApiService.getStudentDocuments(id).catch(() => []),
-      ]).then(([stages, docs]) => {
-        setAzaamStages(stages);
-        setJourneyDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
-      });
-    }
+    loadJourneyData(id);
   }, [id]);
+
+  const handleUploadPaymentProof = async (stageKey: string, files: FileList | null) => {
+    if (!id || !files || files.length === 0 || !isMockId(id)) return;
+    setUploadError(null);
+    setUploadingStage(stageKey);
+    try {
+      const docs = await Promise.all(
+        Array.from(files).map(async (file) => ({
+          id: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          type: file.type || 'application/octet-stream',
+          dataUrl: await readFileAsDataUrl(file),
+          uploadedAt: new Date().toISOString(),
+        }))
+      );
+      const { stages } = addMockPaymentProof(id, stageKey, docs);
+      setAzaamStages(stages);
+    } catch (e: any) {
+      setUploadError('Failed to upload payment proof.');
+    } finally {
+      setUploadingStage(null);
+    }
+  };
 
   const realStages = buildDisplayStages(journeyDocuments, azaamStages, false);
 
@@ -251,14 +288,20 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                           <span className="font-black">AZAAM comment:</span> {stage.reason}
                         </p>
                       )}
-                      {(stage.fee !== undefined || (stage.documents && stage.documents.length > 0)) && (
+                      {stage.invoice && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-800">
+                            <DollarSign className="h-3.5 w-3.5" /> Invoice: ${stage.invoice.amount} • Paid: ${stage.invoice.amountPaid} • Balance: ${stage.invoice.balance}
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${stage.invoice.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {stage.invoice.status}
+                          </span>
+                        </div>
+                      )}
+
+                      {stage.documents && stage.documents.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {stage.fee !== undefined && (
-                            <span className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-800">
-                              <DollarSign className="h-3.5 w-3.5" /> Fee charged: ${stage.fee}
-                            </span>
-                          )}
-                          {stage.documents?.map((doc) => (
+                          {stage.documents.map((doc) => (
                             <span key={doc.id} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1 text-[11px] font-bold text-blue-800">
                               <FileText className="h-3.5 w-3.5" />
                               {doc.dataUrl ? <a href={doc.dataUrl} target="_blank" rel="noreferrer" className="hover:underline">{doc.name}</a> : doc.name}
@@ -266,11 +309,40 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                           ))}
                         </div>
                       )}
+
+                      {stage.paymentProof && stage.paymentProof.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-[11px] font-black text-slate-500">Bank payment proof submitted:</p>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {stage.paymentProof.map((doc) => (
+                              <span key={doc.id} className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">
+                                <FileText className="h-3.5 w-3.5" />
+                                {doc.dataUrl ? <a href={doc.dataUrl} target="_blank" rel="noreferrer" className="hover:underline">{doc.name}</a> : doc.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {stage.hasInvoice && id && isMockId(id) && (
+                        <label className="mt-2 flex cursor-pointer flex-wrap items-center gap-2 text-xs">
+                          <Upload className="h-3.5 w-3.5 text-teal-600" />
+                          <span className="font-bold text-teal-700">Upload bank payment proof:</span>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={(e) => handleUploadPaymentProof(stage.key, e.target.files)}
+                            className="text-[11px]"
+                          />
+                          {uploadingStage === stage.key && <span className="text-[11px] text-slate-500">Uploading…</span>}
+                        </label>
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
+            {uploadError && <p className="text-xs font-bold text-red-600">{uploadError}</p>}
           </div>
         </div>
       )}
