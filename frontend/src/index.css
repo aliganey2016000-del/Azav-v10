@@ -1,1 +1,118 @@
 @import "tailwindcss";
+
+/* Theme is controlled by the .dark class on <html>, not by OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  background: #f5f8fb;
+}
+
+html.dark {
+  background: #08111f;
+}
+
+body {
+  margin: 0;
+  background: #f5f8fb;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+html.dark body,
+html.dark #root {
+  background: #08111f;
+  color: #e2e8f0;
+}
+
+/* Global neutral-surface mapping so every authenticated page follows the theme toggle. */
+html.dark .bg-white {
+  background-color: #0f1b2d !important;
+}
+
+html.dark [class*="bg-white/"] {
+  background-color: rgba(15, 27, 45, 0.94) !important;
+}
+
+html.dark .bg-slate-50,
+html.dark [class*="bg-slate-50/"] {
+  background-color: #0b1626 !important;
+}
+
+html.dark .bg-slate-100,
+html.dark [class*="bg-slate-100/"] {
+  background-color: #172338 !important;
+}
+
+html.dark .bg-slate-200,
+html.dark [class*="bg-slate-200/"] {
+  background-color: #223149 !important;
+}
+
+html.dark [class*="bg-[#f5f8fb]"] {
+  background-color: #08111f !important;
+}
+
+html.dark .text-slate-950,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700 {
+  color: #f1f5f9 !important;
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark [class*="border-slate-100/"],
+html.dark [class*="border-slate-200/"],
+html.dark [class*="border-slate-300/"] {
+  border-color: #27364d !important;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #0b1626;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+html.dark table {
+  color: #e2e8f0;
+}
+
+html.dark tr {
+  border-color: #27364d;
+}
+
+html.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #08111f;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
