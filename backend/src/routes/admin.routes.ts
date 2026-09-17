@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller.js';
+import { JourneyController } from '../controllers/journey.controller.js';
 import { updateOrganizationAdminAccount } from '../controllers/organizationAdminAccount.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
@@ -94,6 +95,13 @@ adminRouter.patch(
   '/supervisors/:id/status',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
   AdminController.updateSupervisorStatus
+);
+
+adminRouter.get('/students/:id/journey', requireRole(...ADMIN_ROLES), JourneyController.getJourney);
+adminRouter.post(
+  '/students/:id/journey/:stageKey/action',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  JourneyController.actOnStage
 );
 
 adminRouter.get('/audit-logs', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.getAuditLogs);
