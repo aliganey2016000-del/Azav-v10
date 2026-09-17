@@ -1,53 +1,118 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Users,
-  GraduationCap,
-  Building2,
-  UserCheck,
-  FileText,
-  Building,
-  Award,
-  Plus,
-  ArrowUpRight,
-  TrendingUp,
   Activity,
-  History,
-  ShieldCheck,
+  ArrowRight,
+  Building2,
+  CalendarDays,
   CheckCircle2,
-  AlertCircle,
-  Clock,
+  Clock3,
+  FileText,
+  GraduationCap,
+  Hospital,
+  MapPin,
+  Plus,
   RefreshCw,
-  Server,
-  Database,
-  Lock,
-  ChevronRight,
-  Sparkles,
+  ShieldCheck,
+  Stethoscope,
+  TrendingUp,
+  UserCheck,
+  Users,
 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminDashboardData } from '../../types/admin.types';
-import { KpiCard } from '../../components/admin/KpiCard';
-import { PageHeader } from '../../components/admin/PageHeader';
-import { LoadingState, ErrorState, EmptyState } from '../../components/admin/States';
-import { StatusBadge, RoleBadge } from '../../components/admin/Badge';
+import { AdminDashboardData, AdminOrganization, AdminUniversity } from '../../types/admin.types';
+import { EmptyState, ErrorState, LoadingState } from '../../components/admin/States';
+
+interface MetricCardProps {
+  title: string;
+  value: number;
+  subtitle: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: 'teal' | 'blue' | 'violet' | 'amber';
+}
+
+const metricTone = {
+  teal: {
+    icon: 'bg-teal-50 text-teal-600',
+    accent: 'bg-teal-500/10',
+  },
+  blue: {
+    icon: 'bg-blue-50 text-blue-600',
+    accent: 'bg-blue-500/10',
+  },
+  violet: {
+    icon: 'bg-violet-50 text-violet-600',
+    accent: 'bg-violet-500/10',
+  },
+  amber: {
+    icon: 'bg-amber-50 text-amber-600',
+    accent: 'bg-amber-500/10',
+  },
+};
+
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtitle, icon: Icon, tone }) => {
+  const styles = metricTone[tone];
+  return (
+    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.04)] sm:p-5">
+      <div className={`absolute -right-7 -top-7 h-24 w-24 rounded-full ${styles.accent}`} />
+      <div className="relative flex items-start gap-3">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${styles.icon}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[10px] font-extrabold uppercase tracking-[0.08em] text-slate-500 sm:text-[11px]">{title}</div>
+          <div className="mt-1 flex items-end gap-2">
+            <span className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{value.toLocaleString()}</span>
+            <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-600">
+              <TrendingUp className="h-3 w-3" /> live
+            </span>
+          </div>
+          <div className="mt-1 truncate text-[10px] text-slate-500 sm:text-xs">{subtitle}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StatusPill: React.FC<{ status?: string }> = ({ status }) => {
+  const active = String(status || '').toUpperCase() === 'ACTIVE';
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-bold ${active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+      {status || 'PENDING'}
+    </span>
+  );
+};
 
 export const AdminDashboardPage: React.FC = () => {
   const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [universities, setUniversities] = useState<AdminUniversity[]>([]);
+  const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
-  const fetchDashboard = async (isManualRefresh = false) => {
+  const fetchDashboard = async (manual = false) => {
     try {
-      if (isManualRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      if (manual) setRefreshing(true);
+      else setLoading(true);
       setError(null);
-      const res = await AdminApiService.getDashboard();
-      setData(res);
+
+      const dashboard = await AdminApiService.getDashboard();
+      setData(dashboard);
+
+      const [universityResult, organizationResult] = await Promise.allSettled([
+        AdminApiService.getUniversities({ page: 1, limit: 2 }),
+        AdminApiService.getOrganizations({ page: 1, limit: 2 }),
+      ]);
+
+      if (universityResult.status === 'fulfilled') {
+        setUniversities(universityResult.value.universities || []);
+      }
+      if (organizationResult.status === 'fulfilled') {
+        setOrganizations(organizationResult.value.organizations || []);
+      }
+
       setLastRefreshed(new Date());
     } catch (err: any) {
       console.error('Failed to load admin dashboard:', err);
@@ -62,386 +127,264 @@ export const AdminDashboardPage: React.FC = () => {
     fetchDashboard();
   }, []);
 
-  if (loading) return <LoadingState message="Fetching operational metrics & platform statistics..." />;
+  const todayLabel = useMemo(
+    () => new Date().toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }),
+    []
+  );
+
+  if (loading) return <LoadingState message="Loading the Super Admin dashboard..." />;
   if (error) return <ErrorState message={error} onRetry={() => fetchDashboard()} />;
-  if (!data) return <EmptyState title="No metrics available" />;
+  if (!data) return <EmptyState title="No dashboard data available" />;
 
-  const { stats, recentApplications, recentUsers, recentActivity, organizationCapacity } = data;
+  const { stats, recentActivity } = data;
+  const institutionTotal = stats.universities + stats.organizations;
+  const universityPct = institutionTotal > 0 ? Math.round((stats.universities / institutionTotal) * 100) : 0;
+  const hospitalPct = institutionTotal > 0 ? 100 - universityPct : 0;
 
-  // Calculate high capacity alerts (>85% utilization)
-  const highCapacityFacilities = organizationCapacity.filter((org) => org.utilization >= 85);
-  const pendingAppsCount = stats.applications || 0;
-  const pendingActionsTotal = highCapacityFacilities.length + (pendingAppsCount > 0 ? 1 : 0);
+  const activityItems = [
+    { label: 'Applications', value: stats.applications, tone: 'bg-blue-500' },
+    { label: 'Placements', value: stats.placements, tone: 'bg-teal-500' },
+    { label: 'Supervisors', value: stats.supervisors, tone: 'bg-violet-500' },
+    { label: 'Certificates', value: stats.certificates, tone: 'bg-amber-500' },
+  ];
+  const maxActivity = Math.max(...activityItems.map((item) => item.value), 1);
 
   return (
-    <div className="space-y-8 pb-8">
-      {/* Top Header */}
-      <PageHeader
-        title="Super Admin Control Center"
-        description="Real-time institutional oversight, clinical capacity management, user administration, and security audit trail."
-        action={
-          <div className="flex flex-wrap items-center gap-2.5">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
+      <section className="relative overflow-hidden rounded-3xl border border-cyan-100/80 bg-gradient-to-r from-[#eefbff] via-white to-[#dff8f4] p-5 shadow-[0_10px_30px_rgba(15,23,42,0.04)] sm:p-6 lg:p-7">
+        <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-teal-200/25 blur-2xl" />
+        <div className="absolute bottom-0 right-5 hidden h-32 w-32 items-center justify-center rounded-full border border-teal-100/80 bg-white/55 text-teal-700/70 lg:flex">
+          <Stethoscope className="h-16 w-16" />
+        </div>
+
+        <div className="relative max-w-4xl">
+          <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-500">Super Admin Dashboard</div>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl lg:text-4xl">
+            Welcome back, <span className="text-teal-600">Azaam Admin</span>
+          </h1>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-600 sm:text-sm">
+            Real-time institutional oversight, clinical capacity management, user administration, and security monitoring across the AZAAM MEDICS network.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-medium text-slate-500 sm:text-xs">
+            <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-teal-600" />{todayLabel}</span>
+            <span className="inline-flex items-center gap-1.5"><Clock3 className="h-4 w-4 text-teal-600" />Updated {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" />All systems operational</span>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+            <Link to="/admin/users" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 text-xs font-bold text-white shadow-[0_8px_20px_rgba(13,148,136,0.22)] transition hover:bg-teal-700">
+              <Plus className="h-4 w-4" /> Add User
+            </Link>
+            <Link to="/admin/universities" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-4 text-xs font-bold text-slate-700 transition hover:bg-white">
+              <GraduationCap className="h-4 w-4 text-blue-600" /> Add University
+            </Link>
+            <Link to="/admin/organizations" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-4 text-xs font-bold text-slate-700 transition hover:bg-white">
+              <Hospital className="h-4 w-4 text-violet-600" /> Add Hospital
+            </Link>
             <button
+              type="button"
               onClick={() => fetchDashboard(true)}
               disabled={refreshing}
-              className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-xs flex items-center space-x-1.5 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-4 text-xs font-bold text-slate-700 transition hover:bg-white disabled:opacity-60"
             >
-              <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
             </button>
-            <Link
-              to="/admin/users"
-              className="px-3.5 py-2 text-xs font-semibold text-white bg-teal-600 rounded-xl hover:bg-teal-700 transition shadow-xs flex items-center space-x-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add User</span>
-            </Link>
-            <Link
-              to="/admin/universities"
-              className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-xs flex items-center space-x-1.5"
-            >
-              <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
-              <span>Add University</span>
-            </Link>
-            <Link
-              to="/admin/organizations"
-              className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-xs flex items-center space-x-1.5"
-            >
-              <Building2 className="w-3.5 h-3.5 text-slate-500" />
-              <span>Add Hospital</span>
-            </Link>
-          </div>
-        }
-      />
-
-      {/* System Health & Status Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-4 shadow-sm border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
-            <Activity className="w-5 h-5 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-teal-400">System Status</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span className="text-xs font-semibold text-slate-300">All Systems Operational</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Role-Based Access Control (RBAC) & tenant isolation active. Last updated: {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </p>
           </div>
         </div>
+      </section>
 
-        {/* Status Indicators */}
-        <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-slate-300">
-          <div className="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700">
-            <Server className="w-3.5 h-3.5 text-emerald-400" />
-            <span>API Gateway: Online</span>
-          </div>
-          <div className="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700">
-            <Database className="w-3.5 h-3.5 text-teal-400" />
-            <span>Database: Synced</span>
-          </div>
-          <div className="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700">
-            <Lock className="w-3.5 h-3.5 text-indigo-400" />
-            <span>JWT Auth: Enforced</span>
-          </div>
-        </div>
-      </div>
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
+        <MetricCard title="Total Students" value={stats.students} subtitle="Enrolled trainees" icon={Users} tone="teal" />
+        <MetricCard title="Partner Universities" value={stats.universities} subtitle="Accredited institutions" icon={GraduationCap} tone="blue" />
+        <MetricCard title="Partner Hospitals" value={stats.organizations} subtitle="Clinical training sites" icon={Building2} tone="violet" />
+        <MetricCard title="Active Placements" value={stats.placements} subtitle="Ongoing clinical attachments" icon={Stethoscope} tone="amber" />
+      </section>
 
-      {/* Pending Actions Callout (if any) */}
-      {pendingActionsTotal > 0 && (
-        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.04)] sm:p-5">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">
-                Pending Actions ({pendingActionsTotal})
-              </h4>
-              <p className="text-xs text-amber-700 mt-0.5">
-                {pendingAppsCount > 0 && `${pendingAppsCount} placement applications require review. `}
-                {highCapacityFacilities.length > 0 && `${highCapacityFacilities.length} healthcare facility approaching capacity limit.`}
-              </p>
+              <h2 className="text-sm font-extrabold text-slate-950 sm:text-base">Platform Activity Overview</h2>
+              <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">Current operational totals across the clinical workflow</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+              <Activity className="h-4 w-4" />
             </div>
           </div>
-          <div className="flex items-center space-x-2 shrink-0">
-            <Link
-              to="/dashboard/applications"
-              className="px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-200/70 hover:bg-amber-200 rounded-lg transition"
-            >
-              Review Applications
-            </Link>
-            <Link
-              to="/admin/organizations"
-              className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-amber-200 hover:bg-amber-50 rounded-lg transition"
-            >
-              Check Facilities
-            </Link>
-          </div>
-        </div>
-      )}
 
-      {/* KPI Cards Grid (8 Core Platform Metrics) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Total Students"
-          value={stats.students}
-          icon={Users}
-          color="teal"
-          subtext="Enrolled trainees"
-        />
-        <KpiCard
-          title="Partner Universities"
-          value={stats.universities}
-          icon={GraduationCap}
-          color="sky"
-          subtext="Accredited institutions"
-        />
-        <KpiCard
-          title="Teaching Hospitals"
-          value={stats.organizations}
-          icon={Building2}
-          color="amber"
-          subtext="Clinical training centers"
-        />
-        <KpiCard
-          title="Clinical Supervisors"
-          value={stats.supervisors}
-          icon={UserCheck}
-          color="violet"
-          subtext="Certified medical mentors"
-        />
-        <KpiCard
-          title="Clinical Placements"
-          value={stats.placements}
-          icon={Building}
-          color="emerald"
-          subtext="Active rotations"
-        />
-        <KpiCard
-          title="Applications"
-          value={stats.applications}
-          icon={FileText}
-          color="indigo"
-          subtext="Placement requests"
-        />
-        <KpiCard
-          title="Certificates Issued"
-          value={stats.certificates}
-          icon={ShieldCheck}
-          color="teal"
-          subtext="Verified credentials"
-        />
-        <KpiCard
-          title="Completed Attachments"
-          value={stats.attachments}
-          icon={Award}
-          color="rose"
-          subtext="Rotations finished"
-        />
-      </div>
-
-      {/* Capacity & Recent Registrations Dual Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Healthcare Facility Capacity Utilization */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Hospital Capacity & Slot Allocation</h3>
-                <p className="text-xs text-slate-500">Live placement availability across partner teaching hospitals</p>
-              </div>
-              <Link to="/admin/organizations" className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1">
-                <span>View All</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {organizationCapacity.length === 0 ? (
-              <p className="text-xs text-slate-400 py-8 text-center">No healthcare facilities configured.</p>
-            ) : (
-              <div className="space-y-4">
-                {organizationCapacity.map((org) => {
-                  const utilization = org.utilization || Math.round(((org.occupied || 0) / (org.capacity || 1)) * 100);
-                  const isHigh = utilization >= 85;
-                  const isModerate = utilization >= 60;
-
-                  return (
-                    <div key={org._id} className="p-3.5 bg-slate-50/70 border border-slate-200/60 rounded-xl hover:border-slate-300 transition">
-                      <div className="flex items-center justify-between mb-1.5 text-xs">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-slate-900">{org.name}</span>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase px-1.5 py-0.5 bg-slate-200/70 rounded">
-                            {org.type}
-                          </span>
-                        </div>
-                        <span className="font-semibold text-slate-700">
-                          {org.occupied} / {org.capacity} slots ({utilization}%)
-                        </span>
-                      </div>
-
-                      {/* Utilization Bar */}
-                      <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isHigh
-                              ? 'bg-rose-500'
-                              : isModerate
-                              ? 'bg-amber-500'
-                              : 'bg-teal-600'
-                          }`}
-                          style={{ width: `${Math.min(100, utilization)}%` }}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500">
-                        <span>
-                          Available Capacity: <strong className="text-slate-800">{org.available ?? (org.capacity - org.occupied)} slots</strong>
-                        </span>
-                        <span className={isHigh ? 'text-rose-600 font-semibold' : 'text-emerald-600 font-semibold'}>
-                          {isHigh ? 'High Utilization' : 'Slots Available'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Capacity calculations are isolated by clinical department and supervisor quotas.</span>
-            <Link to="/admin/organizations" className="font-semibold text-teal-600 hover:text-teal-700">
-              Manage Quotas →
-            </Link>
-          </div>
-        </div>
-
-        {/* Recent Registrations Sidebar */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Recent Users</h3>
-                <p className="text-xs text-slate-500">Newly registered platform accounts</p>
-              </div>
-              <Link to="/admin/users" className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1">
-                <span>View All</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {recentUsers.length === 0 ? (
-              <p className="text-xs text-slate-400 py-8 text-center">No recent user registrations.</p>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {recentUsers.map((u: any) => (
-                  <div key={u._id} className="py-3 flex items-center justify-between">
-                    <div className="truncate pr-2">
-                      <p className="text-xs font-bold text-slate-900 truncate">
-                        {u.firstName} {u.lastName}
-                      </p>
-                      <p className="text-[11px] text-slate-500 truncate">{u.email}</p>
-                    </div>
-                    <RoleBadge role={u.roles?.[0] || 'STUDENT'} />
+          <div className="mt-5 space-y-4">
+            {activityItems.map((item) => {
+              const width = Math.max(4, Math.round((item.value / maxActivity) * 100));
+              return (
+                <div key={item.label}>
+                  <div className="mb-1.5 flex items-center justify-between text-[10px] sm:text-xs">
+                    <span className="font-semibold text-slate-600">{item.label}</span>
+                    <span className="font-extrabold text-slate-900">{item.value.toLocaleString()}</span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100">
-            <Link
-              to="/admin/users"
-              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
-            >
-              <Users className="w-3.5 h-3.5 text-slate-500" />
-              <span>Open User Directory</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Applications & Security Audit Trail */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Applications */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Recent Applications</h3>
-              <p className="text-xs text-slate-500">Latest submitted student placement requests</p>
-            </div>
-            <Link to="/dashboard/applications" className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1">
-              <span>Manage</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {recentApplications.length === 0 ? (
-            <p className="text-xs text-slate-400 py-8 text-center">No recent applications submitted.</p>
-          ) : (
-            <div className="space-y-3">
-              {recentApplications.map((app: any) => (
-                <div key={app._id} className="p-3 bg-slate-50/60 border border-slate-200/60 rounded-xl flex items-center justify-between text-xs hover:border-slate-300 transition">
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-slate-900">
-                      {app.studentId?.firstName ? `${app.studentId.firstName} ${app.studentId.lastName}` : app.studentName || 'Student Applicant'}
-                    </span>
-                    <span className="text-slate-500 block text-[11px]">
-                      Target: <strong className="text-slate-700">{app.desiredOrganizationId?.name || app.targetFacility || 'General Hospital Placement'}</strong>
-                    </span>
-                    {app.universityId?.name && (
-                      <span className="text-slate-400 block text-[10px]">
-                        Nominated by: {app.universityId.name}
-                      </span>
-                    )}
+                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
                   </div>
-                  <StatusBadge status={app.status || 'SUBMITTED'} />
                 </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Applications</div>
+              <div className="mt-1 text-xl font-black text-slate-900">{stats.applications}</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-[9px] font-bold uppercase tracking-wide text-slate-400">Completed Attachments</div>
+              <div className="mt-1 text-xl font-black text-slate-900">{stats.attachments}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.04)] sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-950 sm:text-base">Distribution by Institution Type</h2>
+              <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">Current partner network composition</p>
+            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <Building2 className="h-4 w-4" />
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-8">
+            <div
+              className="relative flex h-40 w-40 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: institutionTotal > 0
+                  ? `conic-gradient(#0d9488 0 ${universityPct}%, #2583e8 ${universityPct}% 100%)`
+                  : 'conic-gradient(#e2e8f0 0 100%)',
+              }}
+            >
+              <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner">
+                <div className="text-2xl font-black text-slate-950">{institutionTotal}</div>
+                <div className="text-[10px] font-semibold text-slate-500">Institutions</div>
+              </div>
+            </div>
+
+            <div className="w-full max-w-xs space-y-3">
+              <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-teal-600" /><span className="font-semibold text-slate-700">Universities</span></div>
+                <div className="flex items-center gap-3"><strong className="text-slate-900">{stats.universities}</strong><span className="w-9 text-right text-slate-500">{universityPct}%</span></div>
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /><span className="font-semibold text-slate-700">Hospitals</span></div>
+                <div className="flex items-center gap-3"><strong className="text-slate-900">{stats.organizations}</strong><span className="w-9 text-right text-slate-500">{hospitalPct}%</span></div>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-100 px-3 pt-3 text-xs">
+                <span className="font-bold text-slate-700">Total</span>
+                <strong className="text-slate-950">{institutionTotal}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:gap-5">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><GraduationCap className="h-4 w-4" /></div>
+              <div><h2 className="text-sm font-extrabold text-slate-950">Recent Universities</h2><p className="text-[10px] text-slate-500">Newest partner institutions</p></div>
+            </div>
+            <Link to="/admin/universities" className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700">View All <ArrowRight className="h-3.5 w-3.5" /></Link>
+          </div>
+
+          {universities.length > 0 ? (
+            <div className="divide-y divide-slate-100">
+              {universities.map((university) => (
+                <Link key={university._id} to={`/admin/universities/${university._id}`} className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-slate-50 sm:px-5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><GraduationCap className="h-4 w-4" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-bold text-slate-900">{university.name}</div>
+                    <div className="mt-1 flex min-w-0 items-center gap-2 text-[10px] text-slate-500">
+                      <span className="truncate">{university.code}</span>
+                      {university.city && <span className="inline-flex items-center gap-1 truncate"><MapPin className="h-3 w-3" />{university.city}</span>}
+                    </div>
+                  </div>
+                  <StatusPill status={university.status} />
+                </Link>
               ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center px-5 py-10 text-center">
+              <GraduationCap className="h-8 w-8 text-slate-300" />
+              <div className="mt-2 text-xs font-bold text-slate-700">No universities registered yet</div>
+              <Link to="/admin/universities" className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-[10px] font-bold text-white"><Plus className="h-3.5 w-3.5" />Add University</Link>
             </div>
           )}
         </div>
 
-        {/* Real-time Audit Trail */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Security & Audit Events</h3>
-              <p className="text-xs text-slate-500">Immutable administrative logs and security events</p>
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><Hospital className="h-4 w-4" /></div>
+              <div><h2 className="text-sm font-extrabold text-slate-950">Recent Hospitals</h2><p className="text-[10px] text-slate-500">Clinical training partners</p></div>
             </div>
-            <Link to="/admin/audit-logs" className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1">
-              <span>Full Log</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+            <Link to="/admin/organizations" className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-600 hover:text-violet-700">View All <ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>
 
-          {recentActivity.length === 0 ? (
-            <p className="text-xs text-slate-400 py-8 text-center">No audit activities recorded.</p>
-          ) : (
-            <div className="space-y-3">
-              {recentActivity.map((log: any) => (
-                <div key={log._id} className="p-3 bg-slate-50/60 border border-slate-200/60 rounded-xl flex items-start space-x-3 text-xs">
-                  <div className="p-1.5 bg-slate-200 text-slate-700 rounded-lg shrink-0 mt-0.5">
-                    <History className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 truncate">{log.action}</span>
-                      <span className="text-[10px] text-slate-400">
-                        {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+          {organizations.length > 0 ? (
+            <div className="divide-y divide-slate-100">
+              {organizations.map((organization) => (
+                <Link key={organization._id} to={`/admin/organizations/${organization._id}`} className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-slate-50 sm:px-5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><Hospital className="h-4 w-4" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-bold text-slate-900">{organization.name}</div>
+                    <div className="mt-1 flex min-w-0 items-center gap-2 text-[10px] text-slate-500">
+                      <span className="truncate">{organization.type}</span>
+                      {organization.city && <span className="inline-flex items-center gap-1 truncate"><MapPin className="h-3 w-3" />{organization.city}</span>}
                     </div>
-                    <p className="text-slate-500 text-[11px] truncate">
-                      By {log.actorEmail} ({log.entityType})
-                    </p>
                   </div>
-                </div>
+                  <StatusPill status={organization.status} />
+                </Link>
               ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center px-5 py-10 text-center">
+              <Hospital className="h-8 w-8 text-slate-300" />
+              <div className="mt-2 text-xs font-bold text-slate-700">No hospitals registered yet</div>
+              <div className="mt-1 text-[10px] text-slate-500">Add a hospital to start managing clinical attachments.</div>
+              <Link to="/admin/organizations" className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3.5 py-2 text-[10px] font-bold text-white"><Plus className="h-3.5 w-3.5" />Add Hospital</Link>
             </div>
           )}
         </div>
-      </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,0.04)] sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><ShieldCheck className="h-4 w-4" /></div>
+            <div><h2 className="text-sm font-extrabold text-slate-950">Security & Audit Activity</h2><p className="text-[10px] text-slate-500">Latest administrative events</p></div>
+          </div>
+          <Link to="/admin/audit-logs" className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-600 hover:text-teal-700">Audit Logs <ArrowRight className="h-3.5 w-3.5" /></Link>
+        </div>
+
+        {recentActivity.length > 0 ? (
+          <div className="mt-4 grid grid-cols-1 gap-2 lg:grid-cols-3">
+            {recentActivity.slice(0, 3).map((log: any) => (
+              <div key={log._id} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-teal-600 shadow-sm"><Activity className="h-3.5 w-3.5" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[10px] font-bold text-slate-800">{log.action}</div>
+                    <div className="mt-1 truncate text-[9px] text-slate-500">{log.actorEmail || 'System administrator'}</div>
+                    <div className="mt-1 text-[9px] text-slate-400">{log.createdAt ? new Date(log.createdAt).toLocaleString() : 'Recent event'}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl bg-slate-50 py-6 text-center text-[10px] text-slate-500">No recent audit activity.</div>
+        )}
+      </section>
     </div>
   );
 };
