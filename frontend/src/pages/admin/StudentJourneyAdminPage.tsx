@@ -6,6 +6,7 @@ import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types'
 import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
 import { useAuth } from '../../context/AuthContext';
+import { RealDataStore } from '../../services/realDataStore';
 
 type UiStatus = 'COMPLETED' | 'CURRENT' | 'PENDING' | 'REJECTED' | 'CORRECTION_REQUESTED';
 type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
@@ -17,6 +18,28 @@ type DisplayStage = {
   uiStatus: UiStatus;
   reason?: string;
   actionable: boolean;
+};
+
+type DisplayDocument = { id: string; name: string; type: string; dataUrl?: string };
+
+const isMockId = (studentId: string) => !/^[0-9a-fA-F]{24}$/.test(studentId);
+
+const MOCK_STAGE_DEFS: { stageKey: string; title: string; description: string }[] = [
+  { stageKey: 'AZAAM_REVIEW', title: 'AZAAM Review & Approval', description: 'AZAAM verifies submitted documents and may Approve, Reject or Request Correction.' },
+  { stageKey: 'PERMIT', title: 'Permit / Host Acceptance Letter', description: 'Issued after AZAAM approval by the host institution.' },
+  { stageKey: 'VISA', title: 'Entry Visa', description: 'Entry visa processing follows host acceptance.' },
+  { stageKey: 'RESIDENCE', title: 'Residence Visa', description: 'Residence permit/visa is processed by AZAAM.' },
+  { stageKey: 'TRANSPORT', title: 'Travel & Transportation', description: 'AZAAM confirms arrival/transport after the student reaches the destination.' },
+  { stageKey: 'PLACEMENT', title: 'Hospital Placement', description: 'AZAAM assigns the approved teaching hospital and department.' },
+  { stageKey: 'TRAINING', title: 'Clinical Training', description: 'Attendance, logbook and supervisor evaluation during placement.' },
+  { stageKey: 'COMPLETION', title: 'Completion & Certificate', description: 'Final evaluation and certificate are completed at the end of training.' },
+];
+
+const mapApplicationStatusToStageStatus = (status?: string): AdminJourneyStage['status'] => {
+  if (status === 'ACCEPTED') return 'COMPLETED';
+  if (status === 'REJECTED') return 'REJECTED';
+  if (status === 'CORRECTION_REQUESTED') return 'CORRECTION_REQUESTED';
+  return 'CURRENT';
 };
 
 const STATUS_LABEL: Record<UiStatus, string> = {
@@ -50,7 +73,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
 
   const [data, setData] = useState<AdminStudentJourney | null>(null);
   const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<DisplayDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,13 +81,31 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const loadMockJourney = (studentId: string) => {
+    const trainee = RealDataStore.getTrainees().find((t) => t.id === studentId);
+    const currentStatus = mapApplicationStatusToStageStatus(trainee?.applicationStatus);
+    setAzaamStages(MOCK_STAGE_DEFS.map((def, i) => ({
+      stageKey: def.stageKey,
+      order: i,
+      status: i === 0 ? currentStatus : 'LOCKED',
+      reason: i === 0 ? trainee?.reviewReason : undefined,
+      title: def.title,
+      description: def.description,
+    })));
+    setDocuments((trainee?.documents || []).map((d) => ({ id: d.id, name: d.name, type: d.type, dataUrl: d.dataUrl })));
+  };
+
   const loadJourney = async (studentId: string) => {
+    if (isMockId(studentId)) {
+      loadMockJourney(studentId);
+      return;
+    }
     const [stages, docs] = await Promise.all([
       AdminApiService.getStudentAzaamJourney(studentId).catch(() => []),
       AdminApiService.getStudentDocuments(studentId).catch(() => []),
     ]);
     setAzaamStages(stages);
-    setDocuments(docs);
+    setDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
   };
 
   useEffect(() => {
@@ -121,8 +162,15 @@ export const StudentJourneyAdminPage: React.FC = () => {
     setActionError(null);
     setSubmitting(stageKey);
     try {
-      const updated = await AdminApiService.actOnJourneyStage(id, stageKey, draft.action, draft.reason.trim() || undefined);
-      setAzaamStages(updated);
+      if (isMockId(id)) {
+        const reason = draft.reason.trim() || undefined;
+        const newStatus = draft.action === 'APPROVE' ? 'ACCEPTED' : draft.action === 'REQUEST_CORRECTION' ? 'CORRECTION_REQUESTED' : 'REJECTED';
+        RealDataStore.updateTrainee(id, { applicationStatus: newStatus as any, reviewReason: newStatus === 'ACCEPTED' ? undefined : reason, reviewedAt: new Date().toISOString() });
+        loadMockJourney(id);
+      } else {
+        const updated = await AdminApiService.actOnJourneyStage(id, stageKey, draft.action, draft.reason.trim() || undefined);
+        setAzaamStages(updated);
+      }
       setFormState((prev) => ({ ...prev, [stageKey]: { action: 'APPROVE', reason: '' } }));
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || e.message || 'Failed to update stage.');
@@ -131,9 +179,18 @@ export const StudentJourneyAdminPage: React.FC = () => {
     }
   };
 
-  const handleDownload = async (doc: any) => {
+  const handleDownload = async (doc: DisplayDocument) => {
     try {
-      await AdminApiService.downloadDocument(doc._id, doc.originalName);
+      if (doc.dataUrl) {
+        const link = window.document.createElement('a');
+        link.href = doc.dataUrl;
+        link.setAttribute('download', doc.name);
+        window.document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return;
+      }
+      await AdminApiService.downloadDocument(doc.id, doc.name);
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || 'Failed to download document.');
     }
@@ -222,14 +279,14 @@ export const StudentJourneyAdminPage: React.FC = () => {
                     {stage.key === 'DOCUMENTS_SUBMITTED' && documents.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {documents.map((doc) => (
-                          <div key={doc._id} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-slate-200 px-3 py-2">
+                          <div key={doc.id} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-slate-200 px-3 py-2">
                             <div className="flex items-center gap-2 min-w-0">
                               <FileText className="h-3.5 w-3.5 shrink-0 text-blue-700" />
-                              <span className="truncate text-xs font-bold text-slate-800">{doc.originalName}</span>
+                              <span className="truncate text-xs font-bold text-slate-800">{doc.name}</span>
                               <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{doc.type}</span>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
-                              <button onClick={() => handleDownload(doc)} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-200">
+                              <button onClick={() => (doc.dataUrl ? window.open(doc.dataUrl, '_blank') : handleDownload(doc))} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-200">
                                 <Eye className="h-3 w-3" /> View
                               </button>
                               <button onClick={() => handleDownload(doc)} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200">

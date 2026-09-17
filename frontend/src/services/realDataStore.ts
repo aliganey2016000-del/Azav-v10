@@ -4,6 +4,14 @@
  * hospital rotations, attendance, logbooks, evaluations, certificates, and invoices).
  */
 
+export interface RealTraineeDocument {
+  id: string;
+  name: string;
+  type: string;
+  dataUrl: string;
+  uploadedAt: string;
+}
+
 export interface RealTrainee {
   id: string;
   studentName: string;
@@ -17,7 +25,10 @@ export interface RealTrainee {
   startDate: string;
   endDate: string;
   durationWeeks: number;
-  applicationStatus: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACCEPTED' | 'REJECTED';
+  applicationStatus: 'SUBMITTED' | 'UNDER_REVIEW' | 'ACCEPTED' | 'REJECTED' | 'CORRECTION_REQUESTED';
+  documents?: RealTraineeDocument[];
+  reviewReason?: string;
+  reviewedAt?: string;
   visaStatus: 'NOT_REQUIRED' | 'APPLIED' | 'EMBASSY_PROCESSING' | 'GRANTED' | 'REJECTED';
   visaReference?: string;
   hospitalPlacementStatus: 'PENDING' | 'CONFIRMED';
