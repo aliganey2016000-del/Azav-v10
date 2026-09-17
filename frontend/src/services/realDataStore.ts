@@ -12,12 +12,21 @@ export interface RealTraineeDocument {
   uploadedAt: string;
 }
 
+export interface RealTraineeInvoice {
+  amount: number;
+  amountPaid: number;
+  updatedAt: string;
+}
+
 export interface RealTraineeStage {
   stageKey: string;
   status: 'LOCKED' | 'CURRENT' | 'COMPLETED' | 'REJECTED' | 'CORRECTION_REQUESTED';
   reason?: string;
+  /** @deprecated superseded by `invoice`; kept only to read pre-existing records. */
   fee?: number;
+  invoice?: RealTraineeInvoice;
   documents?: RealTraineeDocument[];
+  paymentProof?: RealTraineeDocument[];
   actedAt?: string;
 }
 

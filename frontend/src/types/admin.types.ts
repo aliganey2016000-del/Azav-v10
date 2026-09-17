@@ -193,6 +193,14 @@ export interface AdminStudent {
   updatedAt: string;
 }
 
+export interface AdminJourneyInvoice {
+  amount: number;
+  amountPaid: number;
+  balance: number;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  updatedAt: string;
+}
+
 export interface AdminJourneyStage {
   stageKey: string;
   order: number;
@@ -201,8 +209,9 @@ export interface AdminJourneyStage {
   actedAt?: string;
   title: string;
   description: string;
-  fee?: number;
+  invoice?: AdminJourneyInvoice;
   documents?: { id: string; name: string; type: string; dataUrl?: string }[];
+  paymentProof?: { id: string; name: string; type: string; dataUrl?: string }[];
 }
 
 export interface AdminStudentJourney {
