@@ -3,14 +3,22 @@
 /* Theme is controlled by the .dark class on <html>, not by OS preference. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Global responsive guardrails */
 html,
 body,
 #root {
+  width: 100%;
+  max-width: 100%;
   min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 html {
   background: #f5f8fb;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html.dark {
@@ -18,9 +26,45 @@ html.dark {
 }
 
 body {
-  margin: 0;
+  min-width: 0;
   background: #f5f8fb;
   transition: background-color 180ms ease, color 180ms ease;
+}
+
+#root {
+  min-width: 0;
+  isolation: isolate;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
+input,
+textarea,
+select,
+button {
+  max-width: 100%;
+}
+
+.overflow-x-auto {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
 }
 
 html.dark body,
@@ -109,9 +153,18 @@ html.dark tr {
   border-color: #27364d;
 }
 
-html.dark ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }
 
 html.dark ::-webkit-scrollbar-track {
