@@ -110,7 +110,7 @@ adminRouter.post('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentA
 adminRouter.get('/students/:id', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.getById);
 adminRouter.patch('/students/:id', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.update);
 
-adminRouter.get('/students/:id/journey', requireRole(...ADMIN_ROLES, UserRole.UNIVERSITY_STAFF), JourneyController.getJourney);
+adminRouter.get(\n  '/students/:id/journey',\n  requireRole(...ADMIN_ROLES, UserRole.UNIVERSITY_STAFF, UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT),\n  JourneyController.getJourney\n);
 adminRouter.post(
   '/students/:id/journey/:stageKey/action',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
