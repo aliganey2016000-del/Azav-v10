@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import { User } from '../models/User.js';
 import { Student, IStudent } from '../models/Student.js';
 import { Application, IApplication } from '../models/Application.js';
@@ -11,6 +10,7 @@ export interface NominateStudentInput {
   fullName: string;
   studentNumber: string;
   email: string;
+  password: string;
   phone?: string;
   program?: string;
   specialty?: string;
@@ -108,8 +108,14 @@ const toAdminStudentShape = async (student: IStudent, application: IApplication 
 export class StudentAdminService {
   static async nominateStudent(input: NominateStudentInput, actor: AuthUser, universityIdOverride?: string) {
     if (!input.fullName?.trim() || !input.studentNumber?.trim() || !input.email?.trim()) {
-      const err: any = new Error('Full name, student ID and email are required.');
+      const err: any = new Error('Full name, student ID and login email are required.');
       err.statusCode = 400;
+      throw err;
+    }
+    if (typeof input.password !== 'string' || input.password.length < 8 || input.password.length > 128) {
+      const err: any = new Error('Student login password must be between 8 and 128 characters.');
+      err.statusCode = 400;
+      err.code = 'WEAK_PASSWORD';
       throw err;
     }
 
@@ -135,6 +141,7 @@ export class StudentAdminService {
       user.firstName = firstName;
       user.lastName = lastName;
       if (input.phone !== undefined) user.phone = input.phone;
+      user.passwordHash = await bcrypt.hash(input.password, await bcrypt.genSalt(10));
       await user.save();
 
       student = await Student.findOne({ userId: user._id });
@@ -160,8 +167,7 @@ export class StudentAdminService {
       user.studentId = student._id as any;
       await user.save();
     } else {
-      const tempPassword = crypto.randomBytes(12).toString('hex');
-      const passwordHash = await bcrypt.hash(tempPassword, await bcrypt.genSalt(10));
+      const passwordHash = await bcrypt.hash(input.password, await bcrypt.genSalt(10));
 
       user = new User({
         firstName,
@@ -233,6 +239,22 @@ export class StudentAdminService {
 
     const user = await User.findById(student.userId);
     if (user) {
+      if (input.password !== undefined && (typeof input.password !== 'string' || input.password.length < 8 || input.password.length > 128)) {
+        const err: any = new Error('New login password must be between 8 and 128 characters.');
+        err.statusCode = 400;
+        err.code = 'WEAK_PASSWORD';
+        throw err;
+      }
+      if (input.email?.trim()) {
+        const cleanEmail = input.email.trim().toLowerCase();
+        const existingEmailUser = await User.findOne({ email: cleanEmail, _id: { $ne: user._id } }).select('_id');
+        if (existingEmailUser) {
+          const err: any = new Error('This login email is already used by another account.');
+          err.statusCode = 409;
+          err.code = 'EMAIL_EXISTS';
+          throw err;
+        }
+      }
       if (input.fullName?.trim()) {
         const { firstName, lastName } = splitName(input.fullName);
         user.firstName = firstName;
@@ -240,6 +262,7 @@ export class StudentAdminService {
       }
       if (input.email?.trim()) user.email = input.email.trim().toLowerCase();
       if (input.phone !== undefined) user.phone = input.phone;
+      if (input.password) user.passwordHash = await bcrypt.hash(input.password, await bcrypt.genSalt(10));
       await user.save();
     }
 
