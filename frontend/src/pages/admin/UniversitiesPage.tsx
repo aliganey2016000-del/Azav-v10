@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminUniversity, PaginationMeta } from '../../types/admin.types';
-import { PageHeader } from '../../components/admin/PageHeader';
 import { SearchInput } from '../../components/admin/SearchInput';
 import { Pagination } from '../../components/admin/Pagination';
 import { StatusBadge } from '../../components/admin/Badge';
@@ -288,23 +287,37 @@ export const UniversitiesPage: React.FC = () => {
     'w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition';
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      <PageHeader
-        title="University Management"
-        description="Partner universities, academic institutions, and student enrollment capacity."
-        action={
-          canManage && (
+    <div className="university-option-a min-h-full rounded-[28px] bg-slate-50 p-3 sm:p-5 text-slate-900 space-y-5 sm:space-y-6">
+      <section className="relative overflow-hidden rounded-[28px] border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 px-5 py-6 sm:px-7 sm:py-8 shadow-xl">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-teal-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-10 h-28 w-28 rounded-full bg-cyan-400/10 blur-2xl" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-400/20 bg-teal-400/10 px-3 py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.14em] text-teal-300">
+              <GraduationCap className="w-4 h-4" />
+              University Partnerships
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+              University Management
+            </h1>
+            <p className="mt-2 max-w-xl text-sm sm:text-base leading-6 text-slate-300">
+              Partner universities, academic institutions, and student enrollment capacity.
+            </p>
+          </div>
+
+          {canManage && (
             <button
               type="button"
               onClick={openCreateModal}
-              className="w-full sm:w-auto min-h-11 px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 rounded-xl hover:from-teal-700 hover:to-emerald-700 transition shadow-sm shadow-teal-600/20 flex items-center justify-center gap-2"
+              className="w-full lg:w-auto min-h-12 px-6 py-3 text-sm font-extrabold text-white bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl hover:from-teal-600 hover:to-emerald-600 transition shadow-lg shadow-teal-950/30 flex items-center justify-center gap-2"
             >
               <Plus className="w-5 h-5" />
               <span>Register University</span>
             </button>
-          )
-        }
-      />
+          )}
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {statCards.map((item) => {
