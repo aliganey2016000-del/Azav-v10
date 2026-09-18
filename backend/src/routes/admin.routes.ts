@@ -44,7 +44,7 @@ adminRouter.patch(
 );
 adminRouter.post(
   '/users/:id/reset-password',
-  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  requireRole(UserRole.SUPER_ADMIN),
   validateAdminPasswordReset,
   AdminController.resetUserPassword
 );
