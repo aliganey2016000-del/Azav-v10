@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
 import { JourneyChatData, JourneyChatMessage } from '../../types/admin.types';
-import { useAuth } from '../../context/AuthContext';
 
 type PortalMode = 'admin' | 'university';
 
@@ -44,8 +43,6 @@ const formatDay = (value: string) => {
 export const JourneyChatPage: React.FC<JourneyChatPageProps> = ({ portal }) => {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
-
   const [chat, setChat] = useState<JourneyChatData | null>(null);
   const [studentName, setStudentName] = useState('Student');
   const [universityName, setUniversityName] = useState('University');
