@@ -166,8 +166,8 @@ export const JourneyChatPage: React.FC<JourneyChatPageProps> = ({ portal }) => {
   }
 
   return (
-    <div className="-mx-3 -my-4 sm:-mx-4 sm:-my-5 lg:-mx-6 lg:-my-6 xl:-mx-7">
-      <section className="flex h-[calc(100dvh-72px)] min-h-[620px] flex-col overflow-hidden bg-[#efeae2] dark:bg-[#0b141a]">
+    <div className="fixed inset-0 z-[80] bg-[#efeae2] dark:bg-[#0b141a]">
+      <section className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#efeae2] dark:bg-[#0b141a]">
         <header className="z-10 shrink-0 border-b border-emerald-950/10 bg-[#075e54] text-white shadow-sm dark:bg-[#202c33]">
           <div className="flex h-[70px] items-center gap-2 px-3 sm:px-4">
             <Link
