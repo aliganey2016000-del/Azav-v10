@@ -280,7 +280,7 @@ export const StudentApplicationPage: React.FC = () => {
                     <div className="flex items-start gap-3.5 sm:gap-4">
                       <div
                         className={
-                          'mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black sm:h-13 sm:w-13 ' +
+                          'mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-black sm:h-14 sm:w-14 ' +
                           (complete
                             ? 'bg-emerald-600 text-white'
                             : current
