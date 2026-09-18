@@ -34,7 +34,7 @@ export const PortalLayout: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [theme, setTheme] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'light';
-    return window.localStorage.getItem('azaam_theme') === 'dark' ? 'dark' : 'light';
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   const currentRole = user?.roles?.[0] || UserRole.STUDENT;
@@ -56,7 +56,6 @@ export const PortalLayout: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
-    window.localStorage.setItem('azaam_theme', theme);
   }, [theme, darkMode]);
 
   useEffect(() => {
