@@ -298,6 +298,7 @@ export class AdminApiService {
     fullName: string;
     studentNumber: string;
     email: string;
+    password?: string;
     phone?: string;
     program?: string;
     specialty?: string;
