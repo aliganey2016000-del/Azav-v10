@@ -92,6 +92,17 @@ export class DocumentService {
       }
     }
 
+    const isUniversityUser = actor.roles.includes(UserRole.UNIVERSITY_ADMIN) || actor.roles.includes(UserRole.UNIVERSITY_STAFF);
+    if (isUniversityUser && targetStudentId) {
+      const student = await Student.findById(targetStudentId).select('universityId');
+      if (!student || !actor.universityId || student.universityId?.toString() !== actor.universityId.toString()) {
+        const err: any = new Error('You cannot attach a document to a student outside your university.');
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_TENANT';
+        throw err;
+      }
+    }
+
     const resolvedOwnerType = isStudentLike
       ? DocumentOwnerType.STUDENT
       : (metadata.ownerType || DocumentOwnerType.STUDENT);

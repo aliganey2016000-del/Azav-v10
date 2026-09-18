@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller.js';
 import { JourneyController } from '../controllers/journey.controller.js';
+import { StudentAdminController } from '../controllers/studentAdmin.controller.js';
 import { updateOrganizationAdminAccount } from '../controllers/organizationAdminAccount.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
@@ -97,7 +98,19 @@ adminRouter.patch(
   AdminController.updateSupervisorStatus
 );
 
-adminRouter.get('/students/:id/journey', requireRole(...ADMIN_ROLES), JourneyController.getJourney);
+const STUDENT_NOMINATION_ROLES = [
+  UserRole.SUPER_ADMIN,
+  UserRole.AZAAM_STAFF,
+  UserRole.UNIVERSITY_ADMIN,
+  UserRole.UNIVERSITY_STAFF,
+];
+
+adminRouter.get('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.list);
+adminRouter.post('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.nominate);
+adminRouter.get('/students/:id', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.getById);
+adminRouter.patch('/students/:id', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.update);
+
+adminRouter.get('/students/:id/journey', requireRole(...ADMIN_ROLES, UserRole.UNIVERSITY_STAFF), JourneyController.getJourney);
 adminRouter.post(
   '/students/:id/journey/:stageKey/action',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),

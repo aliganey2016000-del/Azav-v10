@@ -1156,7 +1156,33 @@ export class AdminApiService {
   static async getStudentById(id: string): Promise<AdminStudentJourney> {
     try {
       const res = await api.get(`/admin/students/${id}`);
-      if (res.data?.data) return res.data.data;
+      if (res.data?.data) {
+        const student: AdminStudent = res.data.data;
+        return {
+          student,
+          timeline: [],
+          documents: [],
+          financials: {
+            studentFeeDue: student.totalFees || 0,
+            studentFeePaid: student.paidFees || 0,
+            currency: 'USD',
+            status: student.paymentStatus === 'PAID' ? 'PAID' : student.paymentStatus === 'PARTIAL' ? 'PARTIAL' : 'PENDING',
+            invoiceNumber: '',
+            receipts: [],
+          },
+          attendanceLog: [],
+          logbookEntries: [],
+          evaluation: {
+            clinicalKnowledge: 0,
+            practicalSkills: 0,
+            professionalism: 0,
+            patientCare: 0,
+            overallGrade: student.evaluationGrade || '',
+            supervisorRemarks: '',
+            completedAt: '',
+          },
+        };
+      }
     } catch (err) {}
 
     const { students } = await this.getStudents({ limit: 100 });
@@ -1302,6 +1328,49 @@ export class AdminApiService {
     }
     const { students } = await this.getStudents({ limit: 100 });
     return students.find((s) => s._id === id) || students[0];
+  }
+
+  static async nominateStudent(input: {
+    fullName: string;
+    studentNumber: string;
+    email: string;
+    phone?: string;
+    program?: string;
+    specialty?: string;
+    academicLevel?: string;
+    preferredStartDate?: string;
+    preferredEndDate?: string;
+    durationWeeks?: number;
+  }): Promise<AdminStudent> {
+    const res = await api.post('/admin/students', input);
+    return res.data.data;
+  }
+
+  static async updateNomination(id: string, input: Partial<{
+    fullName: string;
+    studentNumber: string;
+    email: string;
+    phone?: string;
+    program?: string;
+    specialty?: string;
+    academicLevel?: string;
+    preferredStartDate?: string;
+    preferredEndDate?: string;
+    durationWeeks?: number;
+  }>): Promise<AdminStudent> {
+    const res = await api.patch(`/admin/students/${id}`, input);
+    return res.data.data;
+  }
+
+  static async uploadStudentDocument(studentId: string, file: { originalName: string; mimeType: string; base64Data: string }): Promise<any> {
+    const res = await api.post('/documents/upload', {
+      originalName: file.originalName,
+      mimeType: file.mimeType,
+      base64Data: file.base64Data,
+      type: 'APPLICATION_SUPPORTING_DOC',
+      studentId,
+    });
+    return res.data.data.document;
   }
 
   static async getStudentDocuments(studentId: string): Promise<any[]> {
