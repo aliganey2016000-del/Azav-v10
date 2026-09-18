@@ -30,8 +30,8 @@ const STAGE_LABELS: Record<JourneyStageKey, { title: string; description: string
     description: 'AZAAM uploads the residence permit/visa document and shares updates with the university.',
   },
   [JourneyStageKey.TRANSPORT]: {
-    title: 'Travel & Transportation',
-    description: 'AZAAM confirms arrival/transport after the student reaches the destination.',
+    title: 'Arrival & Airport Pickup',
+    description: 'AZAAM confirms the student arrival and airport pickup with photo evidence.',
   },
   [JourneyStageKey.PLACEMENT]: {
     title: 'Hospital Placement',
@@ -51,6 +51,15 @@ const DOCUMENT_UPDATE_STAGES = new Set<JourneyStageKey>([
   JourneyStageKey.PERMIT,
   JourneyStageKey.VISA,
   JourneyStageKey.RESIDENCE,
+]);
+
+const EVIDENCE_UPDATE_STAGES = new Set<JourneyStageKey>([
+  JourneyStageKey.TRANSPORT,
+]);
+
+const STAGE_UPDATE_STAGES = new Set<JourneyStageKey>([
+  ...DOCUMENT_UPDATE_STAGES,
+  ...EVIDENCE_UPDATE_STAGES,
 ]);
 
 const isAzaamActor = (actor: AuthUser) =>
@@ -162,7 +171,11 @@ export class JourneyService {
         readBy: comment.readBy || [],
         createdAt: comment.createdAt,
       })),
-      updateMode: DOCUMENT_UPDATE_STAGES.has(m.stageKey as JourneyStageKey) ? 'DOCUMENT_CHAT' : 'APPROVAL',
+      updateMode: DOCUMENT_UPDATE_STAGES.has(m.stageKey as JourneyStageKey)
+        ? 'DOCUMENT_CHAT'
+        : EVIDENCE_UPDATE_STAGES.has(m.stageKey as JourneyStageKey)
+          ? 'EVIDENCE'
+          : 'APPROVAL',
     }));
 
     return {
@@ -185,10 +198,14 @@ export class JourneyService {
       throw err;
     }
 
-    if (DOCUMENT_UPDATE_STAGES.has(stageKey)) {
-      const err: any = new Error('This stage does not use Approve/Reject. Upload the stage document and post an update instead.');
+    if (STAGE_UPDATE_STAGES.has(stageKey)) {
+      const err: any = new Error(
+        stageKey === JourneyStageKey.TRANSPORT
+          ? 'Arrival & Airport Pickup does not use Approve/Reject. Confirm the arrival status and upload photo evidence instead.'
+          : 'This stage does not use Approve/Reject. Upload the stage document and post an update instead.'
+      );
       err.statusCode = 400;
-      err.code = 'DOCUMENT_UPDATE_STAGE';
+      err.code = 'STAGE_UPDATE_REQUIRED';
       throw err;
     }
 
@@ -274,8 +291,10 @@ export class JourneyService {
       throw err;
     }
 
-    if (!DOCUMENT_UPDATE_STAGES.has(stageKey)) {
-      const err: any = new Error('This endpoint is only for Permit, Entry Visa and Residence Visa updates.');
+    if (!STAGE_UPDATE_STAGES.has(stageKey)) {
+      const err: any = new Error(
+        'This endpoint is only for Permit, Entry Visa, Residence Visa and Arrival & Airport Pickup updates.'
+      );
       err.statusCode = 400;
       err.code = 'INVALID_UPDATE_STAGE';
       throw err;
@@ -311,12 +330,26 @@ export class JourneyService {
       const docs = await DocumentModel.find({
         _id: { $in: documentIds },
         $or: [{ studentId }, { ownerId: studentId }],
-      }).select('_id');
+      }).select('_id type mimeType');
 
       if (docs.length !== documentIds.length) {
         const err: any = new Error('One or more uploaded documents do not belong to this student.');
         err.statusCode = 400;
         err.code = 'INVALID_STAGE_DOCUMENT';
+        throw err;
+      }
+
+      if (
+        stageKey === JourneyStageKey.TRANSPORT &&
+        docs.some(
+          (doc: any) =>
+            doc.type !== 'ARRIVAL_EVIDENCE' ||
+            !String(doc.mimeType || '').toLowerCase().startsWith('image/')
+        )
+      ) {
+        const err: any = new Error('Arrival confirmation requires image evidence uploaded for this student.');
+        err.statusCode = 400;
+        err.code = 'ARRIVAL_EVIDENCE_REQUIRED';
         throw err;
       }
 
