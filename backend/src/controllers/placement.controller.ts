@@ -151,6 +151,10 @@ export class PlacementController {
         }
       }
 
+      if (isGlobalAdmin) {
+        await PlacementService.reconcileJourneyPlacements();
+      }
+
       const placements = await PlacementService.getPlacements(queryFilters);
       res.status(200).json({
         success: true,
