@@ -302,17 +302,17 @@ html.dark [class*="bg-red-50/"] {
 }
 
 /* Pastel gradients used by dashboards/cards keep their identity in dark mode. */
-html.dark [class*="from-blue-50"] { --tw-gradient-from: rgba(37, 99, 235, 0.18) !important; }
-html.dark [class*="from-sky-50"] { --tw-gradient-from: rgba(14, 165, 233, 0.17) !important; }
-html.dark [class*="from-teal-50"] { --tw-gradient-from: rgba(13, 148, 136, 0.17) !important; }
-html.dark [class*="from-emerald-50"] { --tw-gradient-from: rgba(16, 185, 129, 0.17) !important; }
-html.dark [class*="from-indigo-50"] { --tw-gradient-from: rgba(99, 102, 241, 0.17) !important; }
-html.dark [class*="from-violet-50"] { --tw-gradient-from: rgba(139, 92, 246, 0.17) !important; }
-html.dark [class*="from-amber-50"] { --tw-gradient-from: rgba(245, 158, 11, 0.17) !important; }
-html.dark [class*="from-orange-50"] { --tw-gradient-from: rgba(249, 115, 22, 0.17) !important; }
-html.dark [class*="from-rose-50"] { --tw-gradient-from: rgba(244, 63, 94, 0.17) !important; }
-html.dark [class*="via-white"] { --tw-gradient-via: rgba(15, 27, 45, 0.97) !important; }
-html.dark [class*="to-white"] { --tw-gradient-to: #0f1b2d !important; }
+html.dark [class*="from-blue-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(37, 99, 235, 0.18) !important; }
+html.dark [class*="from-sky-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(14, 165, 233, 0.17) !important; }
+html.dark [class*="from-teal-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(13, 148, 136, 0.17) !important; }
+html.dark [class*="from-emerald-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(16, 185, 129, 0.17) !important; }
+html.dark [class*="from-indigo-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(99, 102, 241, 0.17) !important; }
+html.dark [class*="from-violet-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(139, 92, 246, 0.17) !important; }
+html.dark [class*="from-amber-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(245, 158, 11, 0.17) !important; }
+html.dark [class*="from-orange-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(249, 115, 22, 0.17) !important; }
+html.dark [class*="from-rose-50"]:not([class*="dark:from-"]) { --tw-gradient-from: rgba(244, 63, 94, 0.17) !important; }
+html.dark [class*="via-white"]:not([class*="dark:via-"]) { --tw-gradient-via: rgba(15, 27, 45, 0.97) !important; }
+html.dark [class*="to-white"]:not([class*="dark:to-"]) { --tw-gradient-to: #0f1b2d !important; }
 
 /* Typography */
 html.dark .text-slate-950,
