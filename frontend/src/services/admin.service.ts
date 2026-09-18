@@ -363,6 +363,32 @@ export class AdminApiService {
     return res.data.data.stages;
   }
 
+  static async confirmHospitalPlacement(
+    id: string,
+    input: {
+      organizationId: string;
+      departmentId?: string;
+      supervisorId?: string;
+      startDate: string;
+      endDate: string;
+      documentIds: string[];
+      comment?: string;
+    }
+  ): Promise<AdminJourneyStage[]> {
+    const res = await api.post(`/admin/students/${id}/journey/PLACEMENT/confirm`, input);
+    return res.data.data.stages;
+  }
+
+  static async getOrganizationDepartments(organizationId: string): Promise<any[]> {
+    const res = await api.get(`/organizations/${organizationId}/departments`);
+    return res.data.data.departments || [];
+  }
+
+  static async getOrganizationSupervisors(organizationId: string): Promise<any[]> {
+    const res = await api.get(`/organizations/${organizationId}/supervisors`);
+    return res.data.data.supervisors || [];
+  }
+
   static async addJourneyComment(
     id: string,
     stageKey: string,
