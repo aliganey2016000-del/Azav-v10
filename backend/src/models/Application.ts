@@ -7,6 +7,10 @@ export interface IApplication extends Document {
   applicantType: ApplicantType;
   programmeId?: mongoose.Types.ObjectId | null;
   specialtyId?: mongoose.Types.ObjectId | null;
+  /** Free-text program/specialty, used when the nominating university has no matching seeded Programme/Specialty document. */
+  programmeText?: string;
+  specialtyText?: string;
+  durationWeeks?: number;
   preferredStartDate?: Date;
   preferredEndDate?: Date;
   status: ApplicationStatus;
@@ -25,6 +29,9 @@ const ApplicationSchema = new Schema<IApplication>(
     applicantType: { type: String, enum: Object.values(ApplicantType), required: true, default: ApplicantType.UNIVERSITY },
     programmeId: { type: Schema.Types.ObjectId, ref: 'Programme', default: null },
     specialtyId: { type: Schema.Types.ObjectId, ref: 'Specialty', default: null },
+    programmeText: { type: String, trim: true },
+    specialtyText: { type: String, trim: true },
+    durationWeeks: { type: Number },
     preferredStartDate: { type: Date },
     preferredEndDate: { type: Date },
     status: {
