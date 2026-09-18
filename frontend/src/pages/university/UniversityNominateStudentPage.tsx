@@ -10,14 +10,14 @@ type PendingDoc = { docType: string; name: string; mimeType: string; base64Data:
 
 type FormState = {
   fullName: string; studentId: string; gender: string; dateOfBirth: string; nationality: string;
-  phone: string; email: string; address: string; faculty: string; program: string; academicLevel: string;
+  phone: string; email: string; password: string; address: string; faculty: string; program: string; academicLevel: string;
   expectedGraduationDate: string; requestedSpecialty: string; requestedDuration: string;
   trainingPurpose: string;
   documents: Record<string, PendingDoc>;
 };
 
 const emptyForm: FormState = {
-  fullName: '', studentId: '', gender: 'Male', dateOfBirth: '', nationality: '', phone: '', email: '', address: '',
+  fullName: '', studentId: '', gender: 'Male', dateOfBirth: '', nationality: '', phone: '', email: '', password: '', address: '',
   faculty: '', program: '', academicLevel: 'Year 5', expectedGraduationDate: '', requestedSpecialty: '', requestedDuration: '8 weeks',
   trainingPurpose: '', documents: {},
 };
@@ -79,7 +79,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const openEdit = (s: AdminStudent) => {
     setForm({
       fullName: `${s.firstName} ${s.lastName}`.trim(), studentId: s.studentNumber, gender: 'Male', dateOfBirth: '', nationality: '',
-      phone: s.phone || '', email: s.email, address: '', faculty: '', program: s.specialty, academicLevel: s.studyYear || 'Year 5',
+      phone: s.phone || '', email: s.email, password: '', address: '', faculty: '', program: s.specialty, academicLevel: s.studyYear || 'Year 5',
       expectedGraduationDate: '', requestedSpecialty: s.specialty, requestedDuration: s.durationWeeks ? `${s.durationWeeks} weeks` : '8 weeks',
       trainingPurpose: '', documents: {},
     });
@@ -121,6 +121,16 @@ export const UniversityNominateStudentPage: React.FC = () => {
 
   const submit = async () => {
     if (!form.fullName.trim() || !form.studentId.trim() || !form.email.trim()) return;
+    if (!editingId && form.password.length < 8) {
+      setSubmitError('Login password must be at least 8 characters.');
+      setStep(1);
+      return;
+    }
+    if (editingId && form.password && form.password.length < 8) {
+      setSubmitError('New password must be at least 8 characters.');
+      setStep(1);
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -128,6 +138,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
         fullName: form.fullName.trim(),
         studentNumber: form.studentId.trim(),
         email: form.email.trim(),
+        ...(form.password ? { password: form.password } : {}),
         phone: form.phone,
         program: form.program,
         specialty: form.requestedSpecialty || form.program,
@@ -210,7 +221,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
 
             {submitError && <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-700">{submitError}</div>}
 
-            {step === 1 && <Panel title="Student Information" subtitle="Basic personal and contact details" tone="blue"><Grid><Field label="Full Name *"><Input value={form.fullName} onChange={v=>change('fullName',v)} placeholder="Enter full name"/></Field><Field label="Student ID *"><Input value={form.studentId} onChange={v=>change('studentId',v)} placeholder="Enter student ID"/></Field><Field label="Gender"><Select value={form.gender} onChange={v=>change('gender',v)} options={['Male','Female','Other']}/></Field><Field label="Date of Birth"><DateInput value={form.dateOfBirth} onChange={v=>change('dateOfBirth',v)}/></Field><Field label="Nationality"><Input value={form.nationality} onChange={v=>change('nationality',v)} placeholder="Nationality"/></Field><Field label="Phone Number"><Input value={form.phone} onChange={v=>change('phone',v)} placeholder="Phone number"/></Field><Field label="Email Address *"><Input type="email" value={form.email} onChange={v=>change('email',v)} placeholder="Email address"/></Field><Field label="Address"><Input value={form.address} onChange={v=>change('address',v)} placeholder="Address"/></Field></Grid></Panel>}
+            {step === 1 && <Panel title="Student Information" subtitle="Basic personal details and student portal login credentials" tone="blue"><Grid><Field label="Full Name *"><Input value={form.fullName} onChange={v=>change('fullName',v)} placeholder="Enter full name"/></Field><Field label="Student ID *"><Input value={form.studentId} onChange={v=>change('studentId',v)} placeholder="Enter student ID"/></Field><Field label="Gender"><Select value={form.gender} onChange={v=>change('gender',v)} options={['Male','Female','Other']}/></Field><Field label="Date of Birth"><DateInput value={form.dateOfBirth} onChange={v=>change('dateOfBirth',v)}/></Field><Field label="Nationality"><Input value={form.nationality} onChange={v=>change('nationality',v)} placeholder="Nationality"/></Field><Field label="Phone Number"><Input value={form.phone} onChange={v=>change('phone',v)} placeholder="Phone number"/></Field><Field label="Login Email *"><div><Input type="email" value={form.email} onChange={v=>change('email',v)} placeholder="student@example.com"/><p className="mt-1 text-[10px] font-semibold text-slate-500">The student will use this email to sign in.</p></div></Field><Field label={editingId ? 'New Login Password' : 'Login Password *'}><div><Input type="password" value={form.password} onChange={v=>change('password',v)} placeholder={editingId ? 'Leave blank to keep current password' : 'Minimum 8 characters'}/><p className="mt-1 text-[10px] font-semibold text-slate-500">{editingId ? 'Only enter a password if you want to change the student login password.' : 'The student will use this password with the login email above.'}</p></div></Field><Field label="Address"><Input value={form.address} onChange={v=>change('address',v)} placeholder="Address"/></Field></Grid></Panel>}
             {step === 2 && <Panel title="Academic Information" subtitle={`${universityName} student academic details`} tone="emerald"><Grid><Field label="Faculty"><Input value={form.faculty} onChange={v=>change('faculty',v)} placeholder="Faculty"/></Field><Field label="Program *"><Input value={form.program} onChange={v=>change('program',v)} placeholder="Program"/></Field><Field label="Academic Level"><Select value={form.academicLevel} onChange={v=>change('academicLevel',v)} options={['Year 1','Year 2','Year 3','Year 4','Year 5','Intern']}/></Field><Field label="Expected Graduation"><DateInput value={form.expectedGraduationDate} onChange={v=>change('expectedGraduationDate',v)}/></Field></Grid></Panel>}
             {step === 3 && <Panel title="Training Request" subtitle="Requested clinical training details" tone="violet"><Grid><Field label="Clinical Specialty"><Input value={form.requestedSpecialty} onChange={v=>change('requestedSpecialty',v)} placeholder="e.g. General Surgery"/></Field><Field label="Duration"><Input value={form.requestedDuration} onChange={v=>change('requestedDuration',v)} placeholder="e.g. 8 weeks"/></Field><Field label="Training Purpose" wide><textarea value={form.trainingPurpose} onChange={e=>change('trainingPurpose',e.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Brief purpose of training"/></Field></Grid></Panel>}
             {step === 4 && <Panel title="Supporting Documents" subtitle="Upload each required document below" tone="blue">
@@ -242,9 +253,16 @@ export const UniversityNominateStudentPage: React.FC = () => {
                 })}
               </div>
             </Panel>}
-            {step === 5 && <div className="space-y-4"><Panel title="Review Nomination" subtitle="Confirm the information before submission" tone="emerald"><div className="grid gap-3 sm:grid-cols-2"><Review label="Student" value={form.fullName}/><Review label="Student ID" value={form.studentId}/><Review label="University" value={universityName}/><Review label="Program" value={form.program}/><Review label="Specialty" value={form.requestedSpecialty}/><Review label="Duration" value={form.requestedDuration}/></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{NOMINATION_DOCUMENT_TYPES.map(({key,label}) => <div key={key} className="flex items-center gap-2 text-xs"><span className={form.documents[key] ? 'text-emerald-600' : 'text-slate-300'}>●</span><span className={form.documents[key] ? 'font-bold text-slate-800' : 'text-slate-400'}>{label}</span></div>)}</div></Panel><div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-800">{editingId ? 'Saving will update this student\'s nomination record.' : <>After submission, the student is added to your nomination list with <b>Pending</b> status for AZAAM coordination.</>}</div></div>}
+            {step === 5 && <div className="space-y-4"><Panel title="Review Nomination" subtitle="Confirm the information before submission" tone="emerald"><div className="grid gap-3 sm:grid-cols-2"><Review label="Student" value={form.fullName}/><Review label="Student ID" value={form.studentId}/><Review label="Login Email" value={form.email}/><Review label="Login Password" value={editingId ? (form.password ? 'Will be updated' : 'Unchanged') : (form.password ? 'Set' : 'Not set')}/><Review label="University" value={universityName}/><Review label="Program" value={form.program}/><Review label="Specialty" value={form.requestedSpecialty}/><Review label="Duration" value={form.requestedDuration}/></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{NOMINATION_DOCUMENT_TYPES.map(({key,label}) => <div key={key} className="flex items-center gap-2 text-xs"><span className={form.documents[key] ? 'text-emerald-600' : 'text-slate-300'}>●</span><span className={form.documents[key] ? 'font-bold text-slate-800' : 'text-slate-400'}>{label}</span></div>)}</div></Panel><div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-800">{editingId ? 'Saving will update this student\'s nomination record.' : <>After submission, the student is added to your nomination list with <b>Pending</b> status for AZAAM coordination.</>}</div></div>}
 
-            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5"><button onClick={() => step === 1 ? reset() : setStep(step-1)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">{step === 1 ? 'Cancel' : 'Back'}</button>{step < 5 ? <button onClick={() => setStep(step+1)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md">Next <ChevronRight className="h-4 w-4"/></button> : <button onClick={submit} disabled={submitting || !form.fullName.trim() || !form.studentId.trim() || !form.email.trim()} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-5 py-2.5 text-xs font-extrabold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4"/>} {editingId ? 'Save Changes' : 'Submit Nomination'}</button>}</div>
+            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5"><button onClick={() => step === 1 ? reset() : setStep(step-1)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">{step === 1 ? 'Cancel' : 'Back'}</button>{step < 5 ? <button onClick={() => {
+              if (step === 1 && (!form.fullName.trim() || !form.studentId.trim() || !form.email.trim() || (!editingId && form.password.length < 8) || (editingId && form.password.length > 0 && form.password.length < 8))) {
+                setSubmitError(editingId ? 'Full name, student ID and login email are required. New password must be at least 8 characters when provided.' : 'Full name, student ID, login email and a password of at least 8 characters are required.');
+                return;
+              }
+              setSubmitError(null);
+              setStep(step+1);
+            }} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md">Next <ChevronRight className="h-4 w-4"/></button> : <button onClick={submit} disabled={submitting || !form.fullName.trim() || !form.studentId.trim() || !form.email.trim() || (!editingId && form.password.length < 8) || (editingId && form.password.length > 0 && form.password.length < 8)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-5 py-2.5 text-xs font-extrabold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4"/>} {editingId ? 'Save Changes' : 'Submit Nomination'}</button>}</div>
           </div>
         </div>
       </div>}
