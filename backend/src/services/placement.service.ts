@@ -17,7 +17,6 @@ export class PlacementService {
     startDate: Date;
     endDate: Date;
   }) {
-    // 1. Bind placement to the student recorded on the application.
     const application = await Application.findById(data.applicationId).select('studentId');
     if (!application) {
       const err: any = new Error('Application not found');
@@ -33,7 +32,13 @@ export class PlacementService {
       throw err;
     }
 
-    // 2. Check Organization capacity backend-side
+    if (data.endDate < data.startDate) {
+      const err: any = new Error('endDate must be on or after startDate');
+      err.statusCode = 400;
+      err.code = 'INVALID_DATE_RANGE';
+      throw err;
+    }
+
     const organization = await Organization.findById(data.organizationId);
     if (!organization) {
       const err: any = new Error('Healthcare Organization not found');
@@ -55,13 +60,10 @@ export class PlacementService {
       throw err;
     }
 
-    // 3. Protect against overlapping student rotations
     const overlappingPlacements = await Placement.findOne({
       studentId: data.studentId,
       status: { $in: [PlacementStatus.PENDING, PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE] },
-      $or: [
-        { startDate: { $lte: data.endDate }, endDate: { $gte: data.startDate } },
-      ],
+      $or: [{ startDate: { $lte: data.endDate }, endDate: { $gte: data.startDate } }],
     });
 
     if (overlappingPlacements) {
@@ -71,7 +73,6 @@ export class PlacementService {
       throw err;
     }
 
-    // 4. CRITICAL RULE: Supervisor assigned MUST belong to the same organization hosting that placement
     if (data.supervisorId) {
       const supervisor = await ClinicalSupervisor.findById(data.supervisorId);
       if (!supervisor) {
@@ -102,7 +103,6 @@ export class PlacementService {
 
     await placement.save();
 
-    // Auto-create ClinicalAttachment record
     const attachment = new ClinicalAttachment({
       placementId: placement._id,
       studentId: data.studentId,
@@ -116,7 +116,6 @@ export class PlacementService {
 
     await attachment.save();
 
-    // Update Application Status
     const nextAppStatus = data.supervisorId ? ApplicationStatus.SUPERVISOR_ASSIGNED : ApplicationStatus.PLACED;
     await ApplicationService.updateStatus(data.applicationId, nextAppStatus, actorUserId, 'Placement created');
 
@@ -129,6 +128,209 @@ export class PlacementService {
     });
 
     return { placement, attachment };
+  }
+
+  static async updatePlacement(actorUserId: string, placementId: string, data: {
+    organizationId?: string;
+    departmentId?: string | null;
+    supervisorId?: string | null;
+    startDate?: Date;
+    endDate?: Date;
+  }) {
+    const placement = await Placement.findById(placementId);
+    if (!placement) {
+      const err: any = new Error('Placement not found');
+      err.statusCode = 404;
+      err.code = 'PLACEMENT_NOT_FOUND';
+      throw err;
+    }
+
+    const organizationId = data.organizationId || placement.organizationId.toString();
+    const startDate = data.startDate || placement.startDate;
+    const endDate = data.endDate || placement.endDate;
+
+    if (endDate < startDate) {
+      const err: any = new Error('endDate must be on or after startDate');
+      err.statusCode = 400;
+      err.code = 'INVALID_DATE_RANGE';
+      throw err;
+    }
+
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      const err: any = new Error('Healthcare Organization not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if ([PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE].includes(placement.status)) {
+      const occupiedSlots = await Placement.countDocuments({
+        _id: { $ne: placement._id },
+        organizationId,
+        status: { $in: [PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE] },
+      });
+
+      if (occupiedSlots >= organization.capacity) {
+        const err: any = new Error(
+          `Organization placement capacity reached (${occupiedSlots}/${organization.capacity}). Cannot move this placement to the selected hospital.`
+        );
+        err.statusCode = 400;
+        err.code = 'CAPACITY_EXCEEDED';
+        throw err;
+      }
+    }
+
+    const overlappingPlacement = await Placement.findOne({
+      _id: { $ne: placement._id },
+      studentId: placement.studentId,
+      status: { $in: [PlacementStatus.PENDING, PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE] },
+      $or: [{ startDate: { $lte: endDate }, endDate: { $gte: startDate } }],
+    });
+
+    if (overlappingPlacement) {
+      const err: any = new Error('Student already has another active or pending placement in this date range.');
+      err.statusCode = 400;
+      err.code = 'ROTATION_OVERLAP';
+      throw err;
+    }
+
+    if (data.supervisorId) {
+      const supervisor = await ClinicalSupervisor.findById(data.supervisorId);
+      if (!supervisor) {
+        const err: any = new Error('Clinical supervisor not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      if (supervisor.organizationId.toString() !== organizationId.toString()) {
+        const err: any = new Error('Clinical supervisor does not belong to the healthcare organization hosting this placement.');
+        err.statusCode = 400;
+        err.code = 'SUPERVISOR_ORGANIZATION_MISMATCH';
+        throw err;
+      }
+    }
+
+    const before = {
+      organizationId: placement.organizationId,
+      departmentId: placement.departmentId,
+      supervisorId: placement.supervisorId,
+      startDate: placement.startDate,
+      endDate: placement.endDate,
+    };
+
+    placement.organizationId = organizationId as any;
+    placement.departmentId = data.departmentId === undefined ? placement.departmentId : (data.departmentId || null) as any;
+    placement.supervisorId = data.supervisorId === undefined ? placement.supervisorId : (data.supervisorId || null) as any;
+    placement.startDate = startDate;
+    placement.endDate = endDate;
+    await placement.save();
+
+    await ClinicalAttachment.findOneAndUpdate(
+      { placementId: placement._id },
+      {
+        $set: {
+          organizationId: placement.organizationId,
+          departmentId: placement.departmentId,
+          supervisorId: placement.supervisorId,
+          startDate: placement.startDate,
+          endDate: placement.endDate,
+        },
+      },
+      { runValidators: true }
+    );
+
+    if (data.supervisorId !== undefined) {
+      const nextAppStatus = placement.supervisorId
+        ? ApplicationStatus.SUPERVISOR_ASSIGNED
+        : ApplicationStatus.PLACED;
+      await ApplicationService.updateStatus(
+        placement.applicationId.toString(),
+        nextAppStatus,
+        actorUserId,
+        'Placement assignment updated'
+      );
+    }
+
+    await AuditLog.create({
+      actorUserId,
+      action: 'placement.update',
+      entityType: 'Placement',
+      entityId: placement._id,
+      before,
+      after: {
+        organizationId: placement.organizationId,
+        departmentId: placement.departmentId,
+        supervisorId: placement.supervisorId,
+        startDate: placement.startDate,
+        endDate: placement.endDate,
+      },
+    });
+
+    const [updated] = await this.getPlacements({ _id: placement._id });
+    return updated;
+  }
+
+  static async updatePlacementStatus(actorUserId: string, placementId: string, status: PlacementStatus) {
+    const placement = await Placement.findById(placementId);
+    if (!placement) {
+      const err: any = new Error('Placement not found');
+      err.statusCode = 404;
+      err.code = 'PLACEMENT_NOT_FOUND';
+      throw err;
+    }
+
+    if (!Object.values(PlacementStatus).includes(status)) {
+      const err: any = new Error('Invalid placement status');
+      err.statusCode = 400;
+      err.code = 'INVALID_PLACEMENT_STATUS';
+      throw err;
+    }
+
+    const previousStatus = placement.status;
+    placement.status = status;
+    await placement.save();
+
+    const attachmentStatus =
+      status === PlacementStatus.ACTIVE
+        ? ClinicalAttachmentStatus.IN_PROGRESS
+        : status === PlacementStatus.COMPLETED
+          ? ClinicalAttachmentStatus.COMPLETED
+          : status === PlacementStatus.CANCELLED
+            ? ClinicalAttachmentStatus.CANCELLED
+            : ClinicalAttachmentStatus.NOT_STARTED;
+
+    await ClinicalAttachment.findOneAndUpdate(
+      { placementId: placement._id },
+      { $set: { status: attachmentStatus } }
+    );
+
+    if (status === PlacementStatus.ACTIVE) {
+      await ApplicationService.updateStatus(
+        placement.applicationId.toString(),
+        ApplicationStatus.ACTIVE,
+        actorUserId,
+        'Placement started'
+      );
+    } else if (status === PlacementStatus.COMPLETED) {
+      await ApplicationService.updateStatus(
+        placement.applicationId.toString(),
+        ApplicationStatus.COMPLETED,
+        actorUserId,
+        'Placement completed'
+      );
+    }
+
+    await AuditLog.create({
+      actorUserId,
+      action: 'placement.status.update',
+      entityType: 'Placement',
+      entityId: placement._id,
+      before: { status: previousStatus },
+      after: { status },
+    });
+
+    const [updated] = await this.getPlacements({ _id: placement._id });
+    return updated;
   }
 
   static async getPlacements(filters: any) {
