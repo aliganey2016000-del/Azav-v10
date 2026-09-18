@@ -431,6 +431,10 @@ export class JourneyService {
 
   static async getChat(studentId: string, actor: AuthUser) {
     await this.assertStudentAccess(studentId, actor);
+    const docsCount = await DocumentModel.countDocuments({
+      $or: [{ studentId }, { ownerId: studentId }],
+    });
+    await this.ensureMilestones(studentId, docsCount);
     const viewerRole = chatRoleFor(actor);
 
     const milestones: any[] = await JourneyMilestone.find({
