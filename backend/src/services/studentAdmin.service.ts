@@ -115,56 +115,109 @@ export class StudentAdminService {
 
     const universityId = resolveUniversityId(actor, universityIdOverride);
     const email = input.email.trim().toLowerCase();
+    const { firstName, lastName } = splitName(input.fullName);
 
-    const existing = await User.findOne({ email });
-    if (existing) {
-      const err: any = new Error('A user with this email address already exists.');
-      err.statusCode = 409;
-      err.code = 'EMAIL_EXISTS';
-      throw err;
+    let user: any = await User.findOne({ email });
+    let student: any = null;
+
+    if (user) {
+      const isStudentUser = user.roles?.includes(UserRole.STUDENT);
+      const sameUniversity = user.universityId?.toString() === universityId.toString();
+
+      if (!isStudentUser || !sameUniversity) {
+        const err: any = new Error('This email is already registered to a different account or institution.');
+        err.statusCode = 409;
+        err.code = 'EMAIL_EXISTS';
+        throw err;
+      }
+
+      // Reuse the existing university student account instead of creating a duplicate.
+      user.firstName = firstName;
+      user.lastName = lastName;
+      if (input.phone !== undefined) user.phone = input.phone;
+      await user.save();
+
+      student = await Student.findOne({ userId: user._id });
+      if (!student) {
+        student = new Student({
+          userId: user._id,
+          universityId,
+          studentNumber: input.studentNumber.trim(),
+          phone: input.phone,
+          applicantType: ApplicantType.UNIVERSITY,
+          status: 'ACTIVE',
+        });
+        await student.save();
+      } else {
+        student.universityId = universityId as any;
+        student.studentNumber = input.studentNumber.trim();
+        if (input.phone !== undefined) student.phone = input.phone;
+        student.applicantType = ApplicantType.UNIVERSITY;
+        student.status = 'ACTIVE';
+        await student.save();
+      }
+
+      user.studentId = student._id as any;
+      await user.save();
+    } else {
+      const tempPassword = crypto.randomBytes(12).toString('hex');
+      const passwordHash = await bcrypt.hash(tempPassword, await bcrypt.genSalt(10));
+
+      user = new User({
+        firstName,
+        lastName,
+        email,
+        phone: input.phone,
+        passwordHash,
+        roles: [UserRole.STUDENT],
+        universityId,
+        status: 'ACTIVE',
+      });
+      await user.save();
+
+      student = new Student({
+        userId: user._id,
+        universityId,
+        studentNumber: input.studentNumber.trim(),
+        phone: input.phone,
+        applicantType: ApplicantType.UNIVERSITY,
+        status: 'ACTIVE',
+      });
+      await student.save();
+
+      user.studentId = student._id as any;
+      await user.save();
     }
 
-    const { firstName, lastName } = splitName(input.fullName);
-    const tempPassword = crypto.randomBytes(12).toString('hex');
-    const passwordHash = await bcrypt.hash(tempPassword, await bcrypt.genSalt(10));
+    let application = await Application.findOne({ studentId: student._id }).sort({ createdAt: -1 });
 
-    const user = new User({
-      firstName,
-      lastName,
-      email,
-      phone: input.phone,
-      passwordHash,
-      roles: [UserRole.STUDENT],
-      universityId,
-      status: 'ACTIVE',
-    });
-    await user.save();
+    if (application) {
+      // Idempotent retry / nomination of an existing student user.
+      application.universityId = universityId as any;
+      application.applicantType = ApplicantType.UNIVERSITY;
+      application.programmeText = input.academicLevel || input.program;
+      application.specialtyText = input.specialty || input.program;
+      application.durationWeeks = input.durationWeeks;
 
-    const student = new Student({
-      userId: user._id,
-      universityId,
-      studentNumber: input.studentNumber.trim(),
-      phone: input.phone,
-      applicantType: ApplicantType.UNIVERSITY,
-      status: 'ACTIVE',
-    });
-    await student.save();
-    user.studentId = student._id as any;
-    await user.save();
+      if ([ApplicationStatus.DRAFT, ApplicationStatus.SUBMITTED, ApplicationStatus.DOCUMENTS_REQUIRED].includes(application.status)) {
+        application.status = ApplicationStatus.SUBMITTED;
+        application.submissionDate = new Date();
+      }
 
-    const application = new Application({
-      studentId: student._id,
-      universityId,
-      applicantType: ApplicantType.UNIVERSITY,
-      programmeText: input.academicLevel || input.program,
-      specialtyText: input.specialty || input.program,
-      durationWeeks: input.durationWeeks,
-      preferredStartDate: input.preferredStartDate ? new Date(input.preferredStartDate) : undefined,
-      preferredEndDate: input.preferredEndDate ? new Date(input.preferredEndDate) : undefined,
-      status: ApplicationStatus.SUBMITTED,
-      submissionDate: new Date(),
-    });
-    await application.save();
+      await application.save();
+    } else {
+      application = new Application({
+        studentId: student._id,
+        universityId,
+        applicantType: ApplicantType.UNIVERSITY,
+        programmeText: input.academicLevel || input.program,
+        specialtyText: input.specialty || input.program,
+        durationWeeks: input.durationWeeks,
+        status: ApplicationStatus.SUBMITTED,
+        submissionDate: new Date(),
+      });
+      await application.save();
+    }
 
     return toAdminStudentShape(student, application);
   }
