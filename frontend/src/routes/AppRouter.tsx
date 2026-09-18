@@ -19,6 +19,7 @@ import { LivePortalDashboardPage } from '../pages/LivePortalDashboardPage';
 import { UniversityNominateStudentPage } from '../pages/university/UniversityNominateStudentPage';
 import { UniversityStudentStatusPage } from '../pages/university/UniversityStudentStatusPage';
 import { UniversityStudentJourneyPage } from '../pages/university/UniversityStudentJourneyPage';
+import { UniversityPlacementsPage } from '../pages/university/UniversityPlacementsPage';
 
 import { OrganizationDepartmentsPage } from '../pages/organization/OrganizationDepartmentsPage';
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
@@ -96,7 +97,8 @@ export const AppRouter: React.FC = () => (
           <Route path="/university/mou" element={<PortalResourcePage eyebrow="University Admin" title="MoU & Agreement" description="View the university partnership agreement stored in the live database." endpoint="/universities/mou/current" />} />
           <Route path="/university/financials" element={<PortalResourcePage eyebrow="University Admin" title="Financials" description="Review live finance records associated with this authenticated account." endpoint="/finance" />} />
           <Route path="/university/applications" element={<PortalResourcePage eyebrow="University Admin" title="Student Applications" description="Review live applications submitted by or associated with this university." endpoint="/applications" />} />
-          <Route path="/university/clinical-attachments" element={<PortalResourcePage eyebrow="University Admin" title="Clinical Attachments" description="Track clinical attachment records coordinated for university students." endpoint="/placements" />} />
+          <Route path="/university/placements" element={<UniversityPlacementsPage />} />
+          <Route path="/university/clinical-attachments" element={<Navigate to="/university/placements" replace />} />
           <Route path="/university/attendance" element={<PortalResourcePage eyebrow="University Admin" title="Student Attendance" description="Review live attendance records returned for university clinical attachments." endpoint="/attendance" />} />
           <Route path="/university/logbook" element={<PortalResourcePage eyebrow="University Admin" title="Student Logbooks" description="Review live clinical logbook records for university students." endpoint="/logbooks" />} />
           <Route path="/university/evaluations" element={<PortalResourcePage eyebrow="University Admin" title="Student Evaluations" description="Review live evaluation records submitted for university students." endpoint="/evaluations" />} />
