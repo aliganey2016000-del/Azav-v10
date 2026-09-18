@@ -37,6 +37,7 @@ import { JourneyChatPage } from '../pages/shared/JourneyChatPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 import { AdminPlacementsPage } from '../pages/admin/AdminPlacementsPage';
 import { AdminRotationsPage } from '../pages/admin/AdminRotationsPage';
+import { AdminRotationTemplatesPage } from '../pages/admin/AdminRotationTemplatesPage';
 import { StudentApplicationPage } from '../pages/student/StudentApplicationPage';
 import { StudentPlacementPage } from '../pages/student/StudentPlacementPage';
 import { StudentRotationsPage } from '../pages/student/StudentRotationsPage';
@@ -76,7 +77,9 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/supervisors/:id" element={<SupervisorDetailPage />} />
           <Route path="/admin/applications" element={<PortalResourcePage eyebrow="Platform Management" title="Applications" description="Review live student applications submitted to AZAAM." endpoint="/applications" />} />
           <Route path="/admin/placements" element={<AdminPlacementsPage />} />
-          <Route path="/admin/rotations" element={<AdminRotationsPage />} />
+          <Route path="/admin/rotation-planner" element={<AdminRotationsPage />} />
+          <Route path="/admin/rotation-templates" element={<AdminRotationTemplatesPage />} />
+          <Route path="/admin/rotations" element={<Navigate to="/admin/rotation-planner" replace />} />
           <Route path="/admin/clinical-training" element={<Navigate to="/admin/placements" replace />} />
           <Route path="/admin/completion-certificates" element={<Navigate to="/admin/placements" replace />} />
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />

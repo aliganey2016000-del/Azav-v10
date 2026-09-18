@@ -9,6 +9,33 @@ export const rotationRouter = Router();
 rotationRouter.use(authenticate);
 rotationRouter.get('/', RotationController.list);
 
+rotationRouter.get(
+  '/templates',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.listTemplates
+);
+rotationRouter.post(
+  '/templates',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.createTemplate
+);
+rotationRouter.patch(
+  '/templates/:id',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.updateTemplate
+);
+rotationRouter.delete(
+  '/templates/:id',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.deleteTemplate
+);
+
+rotationRouter.post(
+  '/batch',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.createBatchPlan
+);
+
 rotationRouter.post(
   '/plan',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),

@@ -14,6 +14,9 @@ export interface IClinicalRotation extends Document {
   endDate: Date;
   status: ClinicalRotationStatus;
   notes?: string;
+  batchId?: mongoose.Types.ObjectId | null;
+  groupCode?: string;
+  templateId?: mongoose.Types.ObjectId | null;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -46,6 +49,9 @@ const ClinicalRotationSchema = new Schema<IClinicalRotation>(
       index: true,
     },
     notes: { type: String, trim: true, maxlength: 1000 },
+    batchId: { type: Schema.Types.ObjectId, default: null, index: true },
+    groupCode: { type: String, trim: true, uppercase: true, maxlength: 8 },
+    templateId: { type: Schema.Types.ObjectId, ref: 'RotationTemplate', default: null, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
@@ -53,6 +59,7 @@ const ClinicalRotationSchema = new Schema<IClinicalRotation>(
 
 ClinicalRotationSchema.index({ placementId: 1, sequence: 1 }, { unique: true });
 ClinicalRotationSchema.index({ studentId: 1, startDate: 1, endDate: 1 });
+ClinicalRotationSchema.index({ batchId: 1, groupCode: 1, sequence: 1 });
 
 export const ClinicalRotation =
   (mongoose.models.ClinicalRotation as mongoose.Model<IClinicalRotation>) ||
