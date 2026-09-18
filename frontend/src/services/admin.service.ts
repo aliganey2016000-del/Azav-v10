@@ -1337,8 +1337,6 @@ export class AdminApiService {
     program?: string;
     specialty?: string;
     academicLevel?: string;
-    preferredStartDate?: string;
-    preferredEndDate?: string;
     durationWeeks?: number;
   }): Promise<AdminStudent> {
     const res = await api.post('/admin/students', input);
@@ -1353,8 +1351,6 @@ export class AdminApiService {
     program?: string;
     specialty?: string;
     academicLevel?: string;
-    preferredStartDate?: string;
-    preferredEndDate?: string;
     durationWeeks?: number;
   }>): Promise<AdminStudent> {
     const res = await api.patch(`/admin/students/${id}`, input);
