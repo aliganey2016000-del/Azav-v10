@@ -299,46 +299,6 @@ export const AdminPlacementsPage: React.FC = () => {
     page * pageSize
   );
 
-  const hospitalCapacityRows = useMemo(
-    () =>
-      organizations
-        .map((organization) => {
-          const organizationId = asId(organization);
-          const placed = placements.filter(
-            (placement) =>
-              asId(placement.organizationId) === organizationId &&
-              activeStatuses.has(placement.status)
-          ).length;
-          const capacity = Number(organization.capacity || 0);
-          return {
-            id: organizationId,
-            name: organization.name || 'Healthcare Facility',
-            capacity,
-            placed,
-            available: Math.max(0, capacity - placed),
-          };
-        })
-        .sort((a, b) => b.placed - a.placed)
-        .slice(0, 5),
-    [organizations, placements]
-  );
-
-  const departmentRows = useMemo(() => {
-    const grouped = new Map<string, { name: string; total: number; active: number; scheduled: number }>();
-    placements.forEach((placement) => {
-      const id = asId(placement.departmentId) || 'unassigned';
-      const name = placement.departmentId?.name || 'Not assigned';
-      const current = grouped.get(id) || { name, total: 0, active: 0, scheduled: 0 };
-      current.total += 1;
-      if (placement.status === 'ACTIVE') current.active += 1;
-      if (placement.status === 'CONFIRMED') current.scheduled += 1;
-      grouped.set(id, current);
-    });
-    return Array.from(grouped.values())
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-  }, [placements]);
-
   const resetFilters = () =>
     setFilters({
       university: '',
@@ -1032,86 +992,6 @@ export const AdminPlacementsPage: React.FC = () => {
             </div>
           </>
         )}
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-2">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-teal-600" />
-              <h2 className="text-sm font-black text-slate-950">Hospital Capacity Overview</h2>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-xs">
-              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-black">Hospital</th>
-                  <th className="px-4 py-3 text-center font-black">Capacity</th>
-                  <th className="px-4 py-3 text-center font-black">Placed</th>
-                  <th className="px-4 py-3 text-center font-black">Available</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {hospitalCapacityRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">No hospitals available.</td>
-                  </tr>
-                ) : hospitalCapacityRows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-3 font-bold text-slate-700">{row.name}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-slate-600">{row.capacity}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-slate-600">{row.placed}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex min-w-8 justify-center rounded-full bg-emerald-100 px-2 py-1 font-black text-emerald-700">
-                        {row.available}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-600" />
-              <h2 className="text-sm font-black text-slate-950">Placements by Department</h2>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-xs">
-              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-black">Department</th>
-                  <th className="px-4 py-3 text-center font-black">Active</th>
-                  <th className="px-4 py-3 text-center font-black">Scheduled</th>
-                  <th className="px-4 py-3 text-center font-black">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {departmentRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">No department placements yet.</td>
-                  </tr>
-                ) : departmentRows.map((row) => (
-                  <tr key={row.name}>
-                    <td className="px-4 py-3 font-bold text-slate-700">{row.name}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-slate-600">{row.active}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-slate-600">{row.scheduled}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex min-w-8 justify-center rounded-full bg-blue-100 px-2 py-1 font-black text-blue-700">
-                        {row.total}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </section>
 
       {showForm && (
