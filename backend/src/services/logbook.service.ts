@@ -2,6 +2,7 @@ import { LogbookEntry } from '../models/LogbookEntry.js';
 import { ClinicalAttachment } from '../models/Placement.js';
 import { AuditLog } from '../models/Notification.js';
 import { LogbookStatus } from '../types/index.js';
+import { ClinicalRotation } from '../models/ClinicalRotation.js';
 
 export class LogbookService {
   static async createEntry(studentUserId: string, data: {
@@ -34,11 +35,22 @@ export class LogbookService {
       throw err;
     }
 
+    const entryDate = new Date(data.date);
+    entryDate.setUTCHours(0, 0, 0, 0);
+
+    const rotation = await ClinicalRotation.findOne({
+      placementId: attachment.placementId,
+      startDate: { $lte: entryDate },
+      endDate: { $gte: entryDate },
+      status: { $ne: 'CANCELLED' },
+    }).select('_id supervisorId');
+
     const entry = new LogbookEntry({
       attachmentId: data.attachmentId,
       studentId: attachment.studentId,
-      supervisorId: attachment.supervisorId || undefined,
-      date: new Date(data.date),
+      rotationId: rotation?._id || null,
+      supervisorId: rotation?.supervisorId || attachment.supervisorId || undefined,
+      date: entryDate,
       clinicalActivity: data.clinicalActivity,
       procedure: data.procedure,
       description: data.description,
