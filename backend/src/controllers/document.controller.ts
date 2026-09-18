@@ -124,8 +124,10 @@ export class DocumentController {
         req.get('user-agent')
       );
 
+      const disposition = req.query.disposition === 'inline' ? 'inline' : 'attachment';
       res.setHeader('Content-Type', doc.mimeType);
-      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.originalName)}"`);
+      res.setHeader('Content-Disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(doc.originalName)}`);
+      res.setHeader('Cache-Control', 'private, no-store');
       res.send(buffer);
     } catch (error) {
       next(error);

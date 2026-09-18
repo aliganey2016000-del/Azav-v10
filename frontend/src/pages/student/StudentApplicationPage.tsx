@@ -75,7 +75,6 @@ export const StudentApplicationPage: React.FC = () => {
   const [application, setApplication] = useState<ApplicationRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [documentBusy, setDocumentBusy] = useState<string | null>(null);
 
   const load = async () => {
     if (!studentId) {
@@ -148,52 +147,9 @@ export const StudentApplicationPage: React.FC = () => {
     ];
   }, [journey, application]);
 
-  const getDocumentBlob = async (documentId: string) => {
-    const response = await api.get(`/documents/${documentId}/download`, {
-      responseType: 'blob',
-    });
-    return new Blob([response.data], {
-      type: String(response.headers?.['content-type'] || 'application/octet-stream'),
-    });
-  };
-
-  const viewDocument = async (documentId: string) => {
-    try {
-      setDocumentBusy(documentId);
-      const blob = await getDocumentBlob(documentId);
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer');
-      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
-    } catch (requestError: any) {
-      setError(
-        requestError?.response?.data?.error?.message ||
-          'Unable to open this document.'
-      );
-    } finally {
-      setDocumentBusy(null);
-    }
-  };
-
-  const downloadDocument = async (documentId: string, fileName: string) => {
-    try {
-      setDocumentBusy(documentId);
-      const blob = await getDocumentBlob(documentId);
-      const url = window.URL.createObjectURL(blob);
-      const link = window.document.createElement('a');
-      link.href = url;
-      link.download = fileName || 'document';
-      window.document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (requestError: any) {
-      setError(
-        requestError?.response?.data?.error?.message ||
-          'Unable to download this document.'
-      );
-    } finally {
-      setDocumentBusy(null);
-    }
+  const documentFileUrl = (documentId: string, disposition: 'inline' | 'attachment') => {
+    const base = String(api.defaults.baseURL || '/api/v1').replace(/\/$/, '');
+    return `${base}/documents/${encodeURIComponent(documentId)}/download?disposition=${disposition}`;
   };
 
   if (loading) {
@@ -326,8 +282,6 @@ export const StudentApplicationPage: React.FC = () => {
                         {stage.documents && stage.documents.length > 0 && (
                           <div className="mt-4 space-y-3">
                             {stage.documents.map((doc) => {
-                              const busy = documentBusy === doc.id;
-
                               return (
                                 <div
                                   key={doc.id}
@@ -346,29 +300,23 @@ export const StudentApplicationPage: React.FC = () => {
                                   </div>
 
                                   <div className="mt-3 grid grid-cols-2 gap-2.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => void viewDocument(doc.id)}
-                                      disabled={busy}
-                                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-extrabold text-blue-700 shadow-sm transition hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60 dark:bg-slate-900 dark:text-blue-300"
+                                    <a
+                                      href={documentFileUrl(doc.id, 'inline')}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-extrabold text-blue-700 shadow-sm transition hover:bg-blue-50 dark:bg-slate-900 dark:text-blue-300"
                                     >
-                                      {busy ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <ExternalLink className="h-4 w-4" />
-                                      )}
+                                      <ExternalLink className="h-4 w-4" />
                                       View
-                                    </button>
+                                    </a>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => void downloadDocument(doc.id, doc.name)}
-                                      disabled={busy}
-                                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 disabled:cursor-wait disabled:opacity-60 dark:bg-slate-800 dark:text-slate-300"
+                                    <a
+                                      href={documentFileUrl(doc.id, 'attachment')}
+                                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
                                     >
                                       <Download className="h-4 w-4" />
                                       Download
-                                    </button>
+                                    </a>
                                   </div>
                                 </div>
                               );
