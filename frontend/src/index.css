@@ -442,3 +442,44 @@ html.dark ::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 999px;
 }
+
+
+/* Portal-wide structural standards for the approved AZAAM MEDICS UI. */
+.azaam-portal-system main input:not([type="checkbox"]):not([type="radio"]),
+.azaam-portal-system main select,
+.azaam-portal-system main textarea {
+  border-radius: 0.75rem;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.azaam-portal-system main input:not([type="checkbox"]):not([type="radio"]),
+.azaam-portal-system main select {
+  min-height: 2.75rem;
+}
+
+.azaam-portal-system main textarea {
+  min-height: 6rem;
+}
+
+.azaam-portal-system main table {
+  width: 100%;
+}
+
+.azaam-portal-system main th {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.azaam-portal-system main td,
+.azaam-portal-system main th {
+  vertical-align: middle;
+}
+
+@media (max-width: 767px) {
+  .azaam-portal-system main button,
+  .azaam-portal-system main a[role="button"] {
+    min-height: 2.5rem;
+  }
+}
