@@ -155,9 +155,18 @@ export const addMockStageDocument = (
   documents: RealTraineeDocument[]
 ): { stages: AdminJourneyStage[]; documents: DisplayDocument[] } => {
   const stages = ensureTraineeStages(studentId).map((s) => ({ ...s }));
-  const stage = stages.find((s) => s.stageKey === stageKey);
-  if (!stage) throw new Error('Unknown journey stage');
+  const index = stages.findIndex((s) => s.stageKey === stageKey);
+  if (index === -1) throw new Error('Unknown journey stage');
+
+  const stage = stages[index];
   stage.documents = [...(stage.documents || []), ...documents];
+
+  if (documents.length > 0 && stage.status !== 'COMPLETED') {
+    stage.status = 'COMPLETED';
+    stage.actedAt = new Date().toISOString();
+    if (stages[index + 1]?.status === 'LOCKED') stages[index + 1].status = 'CURRENT';
+  }
+
   RealDataStore.updateTrainee(studentId, { stages });
   return loadMockJourney(studentId);
 };
