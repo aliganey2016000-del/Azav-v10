@@ -12,14 +12,14 @@ type FormState = {
   fullName: string; studentId: string; gender: string; dateOfBirth: string; nationality: string;
   phone: string; email: string; address: string; faculty: string; program: string; academicLevel: string;
   expectedGraduationDate: string; requestedSpecialty: string; requestedDuration: string;
-  preferredStartDate: string; preferredEndDate: string; trainingPurpose: string;
+  trainingPurpose: string;
   documents: Record<string, PendingDoc>;
 };
 
 const emptyForm: FormState = {
   fullName: '', studentId: '', gender: 'Male', dateOfBirth: '', nationality: '', phone: '', email: '', address: '',
   faculty: '', program: '', academicLevel: 'Year 5', expectedGraduationDate: '', requestedSpecialty: '', requestedDuration: '8 weeks',
-  preferredStartDate: '', preferredEndDate: '', trainingPurpose: '', documents: {},
+  trainingPurpose: '', documents: {},
 };
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -80,7 +80,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
       fullName: `${s.firstName} ${s.lastName}`.trim(), studentId: s.studentNumber, gender: 'Male', dateOfBirth: '', nationality: '',
       phone: s.phone || '', email: s.email, address: '', faculty: '', program: s.specialty, academicLevel: s.studyYear || 'Year 5',
       expectedGraduationDate: '', requestedSpecialty: s.specialty, requestedDuration: s.durationWeeks ? `${s.durationWeeks} weeks` : '8 weeks',
-      preferredStartDate: s.startDate ? s.startDate.slice(0, 10) : '', preferredEndDate: s.endDate ? s.endDate.slice(0, 10) : '', trainingPurpose: '', documents: {},
+      trainingPurpose: '', documents: {},
     });
     setStep(1);
     setEditingId(s._id);
@@ -131,8 +131,6 @@ export const UniversityNominateStudentPage: React.FC = () => {
         program: form.program,
         specialty: form.requestedSpecialty || form.program,
         academicLevel: form.academicLevel,
-        preferredStartDate: form.preferredStartDate || undefined,
-        preferredEndDate: form.preferredEndDate || undefined,
         durationWeeks: durationToWeeks(form.requestedDuration),
       };
 
@@ -190,7 +188,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
 
             {step === 1 && <Panel title="Student Information" subtitle="Basic personal and contact details" tone="blue"><Grid><Field label="Full Name *"><Input value={form.fullName} onChange={v=>change('fullName',v)} placeholder="Enter full name"/></Field><Field label="Student ID *"><Input value={form.studentId} onChange={v=>change('studentId',v)} placeholder="Enter student ID"/></Field><Field label="Gender"><Select value={form.gender} onChange={v=>change('gender',v)} options={['Male','Female','Other']}/></Field><Field label="Date of Birth"><DateInput value={form.dateOfBirth} onChange={v=>change('dateOfBirth',v)}/></Field><Field label="Nationality"><Input value={form.nationality} onChange={v=>change('nationality',v)} placeholder="Nationality"/></Field><Field label="Phone Number"><Input value={form.phone} onChange={v=>change('phone',v)} placeholder="Phone number"/></Field><Field label="Email Address *"><Input type="email" value={form.email} onChange={v=>change('email',v)} placeholder="Email address"/></Field><Field label="Address"><Input value={form.address} onChange={v=>change('address',v)} placeholder="Address"/></Field></Grid></Panel>}
             {step === 2 && <Panel title="Academic Information" subtitle={`${universityName} student academic details`} tone="emerald"><Grid><Field label="Faculty"><Input value={form.faculty} onChange={v=>change('faculty',v)} placeholder="Faculty"/></Field><Field label="Program *"><Input value={form.program} onChange={v=>change('program',v)} placeholder="Program"/></Field><Field label="Academic Level"><Select value={form.academicLevel} onChange={v=>change('academicLevel',v)} options={['Year 1','Year 2','Year 3','Year 4','Year 5','Intern']}/></Field><Field label="Expected Graduation"><DateInput value={form.expectedGraduationDate} onChange={v=>change('expectedGraduationDate',v)}/></Field></Grid></Panel>}
-            {step === 3 && <Panel title="Training Request" subtitle="Requested clinical training details" tone="violet"><Grid><Field label="Clinical Specialty"><Input value={form.requestedSpecialty} onChange={v=>change('requestedSpecialty',v)} placeholder="e.g. General Surgery"/></Field><Field label="Duration"><Input value={form.requestedDuration} onChange={v=>change('requestedDuration',v)} placeholder="e.g. 8 weeks"/></Field><Field label="Preferred Start Date"><DateInput value={form.preferredStartDate} onChange={v=>change('preferredStartDate',v)}/></Field><Field label="Preferred End Date"><DateInput value={form.preferredEndDate} onChange={v=>change('preferredEndDate',v)}/></Field><Field label="Training Purpose" wide><textarea value={form.trainingPurpose} onChange={e=>change('trainingPurpose',e.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Brief purpose of training"/></Field></Grid></Panel>}
+            {step === 3 && <Panel title="Training Request" subtitle="Requested clinical training details" tone="violet"><Grid><Field label="Clinical Specialty"><Input value={form.requestedSpecialty} onChange={v=>change('requestedSpecialty',v)} placeholder="e.g. General Surgery"/></Field><Field label="Duration"><Input value={form.requestedDuration} onChange={v=>change('requestedDuration',v)} placeholder="e.g. 8 weeks"/></Field><Field label="Training Purpose" wide><textarea value={form.trainingPurpose} onChange={e=>change('trainingPurpose',e.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Brief purpose of training"/></Field></Grid></Panel>}
             {step === 4 && <Panel title="Supporting Documents" subtitle="Upload each required document below" tone="blue">
               {existingDocCount > 0 && <p className="mb-3 text-[11px] font-bold text-slate-500">{existingDocCount} document(s) already submitted for this student.</p>}
               {fileError && <p className="mb-2 text-[11px] font-bold text-rose-600">{fileError}</p>}
