@@ -10,19 +10,25 @@ export interface AuthenticatedRequest extends Request {
 
 export async function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const cookieHeader = req.headers.cookie || '';
+  const cookieToken = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('azaam_session='))
+    ?.slice('azaam_session='.length);
+  const token = bearerToken || (cookieToken ? decodeURIComponent(cookieToken) : null);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     res.status(401).json({
       success: false,
       error: {
         code: 'UNAUTHENTICATED',
-        message: 'Authentication token is required',
+        message: 'Authentication session is required',
       },
     });
     return;
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET) as {
