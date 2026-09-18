@@ -10,7 +10,7 @@ import { Certificate } from '../models/Certificate.js';
 import { Student } from '../models/Student.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { AuditService } from './audit.service.js';
-import { UserRole, AuthUser, PlacementStatus } from '../types/index.js';
+import { UserRole, AuthUser, PlacementStatus, ApplicantType } from '../types/index.js';
 import { isDatabaseConnected } from '../config/database.js';
 import {
   memoryUsers,
@@ -448,6 +448,30 @@ export class AdminService {
     });
 
     await newUser.save();
+
+    // A university STUDENT user must also have a Student profile.
+    if (allowedRoles.includes(UserRole.STUDENT) && universityId) {
+      const studentProfile = await Student.findOneAndUpdate(
+        { userId: newUser._id },
+        {
+          $setOnInsert: {
+            userId: newUser._id,
+            universityId,
+            phone: userData.phone,
+            applicantType: ApplicantType.UNIVERSITY,
+            status: 'ACTIVE',
+          },
+          $set: {
+            universityId,
+            phone: userData.phone,
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      newUser.studentId = studentProfile._id as any;
+      await newUser.save();
+    }
 
     // If role is CLINICAL_SUPERVISOR, ensure ClinicalSupervisor record exists
     if (allowedRoles.includes(UserRole.CLINICAL_SUPERVISOR) && organizationId) {
