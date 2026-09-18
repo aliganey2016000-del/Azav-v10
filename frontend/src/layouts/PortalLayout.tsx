@@ -191,6 +191,7 @@ export const PortalLayout: React.FC = () => {
               onClick={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-slate-800"
               aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-pressed={darkMode}
               title={darkMode ? 'Dark mode — tap for light mode' : 'Light mode — tap for dark mode'}
             >
               {darkMode ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
@@ -305,7 +306,7 @@ export const PortalLayout: React.FC = () => {
                             <Link
                               key={item.path}
                               to={item.path}
-                              className={`group flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-xs font-semibold transition ${active ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.22)]' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/[0.08] dark:hover:text-white'}`}
+                              className={`group flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-xs font-semibold transition ${active ? 'bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-[0_8px_20px_rgba(13,148,136,0.24)]' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/[0.08] dark:hover:text-white'}`}
                             >
                               <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-white' : 'text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white'}`} />
                               <span className="min-w-0 flex-1 truncate">{item.label}</span>
