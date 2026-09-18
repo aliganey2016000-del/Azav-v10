@@ -12,6 +12,7 @@ import {
   AdminJourneyStage,
   AuditLogItem,
   PaginationMeta,
+  JourneyChatData,
 } from '../types/admin.types';
 import { RealDataStore, RealTrainee } from './realDataStore';
 
@@ -1420,5 +1421,15 @@ export class AdminApiService {
   ): Promise<AdminJourneyStage[]> {
     const res = await api.post(`/admin/students/${id}/journey/${stageKey}/comment`, { message });
     return res.data.data.stages;
+  }
+
+  static async getJourneyChat(id: string): Promise<JourneyChatData> {
+    const res = await api.get(`/admin/students/${id}/chat`);
+    return res.data.data;
+  }
+
+  static async markJourneyChatRead(id: string): Promise<JourneyChatData> {
+    const res = await api.post(`/admin/students/${id}/chat/read`);
+    return res.data.data;
   }
 }
