@@ -4,8 +4,7 @@ import App from './App';
 import './services/productionMutationGuard';
 import './index.css';
 
-const storedTheme = window.localStorage.getItem('azaam_theme');
-const useDarkTheme = storedTheme === 'dark';
+const useDarkTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 document.documentElement.classList.toggle('dark', useDarkTheme);
 document.documentElement.style.colorScheme = useDarkTheme ? 'dark' : 'light';
 
