@@ -49,6 +49,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const loadStudents = () => {
     setLoading(true);
@@ -142,8 +143,10 @@ export const UniversityNominateStudentPage: React.FC = () => {
         await AdminApiService.uploadStudentDocument(studentId, { originalName: doc.name, mimeType: doc.mimeType, base64Data: doc.base64Data, type: doc.docType });
       }
 
-      loadStudents();
       reset();
+      setSuccessMessage(editingId ? 'Student nomination updated successfully.' : 'Student nomination has been successfully submitted to AZAAM.');
+      window.setTimeout(() => setSuccessMessage(null), 4500);
+      loadStudents();
     } catch (e: any) {
       setSubmitError(e?.response?.data?.error?.message || e.message || 'Failed to save nomination.');
     } finally {
@@ -153,6 +156,27 @@ export const UniversityNominateStudentPage: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-8">
+      {successMessage && (
+        <div className="fixed inset-x-3 top-20 z-[70] mx-auto max-w-md sm:inset-x-auto sm:right-5 sm:top-20">
+          <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3.5 shadow-2xl dark:border-emerald-500/30 dark:bg-[#0f1b2d]">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold text-slate-950 dark:text-white">Submission successful</p>
+              <p className="mt-0.5 text-xs leading-5 text-slate-600 dark:text-slate-300">{successMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage(null)}
+              aria-label="Close success message"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       <section className="overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900 via-blue-700 to-teal-500 p-6 text-white shadow-lg sm:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-100"><GraduationCap className="h-4 w-4" /> {universityName}</div><h1 className="text-2xl font-black sm:text-3xl">Student Nomination</h1><p className="mt-1 max-w-2xl text-sm text-blue-100">Nominate eligible students for clinical training and track every submission from one workspace.</p></div>
