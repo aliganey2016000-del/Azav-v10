@@ -23,7 +23,6 @@ import {
   LogOut,
   Briefcase,
   DollarSign,
-  FileCheck2,
   Plane,
   TrendingUp,
   BarChart3,
@@ -1119,7 +1118,7 @@ const STUDENT_NAVIGATION: NavigationSection[] = [
     ],
   },
   {
-    title: 'MY APPLICATION',
+    title: 'MY JOURNEY',
     items: [
       {
         label: 'Application',
@@ -1127,17 +1126,6 @@ const STUDENT_NAVIGATION: NavigationSection[] = [
         icon: FileText,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
-      {
-        label: 'Status',
-        path: '/student/application-status',
-        icon: FileCheck2,
-        roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
-      },
-    ],
-  },
-  {
-    title: 'MY TRAINING',
-    items: [
       {
         label: 'Clinical Attachment',
         path: '/student/clinical-attachment',
