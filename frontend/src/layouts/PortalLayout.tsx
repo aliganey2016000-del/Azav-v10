@@ -132,7 +132,7 @@ export const PortalLayout: React.FC = () => {
   const roleLabel = String(currentRole).replaceAll('_', ' ').toLowerCase();
 
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-[#f5f8fb] font-sans text-slate-800 transition-colors duration-200 dark:bg-[#08111f] dark:text-slate-100">
+    <div className="azaam-portal-system flex min-h-screen w-full max-w-full overflow-x-hidden bg-[#f5f8fb] font-sans text-slate-800 transition-colors duration-200 dark:bg-[#08111f] dark:text-slate-100">
       {mobileDrawerOpen && (
         <button
           type="button"
