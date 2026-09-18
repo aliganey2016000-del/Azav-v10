@@ -49,6 +49,36 @@ export class JourneyController {
     }
   }
 
+  static async confirmPlacement(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'User not authenticated' } });
+        return;
+      }
+
+      const data = await JourneyService.confirmPlacement(
+        req.params.id,
+        {
+          organizationId: req.body.organizationId,
+          departmentId: req.body.departmentId,
+          supervisorId: req.body.supervisorId,
+          startDate: req.body.startDate,
+          endDate: req.body.endDate,
+          documentIds: Array.isArray(req.body.documentIds) ? req.body.documentIds : [],
+          comment: req.body.comment,
+        },
+        req.user
+      );
+
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        error: { code: error.code || 'SERVER_ERROR', message: error.message },
+      });
+    }
+  }
+
   static async addStageUpdate(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {
