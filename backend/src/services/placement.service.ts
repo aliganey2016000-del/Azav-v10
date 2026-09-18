@@ -447,7 +447,14 @@ export class PlacementService {
 
   static async getPlacements(filters: any) {
     return Placement.find(filters)
-      .populate({ path: 'studentId', populate: { path: 'userId', select: 'firstName lastName email' } })
+      .populate({
+        path: 'studentId',
+        populate: [
+          { path: 'userId', select: 'firstName lastName email' },
+          { path: 'universityId', select: 'name code' },
+          { path: 'programmeId', select: 'name code' },
+        ],
+      })
       .populate({
         path: 'applicationId',
         populate: [
