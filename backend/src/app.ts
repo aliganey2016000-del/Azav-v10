@@ -34,8 +34,10 @@ export function createApp() {
     origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN,
     credentials: true,
   }));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // Nomination documents are uploaded as base64 JSON. A 5MB file expands to ~6.7MB in base64,
+  // so the parser limit must safely exceed the validated file-size limit.
+  app.use(express.json({ limit: '12mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 
   // Global Rate Limiter
   const apiLimiter = rateLimit({
