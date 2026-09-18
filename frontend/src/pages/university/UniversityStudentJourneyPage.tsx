@@ -26,6 +26,7 @@ import {
   Check,
   Home,
   FileCheck2,
+  MessageCircle,
 } from 'lucide-react';
 import type { RealTrainee } from '../../services/realDataStore';
 import { AdminApiService } from '../../services/admin.service';
@@ -68,6 +69,14 @@ export const UniversityStudentJourneyPage: React.FC = () => {
         console.error(e);
       })
       .finally(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const timer = window.setInterval(() => {
+      AdminApiService.getJourneyChat(id).then(setChatData).catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
   }, [id]);
 
   const handleStageDocumentDownload = async (doc: DisplayDocument) => {
@@ -191,7 +200,7 @@ export const UniversityStudentJourneyPage: React.FC = () => {
               to={`/university/students/${id}/chat`}
               className="relative inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#00a884] px-4 text-sm font-extrabold text-white shadow-lg transition hover:bg-[#029978]"
             >
-              <CheckCircle2 className="h-5 w-5" />
+              <MessageCircle className="h-5 w-5" />
               Open Chat
               {chatUnread > 0 && (
                 <span className="absolute -right-2 -top-2 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white ring-2 ring-slate-950">
@@ -308,7 +317,7 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                           to={`/university/students/${id}/chat?stage=${stage.key}`}
                           className="relative mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#00a884]/30 bg-emerald-50 px-4 text-xs font-extrabold text-emerald-800 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
                         >
-                          <CheckCircle2 className="h-4 w-4" />
+                          <MessageCircle className="h-4 w-4" />
                           Chat with AZAAM
                           {stageUnread(stage.key) > 0 && (
                             <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
