@@ -59,6 +59,9 @@ const isAzaamActor = (actor: AuthUser) =>
 const isUniversityActor = (actor: AuthUser) =>
   actor.roles.includes(UserRole.UNIVERSITY_ADMIN) || actor.roles.includes(UserRole.UNIVERSITY_STAFF);
 
+const chatRoleFor = (actor: AuthUser): 'AZAAM' | 'UNIVERSITY' =>
+  isAzaamActor(actor) ? 'AZAAM' : 'UNIVERSITY';
+
 export class JourneyService {
   private static async assertStudentAccess(studentId: string, actor?: AuthUser) {
     const student = await Student.findById(studentId);
@@ -156,6 +159,7 @@ export class JourneyService {
         author: comment.author,
         authorName: comment.authorName,
         message: comment.message,
+        readBy: comment.readBy || [],
         createdAt: comment.createdAt,
       })),
       updateMode: DOCUMENT_UPDATE_STAGES.has(m.stageKey as JourneyStageKey) ? 'DOCUMENT_CHAT' : 'APPROVAL',
@@ -333,6 +337,7 @@ export class JourneyService {
         authorUserId: actor.userId as any,
         authorName: await this.authorName(actor),
         message: comment,
+        readBy: ['AZAAM'],
         createdAt: new Date(),
       } as any);
     }
@@ -405,6 +410,7 @@ export class JourneyService {
       authorUserId: actor.userId as any,
       authorName: await this.authorName(actor),
       message: cleanMessage,
+      readBy: [chatRoleFor(actor)],
       createdAt: new Date(),
     } as any);
 
@@ -421,5 +427,75 @@ export class JourneyService {
     });
 
     return this.getJourney(studentId, actor);
+  }
+
+  static async getChat(studentId: string, actor: AuthUser) {
+    await this.assertStudentAccess(studentId, actor);
+    const viewerRole = chatRoleFor(actor);
+
+    const milestones: any[] = await JourneyMilestone.find({
+      studentId,
+      stageKey: { $in: Array.from(DOCUMENT_UPDATE_STAGES) },
+    })
+      .sort({ order: 1 })
+      .lean();
+
+    const messages = milestones
+      .flatMap((m: any) =>
+        (m.comments || []).map((comment: any) => ({
+          id: String(comment._id),
+          stageKey: m.stageKey,
+          stageTitle: STAGE_LABELS[m.stageKey as JourneyStageKey].title,
+          author: comment.author,
+          authorName: comment.authorName,
+          message: comment.message,
+          readBy: comment.readBy || [],
+          createdAt: comment.createdAt,
+        }))
+      )
+      .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    const unreadCount = messages.filter(
+      (m: any) => m.author !== viewerRole && !(m.readBy || []).includes(viewerRole)
+    ).length;
+
+    return {
+      viewerRole,
+      unreadCount,
+      messages,
+      availableStages: milestones.map((m: any) => ({
+        stageKey: m.stageKey,
+        title: STAGE_LABELS[m.stageKey as JourneyStageKey].title,
+        status: m.status,
+        enabled: m.status !== JourneyStageStatus.LOCKED,
+      })),
+    };
+  }
+
+  static async markChatRead(studentId: string, actor: AuthUser) {
+    await this.assertStudentAccess(studentId, actor);
+    const viewerRole = chatRoleFor(actor);
+
+    const milestones = await JourneyMilestone.find({
+      studentId,
+      stageKey: { $in: Array.from(DOCUMENT_UPDATE_STAGES) },
+    });
+
+    for (const milestone of milestones) {
+      let changed = false;
+      for (const comment of milestone.comments as any[]) {
+        const readBy = Array.isArray(comment.readBy) ? comment.readBy : [];
+        if (comment.author !== viewerRole && !readBy.includes(viewerRole)) {
+          comment.readBy = [...readBy, viewerRole];
+          changed = true;
+        }
+      }
+      if (changed) {
+        milestone.markModified('comments');
+        await milestone.save();
+      }
+    }
+
+    return this.getChat(studentId, actor);
   }
 }
