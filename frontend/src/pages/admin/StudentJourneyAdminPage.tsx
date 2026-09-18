@@ -60,6 +60,14 @@ export const StudentJourneyAdminPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    const timer = window.setInterval(() => {
+      AdminApiService.getJourneyChat(id).then(setChatData).catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [id]);
+
   const stages = useMemo<DisplayStage[]>(
     () => buildDisplayStages(documents, azaamStages, canAct),
     [documents, azaamStages, canAct]
