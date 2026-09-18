@@ -288,20 +288,20 @@ export const UniversitiesPage: React.FC = () => {
 
   return (
     <div className="university-option-a min-h-full rounded-[28px] bg-slate-50 p-3 sm:p-5 text-slate-900 space-y-5 sm:space-y-6">
-      <section className="relative overflow-hidden rounded-[28px] border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 px-5 py-6 sm:px-7 sm:py-8 shadow-xl">
+      <section className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-teal-50 px-5 py-6 sm:px-7 sm:py-8 shadow-sm dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-teal-950 dark:shadow-xl">
         <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-teal-500/10 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 right-10 h-28 w-28 rounded-full bg-cyan-400/10 blur-2xl" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div className="max-w-2xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-400/20 bg-teal-400/10 px-3 py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.14em] text-teal-300">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.14em] text-teal-700 dark:border-teal-400/20 dark:bg-teal-400/10 dark:text-teal-300">
               <GraduationCap className="w-4 h-4" />
               University Partnerships
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white">
               University Management
             </h1>
-            <p className="mt-2 max-w-xl text-sm sm:text-base leading-6 text-slate-300">
+            <p className="mt-2 max-w-xl text-sm sm:text-base leading-6 text-slate-600 dark:text-slate-300">
               Partner universities, academic institutions, and student enrollment capacity.
             </p>
           </div>
