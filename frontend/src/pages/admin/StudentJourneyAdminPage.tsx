@@ -6,10 +6,11 @@ import { AdminStudentJourney, AdminJourneyStage, JourneyChatData } from '../../t
 import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
 import { useAuth } from '../../context/AuthContext';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, buildDisplayStages, isDocumentChatStage } from '../../utils/journeyStages';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, buildDisplayStages, isDocumentChatStage, isEvidenceUpdateStage } from '../../utils/journeyStages';
 import { documentTypeLabel } from '../../utils/documentTypes';
 
 type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
+type ArrivalStatus = 'ARRIVED' | 'NOT_YET_ARRIVED';
 
 const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -35,6 +36,8 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const [chatData, setChatData] = useState<JourneyChatData | null>(null);
   const [stageUpdateFiles, setStageUpdateFiles] = useState<Record<string, File[]>>({});
   const [stageUpdateNote, setStageUpdateNote] = useState<Record<string, string>>({});
+  const [arrivalStatus, setArrivalStatus] = useState<ArrivalStatus>('ARRIVED');
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const emptyDraft = { action: 'APPROVE' as ActionType, reason: '', files: [] as File[] };
 
@@ -147,6 +150,74 @@ export const StudentJourneyAdminPage: React.FC = () => {
     }
   };
 
+  const handleTransportUpdate = async () => {
+    if (!id) return;
+
+    const stageKey = 'TRANSPORT';
+    const files = stageUpdateFiles[stageKey] || [];
+    const note = (stageUpdateNote[stageKey] || '').trim();
+
+    if (arrivalStatus === 'ARRIVED') {
+      if (files.length === 0) {
+        setActionSuccess(null);
+        setActionError('Upload at least one airport pickup photo before confirming arrival.');
+        return;
+      }
+
+      const invalidFile = files.find((file) => file.type && !file.type.toLowerCase().startsWith('image/'));
+      if (invalidFile) {
+        setActionSuccess(null);
+        setActionError('Arrival evidence must be an image (JPG, PNG or WEBP).');
+        return;
+      }
+    }
+
+    setSubmitting('update-' + stageKey);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const uploaded =
+        arrivalStatus === 'ARRIVED'
+          ? await Promise.all(
+              files.map(async (file) => {
+                const base64Data = await readFileAsDataUrl(file);
+                return AdminApiService.uploadStudentDocument(id, {
+                  originalName: file.name,
+                  mimeType: file.type || 'image/jpeg',
+                  base64Data,
+                  type: 'ARRIVAL_EVIDENCE',
+                });
+              })
+            )
+          : [];
+
+      const statusText = arrivalStatus === 'ARRIVED' ? 'Arrived' : 'Not Yet Arrived';
+      const comment = `Arrival status: ${statusText}${note ? ` — ${note}` : ''}`;
+
+      const stages = await AdminApiService.updateJourneyStage(
+        id,
+        stageKey,
+        uploaded.map((doc: any) => doc._id),
+        comment
+      );
+
+      setAzaamStages(stages);
+      setStageUpdateFiles((prev) => ({ ...prev, [stageKey]: [] }));
+      setStageUpdateNote((prev) => ({ ...prev, [stageKey]: '' }));
+
+      setActionSuccess(
+        arrivalStatus === 'ARRIVED'
+          ? 'Student arrival has been confirmed successfully and the airport pickup photo evidence has been saved.'
+          : 'Arrival status saved as Not Yet Arrived. The stage remains in progress.'
+      );
+    } catch (e: any) {
+      setActionError(e?.response?.data?.error?.message || e.message || 'Failed to save arrival update.');
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
   const handleDownload = async (doc: DisplayDocument) => {
     try {
       await AdminApiService.downloadDocument(doc.id, doc.name);
@@ -225,6 +296,10 @@ export const StudentJourneyAdminPage: React.FC = () => {
 
       {actionError && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">{actionError}</div>
+      )}
+
+      {actionSuccess && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">{actionSuccess}</div>
       )}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
@@ -356,6 +431,76 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             {submitting === 'update-' + stage.key && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                             <Upload className="h-3.5 w-3.5" />
                             Upload & Save Update
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {isEvidenceUpdateStage(stage.key) && stage.uiStatus !== 'PENDING' && stage.uiStatus !== 'COMPLETED' && (
+                      <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50/70 p-3">
+                        <div className="mb-3">
+                          <p className="text-xs font-extrabold text-slate-900">Arrival confirmation</p>
+                          <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                            Confirm the student's airport pickup. A photo is required when the student has arrived.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Arrival Status
+                            </label>
+                            <select
+                              value={arrivalStatus}
+                              onChange={(e) => setArrivalStatus(e.target.value as ArrivalStatus)}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-teal-500"
+                            >
+                              <option value="ARRIVED">Arrived</option>
+                              <option value="NOT_YET_ARRIVED">Not Yet Arrived</option>
+                            </select>
+                          </div>
+
+                          {arrivalStatus === 'ARRIVED' && (
+                            <div>
+                              <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                Airport Pickup Photo Evidence
+                              </label>
+                              <input
+                                type="file"
+                                multiple
+                                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                                onChange={(e) =>
+                                  setStageUpdateFiles((prev) => ({
+                                    ...prev,
+                                    [stage.key]: Array.from(e.target.files || []),
+                                  }))
+                                }
+                                className="block w-full text-[11px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-600 file:px-3 file:py-2 file:text-[11px] file:font-bold file:text-white"
+                              />
+                              <p className="mt-1 text-[10px] text-slate-500">
+                                Upload a clear photo of the student/student group during airport pickup.
+                              </p>
+                            </div>
+                          )}
+
+                          <textarea
+                            value={stageUpdateNote[stage.key] || ''}
+                            onChange={(e) =>
+                              setStageUpdateNote((prev) => ({ ...prev, [stage.key]: e.target.value }))
+                            }
+                            placeholder="Optional airport / pickup note..."
+                            className="min-h-20 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-teal-500"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={handleTransportUpdate}
+                            disabled={submitting === 'update-TRANSPORT'}
+                            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-500 px-4 text-xs font-extrabold text-white disabled:opacity-50 sm:w-auto"
+                          >
+                            {submitting === 'update-TRANSPORT' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                            <Upload className="h-3.5 w-3.5" />
+                            {arrivalStatus === 'ARRIVED' ? 'Confirm Arrival' : 'Save Arrival Status'}
                           </button>
                         </div>
                       </div>
