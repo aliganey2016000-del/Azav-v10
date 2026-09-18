@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2, MessageCircle, Upload } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2, MessageCircle, Upload, Plus } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage, JourneyChatData } from '../../types/admin.types';
 import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
 import { useAuth } from '../../context/AuthContext';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, buildDisplayStages, isDocumentChatStage, isEvidenceUpdateStage } from '../../utils/journeyStages';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, buildDisplayStages, isDocumentChatStage, isEvidenceUpdateStage, isPlacementStage } from '../../utils/journeyStages';
 import { documentTypeLabel } from '../../utils/documentTypes';
 
 type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
@@ -38,6 +38,28 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const [stageUpdateNote, setStageUpdateNote] = useState<Record<string, string>>({});
   const [arrivalStatus, setArrivalStatus] = useState<ArrivalStatus>('ARRIVED');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [hospitals, setHospitals] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [supervisors, setSupervisors] = useState<any[]>([]);
+  const [hospitalOptionsLoading, setHospitalOptionsLoading] = useState(false);
+  const [showNewHospital, setShowNewHospital] = useState(false);
+  const [creatingHospital, setCreatingHospital] = useState(false);
+  const [placementForm, setPlacementForm] = useState({
+    organizationId: '',
+    departmentId: '',
+    supervisorId: '',
+    startDate: '',
+    endDate: '',
+    note: '',
+  });
+  const [newHospital, setNewHospital] = useState({
+    name: '',
+    contactEmail: '',
+    contactPhone: '',
+    city: '',
+    address: '',
+    capacity: 20,
+  });
 
   const emptyDraft = { action: 'APPROVE' as ActionType, reason: '', files: [] as File[] };
 
@@ -57,6 +79,11 @@ export const StudentJourneyAdminPage: React.FC = () => {
     AdminApiService.getStudentById(id)
       .then((d) => {
         setData(d);
+        setPlacementForm((prev) => ({
+          ...prev,
+          startDate: prev.startDate || (d.student.startDate ? d.student.startDate.slice(0, 10) : ''),
+          endDate: prev.endDate || (d.student.endDate ? d.student.endDate.slice(0, 10) : ''),
+        }));
         return loadJourney(id);
       })
       .catch((e: any) => setError(e.message || 'Failed to load student journey.'))
@@ -70,6 +97,46 @@ export const StudentJourneyAdminPage: React.FC = () => {
     }, 5000);
     return () => window.clearInterval(timer);
   }, [id]);
+
+  useEffect(() => {
+    if (!canAct) return;
+
+    setHospitalOptionsLoading(true);
+    AdminApiService.getOrganizations({ page: 1, limit: 100, status: 'ACTIVE' })
+      .then((res) => {
+        const options = (res.organizations || [])
+          .filter((org: any) => ['HOSPITAL', 'TEACHING_HOSPITAL'].includes(String(org.type || '').toUpperCase()))
+          .sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || '')));
+        setHospitals(options);
+      })
+      .catch((e: any) => {
+        setActionError(e?.response?.data?.error?.message || e.message || 'Failed to load hospitals.');
+      })
+      .finally(() => setHospitalOptionsLoading(false));
+  }, [canAct]);
+
+  useEffect(() => {
+    const organizationId = placementForm.organizationId;
+    if (!organizationId) {
+      setDepartments([]);
+      setSupervisors([]);
+      return;
+    }
+
+    Promise.all([
+      AdminApiService.getOrganizationDepartments(organizationId),
+      AdminApiService.getOrganizationSupervisors(organizationId),
+    ])
+      .then(([departmentItems, supervisorItems]) => {
+        setDepartments(departmentItems);
+        setSupervisors(supervisorItems);
+      })
+      .catch((e: any) => {
+        setDepartments([]);
+        setSupervisors([]);
+        setActionError(e?.response?.data?.error?.message || e.message || 'Failed to load hospital departments or supervisors.');
+      });
+  }, [placementForm.organizationId]);
 
   const stages = useMemo<DisplayStage[]>(
     () => buildDisplayStages(documents, azaamStages, canAct),
@@ -218,6 +285,137 @@ export const StudentJourneyAdminPage: React.FC = () => {
     }
   };
 
+  const handleCreateHospital = async () => {
+    const name = newHospital.name.trim();
+    const contactEmail = newHospital.contactEmail.trim();
+
+    if (!name || !contactEmail) {
+      setActionSuccess(null);
+      setActionError('Hospital name and official contact email are required.');
+      return;
+    }
+
+    setCreatingHospital(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const created = await AdminApiService.createOrganization({
+        name,
+        legalName: name,
+        type: 'TEACHING_HOSPITAL',
+        country: 'Somalia',
+        city: newHospital.city.trim(),
+        address: newHospital.address.trim(),
+        contactEmail,
+        contactPhone: newHospital.contactPhone.trim(),
+        capacity: Number(newHospital.capacity) || 20,
+        status: 'ACTIVE',
+        accreditationStatus: 'PENDING',
+      });
+
+      setHospitals((prev) =>
+        [...prev.filter((item) => item._id !== created._id), created].sort((a, b) =>
+          String(a.name || '').localeCompare(String(b.name || ''))
+        )
+      );
+      setPlacementForm((prev) => ({
+        ...prev,
+        organizationId: created._id,
+        departmentId: '',
+        supervisorId: '',
+      }));
+      setNewHospital({
+        name: '',
+        contactEmail: '',
+        contactPhone: '',
+        city: '',
+        address: '',
+        capacity: 20,
+      });
+      setShowNewHospital(false);
+      setActionSuccess('New hospital has been created and selected for this placement.');
+    } catch (e: any) {
+      setActionError(e?.response?.data?.error?.message || e.message || 'Failed to create hospital.');
+    } finally {
+      setCreatingHospital(false);
+    }
+  };
+
+  const handlePlacementConfirm = async () => {
+    if (!id) return;
+
+    const files = stageUpdateFiles.PLACEMENT || [];
+
+    if (!placementForm.organizationId) {
+      setActionSuccess(null);
+      setActionError('Select a hospital before confirming the placement.');
+      return;
+    }
+
+    if (!placementForm.startDate || !placementForm.endDate) {
+      setActionSuccess(null);
+      setActionError('Start date and end date are required.');
+      return;
+    }
+
+    if (placementForm.endDate < placementForm.startDate) {
+      setActionSuccess(null);
+      setActionError('End date must be on or after the start date.');
+      return;
+    }
+
+    if (files.length === 0) {
+      setActionSuccess(null);
+      setActionError('Upload at least one photo of the student at the hospital with the supervisor.');
+      return;
+    }
+
+    const invalidFile = files.find((file) => file.type && !file.type.toLowerCase().startsWith('image/'));
+    if (invalidFile) {
+      setActionSuccess(null);
+      setActionError('Placement evidence must be an image (JPG, PNG or WEBP).');
+      return;
+    }
+
+    setSubmitting('update-PLACEMENT');
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const uploaded = await Promise.all(
+        files.map(async (file) => {
+          const base64Data = await readFileAsDataUrl(file);
+          return AdminApiService.uploadStudentDocument(id, {
+            originalName: file.name,
+            mimeType: file.type || 'image/jpeg',
+            base64Data,
+            type: 'PLACEMENT_EVIDENCE',
+          });
+        })
+      );
+
+      const stages = await AdminApiService.confirmHospitalPlacement(id, {
+        organizationId: placementForm.organizationId,
+        departmentId: placementForm.departmentId || undefined,
+        supervisorId: placementForm.supervisorId || undefined,
+        startDate: placementForm.startDate,
+        endDate: placementForm.endDate,
+        documentIds: uploaded.map((doc: any) => doc._id),
+        comment: placementForm.note.trim() || undefined,
+      });
+
+      setAzaamStages(stages);
+      setStageUpdateFiles((prev) => ({ ...prev, PLACEMENT: [] }));
+      setPlacementForm((prev) => ({ ...prev, note: '' }));
+      setActionSuccess('Hospital placement has been confirmed successfully. Clinical Training is now open.');
+    } catch (e: any) {
+      setActionError(e?.response?.data?.error?.message || e.message || 'Failed to confirm hospital placement.');
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
   const handleDownload = async (doc: DisplayDocument) => {
     try {
       await AdminApiService.downloadDocument(doc.id, doc.name);
@@ -330,6 +528,12 @@ export const StudentJourneyAdminPage: React.FC = () => {
                       <p className="mt-2 rounded-lg bg-white/70 border border-current/20 p-2 text-[11px] font-semibold text-slate-700">
                         <span className="font-black">AZAAM comment:</span> {stage.reason}
                       </p>
+                    )}
+
+                    {stage.key === 'PLACEMENT' && stage.comments && stage.comments.length > 0 && (
+                      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-[11px] font-semibold leading-5 text-emerald-900">
+                        <span className="font-black">Placement record:</span> {stage.comments[stage.comments.length - 1].message}
+                      </div>
                     )}
 
                     {(stage.documents && stage.documents.length > 0) && (
@@ -501,6 +705,252 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             {submitting === 'update-TRANSPORT' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                             <Upload className="h-3.5 w-3.5" />
                             {arrivalStatus === 'ARRIVED' ? 'Confirm Arrival' : 'Save Arrival Status'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {isPlacementStage(stage.key) && stage.uiStatus !== 'PENDING' && stage.uiStatus !== 'COMPLETED' && (
+                      <div className="mt-3 rounded-xl border border-teal-200 bg-teal-50/70 p-3">
+                        <div className="mb-3">
+                          <p className="text-xs font-extrabold text-slate-900">Hospital placement confirmation</p>
+                          <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                            Select an existing hospital or create it now, assign available placement details, and upload photo evidence.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Hospital
+                            </label>
+                            <select
+                              value={placementForm.organizationId}
+                              disabled={hospitalOptionsLoading}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '__ADD_NEW_HOSPITAL__') {
+                                  setShowNewHospital(true);
+                                  setPlacementForm((prev) => ({
+                                    ...prev,
+                                    organizationId: '',
+                                    departmentId: '',
+                                    supervisorId: '',
+                                  }));
+                                  return;
+                                }
+
+                                setShowNewHospital(false);
+                                setPlacementForm((prev) => ({
+                                  ...prev,
+                                  organizationId: value,
+                                  departmentId: '',
+                                  supervisorId: '',
+                                }));
+                              }}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-teal-500 disabled:opacity-60"
+                            >
+                              <option value="">{hospitalOptionsLoading ? 'Loading hospitals...' : 'Select hospital'}</option>
+                              {hospitals.map((hospital) => (
+                                <option key={hospital._id} value={hospital._id}>
+                                  {hospital.name}{hospital.city ? ` — ${hospital.city}` : ''}
+                                </option>
+                              ))}
+                              <option value="__ADD_NEW_HOSPITAL__">+ Add New Hospital</option>
+                            </select>
+                          </div>
+
+                          {showNewHospital && (
+                            <div className="rounded-xl border border-dashed border-teal-300 bg-white p-3">
+                              <div className="mb-3 flex items-center gap-2">
+                                <Plus className="h-4 w-4 text-teal-700" />
+                                <p className="text-xs font-extrabold text-slate-900">Add New Hospital</p>
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <input
+                                  value={newHospital.name}
+                                  onChange={(e) => setNewHospital((prev) => ({ ...prev, name: e.target.value }))}
+                                  placeholder="Hospital name *"
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-teal-500"
+                                />
+                                <input
+                                  type="email"
+                                  value={newHospital.contactEmail}
+                                  onChange={(e) => setNewHospital((prev) => ({ ...prev, contactEmail: e.target.value }))}
+                                  placeholder="Official email *"
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-teal-500"
+                                />
+                                <input
+                                  value={newHospital.contactPhone}
+                                  onChange={(e) => setNewHospital((prev) => ({ ...prev, contactPhone: e.target.value }))}
+                                  placeholder="Telephone"
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-teal-500"
+                                />
+                                <input
+                                  value={newHospital.city}
+                                  onChange={(e) => setNewHospital((prev) => ({ ...prev, city: e.target.value }))}
+                                  placeholder="City"
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-teal-500"
+                                />
+                                <input
+                                  value={newHospital.address}
+                                  onChange={(e) => setNewHospital((prev) => ({ ...prev, address: e.target.value }))}
+                                  placeholder="Physical address"
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-teal-500 sm:col-span-2"
+                                />
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={newHospital.capacity}
+                                  onChange={(e) => setNewHospital((prev) => ({ ...prev, capacity: Number(e.target.value) }))}
+                                  placeholder="Placement capacity"
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-teal-500"
+                                />
+                              </div>
+                              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <button
+                                  type="button"
+                                  onClick={handleCreateHospital}
+                                  disabled={creatingHospital}
+                                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 text-xs font-extrabold text-white disabled:opacity-50"
+                                >
+                                  {creatingHospital && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                  Save Hospital
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowNewHospital(false)}
+                                  className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-xs font-bold text-slate-700"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                              <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                Department
+                              </label>
+                              <select
+                                value={placementForm.departmentId}
+                                disabled={!placementForm.organizationId}
+                                onChange={(e) =>
+                                  setPlacementForm((prev) => ({
+                                    ...prev,
+                                    departmentId: e.target.value,
+                                    supervisorId: '',
+                                  }))
+                                }
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-teal-500 disabled:opacity-60"
+                              >
+                                <option value="">
+                                  {placementForm.organizationId && departments.length === 0
+                                    ? 'No department registered (optional)'
+                                    : 'Select department (optional)'}
+                                </option>
+                                {departments.map((department) => (
+                                  <option key={department._id} value={department._id}>{department.name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                Supervisor
+                              </label>
+                              <select
+                                value={placementForm.supervisorId}
+                                disabled={!placementForm.organizationId}
+                                onChange={(e) =>
+                                  setPlacementForm((prev) => ({ ...prev, supervisorId: e.target.value }))
+                                }
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-teal-500 disabled:opacity-60"
+                              >
+                                <option value="">
+                                  {placementForm.organizationId && supervisors.length === 0
+                                    ? 'No supervisor registered (optional)'
+                                    : 'Select supervisor (optional)'}
+                                </option>
+                                {supervisors
+                                  .filter((supervisor) =>
+                                    !placementForm.departmentId ||
+                                    !supervisor.departmentId?._id ||
+                                    supervisor.departmentId._id === placementForm.departmentId
+                                  )
+                                  .map((supervisor) => (
+                                    <option key={supervisor._id} value={supervisor._id}>
+                                      {[supervisor.userId?.firstName, supervisor.userId?.lastName].filter(Boolean).join(' ') || 'Clinical Supervisor'}
+                                      {supervisor.departmentId?.name ? ` — ${supervisor.departmentId.name}` : ''}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                              <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                Start Date
+                              </label>
+                              <input
+                                type="date"
+                                value={placementForm.startDate}
+                                onChange={(e) => setPlacementForm((prev) => ({ ...prev, startDate: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-teal-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                End Date
+                              </label>
+                              <input
+                                type="date"
+                                value={placementForm.endDate}
+                                onChange={(e) => setPlacementForm((prev) => ({ ...prev, endDate: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-teal-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Placement Evidence Photo *
+                            </label>
+                            <input
+                              type="file"
+                              multiple
+                              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                              onChange={(e) =>
+                                setStageUpdateFiles((prev) => ({
+                                  ...prev,
+                                  PLACEMENT: Array.from(e.target.files || []),
+                                }))
+                              }
+                              className="block w-full text-[11px] text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-600 file:px-3 file:py-2 file:text-[11px] file:font-bold file:text-white"
+                            />
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              Upload a clear photo of the student at the hospital, ideally during introduction to the supervisor.
+                            </p>
+                          </div>
+
+                          <textarea
+                            value={placementForm.note}
+                            onChange={(e) => setPlacementForm((prev) => ({ ...prev, note: e.target.value }))}
+                            placeholder="Optional placement note..."
+                            className="min-h-20 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-teal-500"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={handlePlacementConfirm}
+                            disabled={submitting === 'update-PLACEMENT'}
+                            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-500 px-4 text-xs font-extrabold text-white disabled:opacity-50 sm:w-auto"
+                          >
+                            {submitting === 'update-PLACEMENT' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                            <Building2 className="h-3.5 w-3.5" />
+                            Confirm Placement
                           </button>
                         </div>
                       </div>
