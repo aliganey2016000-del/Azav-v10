@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 
 export interface FilePayload {
@@ -73,6 +74,124 @@ export class LocalStorageProvider implements IStorageProvider {
   }
 }
 
+// Durable MongoDB GridFS storage. Production uses this by default so files survive
+// application container rebuilds/redeployments as long as MongoDB itself is persistent.
+export class MongoGridFSStorageProvider implements IStorageProvider {
+  private bucketName = process.env.STORAGE_BUCKET || env.STORAGE_BUCKET || 'azaam_documents';
+
+  private getBucket(): mongoose.mongo.GridFSBucket {
+    const db = mongoose.connection.db;
+    if (!db) {
+      const err: any = new Error('Document storage is not ready because MongoDB is not connected.');
+      err.statusCode = 503;
+      err.code = 'STORAGE_NOT_READY';
+      throw err;
+    }
+    return new mongoose.mongo.GridFSBucket(db, { bucketName: this.bucketName });
+  }
+
+  async uploadFile(file: FilePayload): Promise<StorageUploadResult> {
+    const bucket = this.getBucket();
+    const stream = bucket.openUploadStream(
+      `doc_${Date.now()}_${crypto.randomBytes(8).toString('hex')}${path.extname(file.originalname).toLowerCase() || '.bin'}`,
+      {
+        metadata: {
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+        },
+      }
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      stream.on('error', reject);
+      stream.on('finish', () => resolve());
+      stream.end(file.buffer);
+    });
+
+    return {
+      storageKey: `gridfs:${stream.id.toString()}`,
+      fileSize: file.buffer.length,
+    };
+  }
+
+  async getFile(storageKey: string): Promise<Buffer> {
+    const rawId = storageKey.replace(/^gridfs:/, '');
+    if (!mongoose.Types.ObjectId.isValid(rawId)) {
+      const err: any = new Error('Invalid document storage key.');
+      err.statusCode = 400;
+      err.code = 'INVALID_STORAGE_KEY';
+      throw err;
+    }
+
+    const bucket = this.getBucket();
+    const chunks: Buffer[] = [];
+
+    return await new Promise<Buffer>((resolve, reject) => {
+      const stream = bucket.openDownloadStream(new mongoose.Types.ObjectId(rawId));
+      stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      stream.on('error', (error: any) => {
+        const err: any = new Error(
+          error?.code === 'ENOENT' ? 'File not found in durable storage.' : 'Unable to read document from durable storage.'
+        );
+        err.statusCode = error?.code === 'ENOENT' ? 404 : 500;
+        err.code = error?.code === 'ENOENT' ? 'FILE_NOT_FOUND' : 'STORAGE_READ_ERROR';
+        reject(err);
+      });
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
+  async deleteFile(storageKey: string): Promise<void> {
+    const rawId = storageKey.replace(/^gridfs:/, '');
+    if (!mongoose.Types.ObjectId.isValid(rawId)) return;
+    const bucket = this.getBucket();
+    try {
+      await bucket.delete(new mongoose.Types.ObjectId(rawId));
+    } catch (error: any) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+  }
+}
+
+// Production compatibility provider:
+// - all NEW uploads go to durable MongoDB GridFS;
+// - legacy local keys are still readable if their files remain on disk.
+export class DurableProductionStorageProvider implements IStorageProvider {
+  private durable = new MongoGridFSStorageProvider();
+  private legacyLocal = new LocalStorageProvider();
+
+  async uploadFile(file: FilePayload): Promise<StorageUploadResult> {
+    return this.durable.uploadFile(file);
+  }
+
+  async getFile(storageKey: string): Promise<Buffer> {
+    if (storageKey.startsWith('gridfs:')) {
+      return this.durable.getFile(storageKey);
+    }
+
+    try {
+      return await this.legacyLocal.getFile(storageKey);
+    } catch (error: any) {
+      if (error?.statusCode === 404) {
+        const err: any = new Error(
+          'This legacy file is no longer present on the old container storage. Please re-upload the document once; new uploads are now stored durably.'
+        );
+        err.statusCode = 410;
+        err.code = 'LEGACY_FILE_MISSING';
+        throw err;
+      }
+      throw error;
+    }
+  }
+
+  async deleteFile(storageKey: string): Promise<void> {
+    if (storageKey.startsWith('gridfs:')) {
+      return this.durable.deleteFile(storageKey);
+    }
+    return this.legacyLocal.deleteFile(storageKey);
+  }
+}
+
 // 2. S3 provider placeholder. Do not silently fall back to local disk: doing so
 // would make operators believe documents are durable in object storage when they
 // are actually tied to an ephemeral container filesystem.
@@ -105,7 +224,11 @@ export class StorageService {
     if (!this.provider) {
       const providerType = (process.env.STORAGE_PROVIDER || env.STORAGE_PROVIDER || 'local').toLowerCase();
       if (providerType === 'local') {
-        this.provider = new LocalStorageProvider();
+        this.provider = env.NODE_ENV === 'production'
+          ? new DurableProductionStorageProvider()
+          : new LocalStorageProvider();
+      } else if (providerType === 'mongodb' || providerType === 'gridfs') {
+        this.provider = new MongoGridFSStorageProvider();
       } else if (providerType === 's3') {
         this.provider = new S3StorageProvider();
       } else {
