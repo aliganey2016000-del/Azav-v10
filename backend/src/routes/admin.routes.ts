@@ -131,5 +131,25 @@ adminRouter.post(
   ),
   JourneyController.addComment
 );
+adminRouter.get(
+  '/students/:id/chat',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.UNIVERSITY_ADMIN,
+    UserRole.UNIVERSITY_STAFF
+  ),
+  JourneyController.getChat
+);
+adminRouter.post(
+  '/students/:id/chat/read',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.UNIVERSITY_ADMIN,
+    UserRole.UNIVERSITY_STAFF
+  ),
+  JourneyController.markChatRead
+);
 
 adminRouter.get('/audit-logs', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.getAuditLogs);
