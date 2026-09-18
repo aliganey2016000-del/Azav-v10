@@ -27,7 +27,6 @@ import { AdminApiService } from '../../services/admin.service';
 import { AdminUser, AdminUniversity, AdminOrganization, PaginationMeta } from '../../types/admin.types';
 import { UserRole } from '../../types/frontend';
 import { useAuth } from '../../context/AuthContext';
-import { PageHeader } from '../../components/admin/PageHeader';
 import { SearchInput } from '../../components/admin/SearchInput';
 import { Pagination } from '../../components/admin/Pagination';
 import { StatusBadge, RoleBadge } from '../../components/admin/Badge';
@@ -198,7 +197,8 @@ export const UsersManagementPage: React.FC = () => {
     const admins = users.filter((u) =>
       u.roles?.some((r) => [UserRole.SUPER_ADMIN, UserRole.UNIVERSITY_ADMIN, UserRole.ORGANIZATION_ADMIN].includes(r as any))
     ).length;
-    return { total, active, students, supervisors, admins };
+    const inactive = users.filter((u) => u.status !== 'ACTIVE').length;
+    return { total, active, students, supervisors, admins, inactive };
   }, [users]);
 
   // Check role affiliation requirements
@@ -349,7 +349,7 @@ export const UsersManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="user-management-option-a min-h-full rounded-[28px] bg-slate-50 p-3 sm:p-5 text-slate-900 space-y-5 sm:space-y-6">
       {/* Toast Notification */}
       {notification && (
         <div
@@ -371,377 +371,355 @@ export const UsersManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Page Header */}
-      <PageHeader
-        title="User Management"
-        description="Global directory of medical trainees, supervisors, institution directors, and platform staff across all registered universities and hospitals."
-        action={
+      {/* Premium Hero */}
+      <section className="relative overflow-hidden rounded-[28px] border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-5 py-6 sm:px-7 sm:py-8 shadow-xl">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-60 w-60 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-20 h-32 w-32 rounded-full bg-teal-400/10 blur-2xl" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.14em] text-cyan-300">
+              <Users className="w-4 h-4" />
+              People · Partnerships · Progress
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+              User Management
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm sm:text-base leading-6 text-slate-300">
+              Global directory of medical trainees, supervisors, institution directors, and platform staff across all registered universities and hospitals.
+            </p>
+          </div>
+
           <button
+            type="button"
             onClick={() => setCreateModalOpen(true)}
-            className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition shadow-xs flex items-center space-x-1.5 cursor-pointer"
+            className="w-full lg:w-auto min-h-12 px-6 py-3 text-sm font-extrabold text-white bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl hover:from-teal-600 hover:to-emerald-600 transition shadow-lg shadow-teal-950/30 flex items-center justify-center gap-2"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlus className="w-5 h-5" />
             <span>Add User</span>
           </button>
-        }
-      />
-
-      {/* Quick Metrics Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
-            <Users className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[11px] text-slate-500 font-medium">Total Users</div>
-            <div className="text-base font-bold text-slate-900">{metrics.total}</div>
-          </div>
         </div>
+      </section>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <CheckCircle className="w-4 h-4" />
+      {/* Quick Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+        {[
+          { label: 'Total Users', value: metrics.total, Icon: Users, wrap: 'bg-blue-100 text-blue-600', border: 'border-blue-100', labelClass: 'text-blue-700' },
+          { label: 'Active Users', value: metrics.active, Icon: CheckCircle, wrap: 'bg-emerald-100 text-emerald-600', border: 'border-emerald-100', labelClass: 'text-emerald-700' },
+          { label: 'Students', value: metrics.students, Icon: GraduationCap, wrap: 'bg-violet-100 text-violet-600', border: 'border-violet-100', labelClass: 'text-violet-700' },
+          { label: 'Supervisors', value: metrics.supervisors, Icon: Stethoscope, wrap: 'bg-amber-100 text-amber-600', border: 'border-amber-100', labelClass: 'text-amber-700' },
+          { label: 'Administrators', value: metrics.admins, Icon: Shield, wrap: 'bg-teal-100 text-teal-600', border: 'border-teal-100', labelClass: 'text-teal-700' },
+          { label: 'Inactive', value: metrics.inactive, Icon: XCircle, wrap: 'bg-rose-100 text-rose-600', border: 'border-rose-100', labelClass: 'text-rose-700' },
+        ].map(({ label, value, Icon, wrap, border, labelClass }) => (
+          <div
+            key={label}
+            className={'min-h-[118px] rounded-2xl border bg-white p-4 shadow-sm ' + border}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className={'text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.08em] leading-4 ' + labelClass}>
+                  {label}
+                </p>
+                <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">{value}</p>
+              </div>
+              <div className={'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ' + wrap}>
+                <Icon className="w-5 h-5" />
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="text-[11px] text-slate-500 font-medium">Active</div>
-            <div className="text-base font-bold text-slate-900">{metrics.active}</div>
-          </div>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-            <GraduationCap className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[11px] text-slate-500 font-medium">Students</div>
-            <div className="text-base font-bold text-slate-900">{metrics.students}</div>
-          </div>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-            <Stethoscope className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[11px] text-slate-500 font-medium">Supervisors</div>
-            <div className="text-base font-bold text-slate-900">{metrics.supervisors}</div>
-          </div>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs col-span-2 sm:col-span-1 flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-            <Shield className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[11px] text-slate-500 font-medium">Administrators</div>
-            <div className="text-base font-bold text-slate-900">{metrics.admins}</div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="w-full md:w-72">
+      {/* Search & Filters */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col gap-3">
           <SearchInput
             value={searchParam}
             onChange={(val) => updateQueryParam('search', val)}
             placeholder="Search by name, email, or phone..."
           />
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Role Filter */}
-          <select
-            value={roleParam}
-            onChange={(e) => updateQueryParam('role', e.target.value)}
-            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700"
-          >
-            <option value="">All Roles</option>
-            {Object.values(UserRole).map((r) => (
-              <option key={r} value={r}>
-                {r.replace(/_/g, ' ')}
-              </option>
-            ))}
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={statusParam}
-            onChange={(e) => updateQueryParam('status', e.target.value)}
-            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700"
-          >
-            <option value="">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="PENDING">Pending</option>
-          </select>
-
-          {/* Institution Filter */}
-          <select
-            value={institutionParam}
-            onChange={(e) => updateQueryParam('institution', e.target.value)}
-            className="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-700 max-w-[200px] truncate"
-          >
-            <option value="">All Institutions</option>
-            <optgroup label="Universities">
-              {universities.map((uni) => (
-                <option key={uni._id} value={`uni_${uni._id}`}>
-                  {uni.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Hospitals & Centers">
-              {organizations.map((org) => (
-                <option key={org._id} value={`org_${org._id}`}>
-                  {org.name}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-
-          {(searchParam || roleParam || statusParam || institutionParam) && (
-            <button
-              onClick={() => setSearchParams({})}
-              className="px-2.5 py-1.5 text-xs text-rose-600 font-semibold hover:bg-rose-50 rounded-lg transition"
+          <div className="grid grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_auto] gap-2.5">
+            <select
+              value={roleParam}
+              onChange={(e) => updateQueryParam('role', e.target.value)}
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs sm:text-sm font-semibold text-slate-700 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
             >
-              Clear Filters
-            </button>
-          )}
+              <option value="">All Roles</option>
+              {Object.values(UserRole).map((r) => (
+                <option key={r} value={r}>
+                  {r.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </select>
 
-          <button
-            onClick={fetchUsers}
-            title="Refresh"
-            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+            <select
+              value={statusParam}
+              onChange={(e) => updateQueryParam('status', e.target.value)}
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs sm:text-sm font-semibold text-slate-700 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="PENDING">Pending</option>
+            </select>
+
+            <select
+              value={institutionParam}
+              onChange={(e) => updateQueryParam('institution', e.target.value)}
+              className="col-span-2 lg:col-span-1 min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs sm:text-sm font-semibold text-slate-700 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+            >
+              <option value="">All Institutions</option>
+              <optgroup label="Universities">
+                {universities.map((uni) => (
+                  <option key={uni._id} value={'uni_' + uni._id}>{uni.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Hospitals & Centers">
+                {organizations.map((org) => (
+                  <option key={org._id} value={'org_' + org._id}>{org.name}</option>
+                ))}
+              </optgroup>
+            </select>
+
+            <div className="col-span-2 lg:col-span-1 flex items-center justify-end gap-2">
+              {(searchParam || roleParam || statusParam || institutionParam) && (
+                <button
+                  type="button"
+                  onClick={() => setSearchParams({})}
+                  className="min-h-11 px-3.5 rounded-xl border border-rose-200 bg-rose-50 text-xs font-bold text-rose-700 hover:bg-rose-100 transition"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={fetchUsers}
+                title="Refresh"
+                className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition"
+              >
+                <RefreshCw className={'w-4 h-4 ' + (loading ? 'animate-spin' : '')} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Table View */}
+      {/* User Directory */}
       {loading ? (
         <LoadingState message="Loading user directory..." />
       ) : error ? (
         <ErrorState message={error} onRetry={fetchUsers} />
       ) : users.length === 0 ? (
-        <EmptyState
-          title="No users found"
-          description="Try adjusting your search filters or add a new user."
-        />
+        <EmptyState title="No users found" description="Try adjusting your search filters or add a new user." />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
-          {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="p-3.5">User</th>
-                  <th className="p-3.5">Role</th>
-                  <th className="p-3.5">Affiliation</th>
-                  <th className="p-3.5">Phone</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Created</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {users.map((u) => (
-                  <tr key={u._id} className="hover:bg-slate-50/70 transition">
-                    <td className="p-3.5">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 text-teal-800 font-bold flex items-center justify-center text-xs flex-shrink-0 border border-slate-200">
-                          {u.firstName?.[0] || 'U'}
-                          {u.lastName?.[0] || ''}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900">
-                            {u.firstName} {u.lastName}
-                          </div>
-                          <div className="text-[11px] text-slate-500 font-normal">{u.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <RoleBadge role={u.roles?.[0] || 'STUDENT'} />
-                    </td>
-                    <td className="p-3.5 text-slate-600">
-                      {u.universityId?.name ? (
-                        <div className="flex items-center space-x-1.5">
-                          <GraduationCap className="w-3.5 h-3.5 text-teal-600 flex-shrink-0" />
-                          <span className="text-teal-900 font-medium truncate max-w-[200px]" title={u.universityId.name}>
-                            {u.universityId.name}
-                          </span>
-                        </div>
-                      ) : u.organizationId?.name ? (
-                        <div className="flex items-center space-x-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                          <span className="text-amber-900 font-medium truncate max-w-[200px]" title={u.organizationId.name}>
-                            {u.organizationId.name}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic font-normal">Independent / Global</span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-slate-600 font-mono text-[11px]">
-                      {u.phone || <span className="text-slate-300">-</span>}
-                    </td>
-                    <td className="p-3.5">
-                      <StatusBadge status={u.status} />
-                    </td>
-                    <td className="p-3.5 text-slate-500 text-[11px]">
-                      {new Date(u.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="p-3.5 text-right">
-                      <div className="flex items-center justify-end space-x-1">
-                        <button
-                          onClick={() => {
-                            setSelectedUser(u);
-                            setViewModalOpen(true);
-                          }}
-                          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openEditModal(u)}
-                          className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition cursor-pointer"
-                          title="Edit User"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedUser(u);
-                            setResetModalOpen(true);
-                          }}
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
-                          title="Reset Password"
-                        >
-                          <Key className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedUser(u);
-                            setConfirmToggleOpen(true);
-                          }}
-                          className={`p-1.5 rounded-lg transition cursor-pointer ${
-                            u.status === 'ACTIVE'
-                              ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
-                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-                          }`}
-                          title={u.status === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
-                        >
-                          {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </td>
+        <>
+          {/* Desktop */}
+          <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50/90 text-slate-500">
+                  <tr>
+                    <th className="px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider">#</th>
+                    <th className="px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider">User</th>
+                    <th className="px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider">Role</th>
+                    <th className="px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider">Institution</th>
+                    <th className="px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider">Joined</th>
+                    <th className="px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((u, index) => (
+                    <tr key={u._id} className="hover:bg-slate-50/70 transition">
+                      <td className="px-5 py-4 text-slate-400 font-semibold">
+                        {(pagination.page - 1) * pagination.limit + index + 1}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 text-teal-800 font-extrabold flex items-center justify-center text-xs border border-teal-100 shrink-0">
+                            {u.firstName?.[0] || 'U'}{u.lastName?.[0] || ''}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-slate-950">{u.firstName} {u.lastName}</p>
+                            <p className="mt-0.5 text-xs text-slate-500 truncate max-w-[230px]">{u.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4"><RoleBadge role={u.roles?.[0] || 'STUDENT'} /></td>
+                      <td className="px-5 py-4">
+                        {u.universityId?.name ? (
+                          <div className="flex items-center gap-1.5 text-teal-700 font-bold">
+                            <GraduationCap className="w-4 h-4 shrink-0" />
+                            <span className="max-w-[190px] truncate" title={u.universityId.name}>{u.universityId.name}</span>
+                          </div>
+                        ) : u.organizationId?.name ? (
+                          <div className="flex items-center gap-1.5 text-amber-700 font-bold">
+                            <Building2 className="w-4 h-4 shrink-0" />
+                            <span className="max-w-[190px] truncate" title={u.organizationId.name}>{u.organizationId.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Independent / Global</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4"><StatusBadge status={u.status} /></td>
+                      <td className="px-5 py-4 text-xs text-slate-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedUser(u); setViewModalOpen(true); }}
+                            title="View Details"
+                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(u)}
+                            title="Edit User"
+                            className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-teal-100 bg-teal-50 text-teal-600 hover:bg-teal-600 hover:text-white transition"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          {canManageCredentials && (
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedUser(u); setResetModalOpen(true); }}
+                              title="Reset Password"
+                              className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition"
+                            >
+                              <Key className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedUser(u); setConfirmToggleOpen(true); }}
+                            title={u.status === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
+                            className={'w-9 h-9 inline-flex items-center justify-center rounded-lg border transition ' + (u.status === 'ACTIVE'
+                              ? 'border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white'
+                              : 'border-emerald-100 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white')}
+                          >
+                            {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination meta={pagination} onPageChange={handlePageChange} />
           </div>
 
-          {/* Mobile Cards View */}
-          <div className="block md:hidden divide-y divide-slate-100">
+          {/* Mobile */}
+          <div className="md:hidden space-y-3">
             {users.map((u) => (
-              <div key={u._id} className="p-4 space-y-3">
-                <div className="flex justify-between items-start gap-2">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 text-teal-800 font-bold flex items-center justify-center text-xs border border-slate-200">
-                      {u.firstName?.[0] || 'U'}
-                      {u.lastName?.[0] || ''}
+              <article key={u._id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 text-teal-800 font-extrabold flex items-center justify-center text-xs border border-teal-100 shrink-0">
+                      {u.firstName?.[0] || 'U'}{u.lastName?.[0] || ''}
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">
-                        {u.firstName} {u.lastName}
-                      </h4>
-                      <p className="text-[10px] text-slate-500">{u.email}</p>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-extrabold text-slate-950 truncate">{u.firstName} {u.lastName}</h3>
+                      <p className="text-xs text-slate-500 truncate">{u.email}</p>
                     </div>
                   </div>
                   <StatusBadge status={u.status} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs border-t border-slate-100 pt-2.5">
-                  <div>
-                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Role</span>
-                    <RoleBadge role={u.roles?.[0] || 'STUDENT'} />
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-slate-400 font-semibold uppercase block">Affiliation</span>
-                    <span className="font-medium text-slate-700 block truncate max-w-[140px]">
-                      {u.universityId?.name ? (
-                        <span className="text-teal-700 font-semibold">{u.universityId.name}</span>
-                      ) : u.organizationId?.name ? (
-                        <span className="text-amber-700 font-semibold">{u.organizationId.name}</span>
-                      ) : (
-                        <span className="text-slate-400 italic">Independent</span>
-                      )}
-                    </span>
-                  </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <RoleBadge role={u.roles?.[0] || 'STUDENT'} />
+                  <span className="text-slate-300">+</span>
+                  <span className="text-xs font-bold text-teal-700">
+                    {u.universityId?.name || u.organizationId?.name || 'Independent'}
+                  </span>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-400">
-                  <span>Joined: {new Date(u.createdAt).toLocaleDateString()}</span>
-                  <div className="flex items-center space-x-1">
+                <div className="mt-4 border-t border-slate-100 pt-3 flex items-center justify-between gap-3">
+                  <span className="text-[11px] text-slate-500">
+                    Joined: {new Date(u.createdAt).toLocaleDateString()}
+                  </span>
+                  <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => {
-                        setSelectedUser(u);
-                        setViewModalOpen(true);
-                      }}
-                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+                      type="button"
+                      onClick={() => { setSelectedUser(u); setViewModalOpen(true); }}
+                      aria-label="View user"
+                      className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => openEditModal(u)}
-                      className="p-1.5 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition"
+                      aria-label="Edit user"
+                      className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-teal-100 bg-teal-50 text-teal-600"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     {canManageCredentials && (
                       <button
-                        onClick={() => {
-                          setSelectedUser(u);
-                          setResetModalOpen(true);
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                        title="Reset password"
-                        aria-label="Reset user password"
+                        type="button"
+                        onClick={() => { setSelectedUser(u); setResetModalOpen(true); }}
+                        aria-label="Reset password"
+                        className="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600"
                       >
                         <Key className="w-4 h-4" />
                       </button>
                     )}
                     <button
-                      onClick={() => {
-                        setSelectedUser(u);
-                        setConfirmToggleOpen(true);
-                      }}
-                      className={`p-1.5 rounded-lg transition ${
-                        u.status === 'ACTIVE' ? 'text-rose-600 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50'
-                      }`}
+                      type="button"
+                      onClick={() => { setSelectedUser(u); setConfirmToggleOpen(true); }}
+                      aria-label={u.status === 'ACTIVE' ? 'Deactivate user' : 'Activate user'}
+                      className={'w-9 h-9 inline-flex items-center justify-center rounded-lg border ' + (u.status === 'ACTIVE'
+                        ? 'border-rose-100 bg-rose-50 text-rose-600'
+                        : 'border-emerald-100 bg-emerald-50 text-emerald-600')}
                     >
                       {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
-          </div>
 
-          <Pagination meta={pagination} onPageChange={handlePageChange} />
-        </div>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <Pagination meta={pagination} onPageChange={handlePageChange} />
+            </div>
+          </div>
+        </>
       )}
 
       {/* Create User Modal */}
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Create User Account"
-        maxWidth="md"
+        title="Add New User"
+        maxWidth="xl"
       >
-        <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
+        <form onSubmit={handleCreateUser} className="space-y-5 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              ['1', 'Basic Information'],
+              ['2', 'Role & Access'],
+              ['3', 'Institution'],
+              ['4', 'Account Details'],
+            ].map(([number, label], index) => (
+              <div
+                key={number}
+                className={'rounded-xl border px-2.5 py-2.5 flex items-center gap-2 ' + (index === 0
+                  ? 'border-blue-200 bg-blue-50 text-blue-800'
+                  : 'border-slate-200 bg-slate-50 text-slate-500')}
+              >
+                <span className={'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 ' + (index === 0
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-200 text-slate-600')}>
+                  {number}
+                </span>
+                <span className="text-[10px] font-bold truncate">{label}</span>
+              </div>
+            ))}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">First Name *</label>
