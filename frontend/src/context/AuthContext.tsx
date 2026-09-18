@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import api, { AUTH_SESSION_EXPIRED_EVENT } from '../services/api';
 import { UserProfile } from '../types/frontend';
 
@@ -13,51 +13,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const clearStoredSession = () => {
-  localStorage.removeItem('azaam_token');
-  localStorage.removeItem('azaam_user');
-  localStorage.removeItem('azaam_user_role');
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('azaam_token'));
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const handleSessionExpired = () => {
-      setToken(null);
       setUser(null);
-      clearStoredSession();
     };
 
     window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
 
     const initAuth = async () => {
-      const savedUserRaw = localStorage.getItem('azaam_user');
-
-      if (token) {
-        try {
-          const res = await api.get('/auth/me');
-          if (res.data?.success && res.data?.data?.user) {
-            setUser(res.data.data.user);
-            localStorage.setItem('azaam_user', JSON.stringify(res.data.data.user));
-            setIsLoading(false);
-            return;
-          }
-        } catch {
-          handleSessionExpired();
-          setIsLoading(false);
-          return;
+      try {
+        const res = await api.get('/auth/me');
+        if (res.data?.success && res.data?.data?.user) {
+          setUser(res.data.data.user);
+        } else {
+          setUser(null);
         }
-      } else {
+      } catch {
         setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-
-      if (!savedUserRaw) {
-        clearStoredSession();
-      }
-      setIsLoading(false);
     };
 
     initAuth();
@@ -67,44 +46,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
-    if (!res.data?.success || !res.data?.data?.user || !res.data?.data?.token) {
+    if (!res.data?.success || !res.data?.data?.user) {
       throw new Error('Login response was invalid');
     }
-
-    const { token: authToken, user: userData } = res.data.data;
-    setToken(authToken);
-    setUser(userData);
-    localStorage.setItem('azaam_token', authToken);
-    localStorage.setItem('azaam_user', JSON.stringify(userData));
-    if (userData.roles && userData.roles[0]) {
-      localStorage.setItem('azaam_user_role', userData.roles[0]);
-    }
+    setUser(res.data.data.user);
   };
 
   const register = async (data: any) => {
     const res = await api.post('/auth/register', data);
-    if (!res.data?.success || !res.data?.data?.user || !res.data?.data?.token) {
+    if (!res.data?.success || !res.data?.data?.user) {
       throw new Error('Registration response was invalid');
     }
-
-    const { token: authToken, user: userData } = res.data.data;
-    setToken(authToken);
-    setUser(userData);
-    localStorage.setItem('azaam_token', authToken);
-    localStorage.setItem('azaam_user', JSON.stringify(userData));
-    if (userData.roles && userData.roles[0]) {
-      localStorage.setItem('azaam_user_role', userData.roles[0]);
-    }
+    setUser(res.data.data.user);
   };
 
   const logout = () => {
+    api.post('/auth/logout').catch(() => {});
     setUser(null);
-    setToken(null);
-    clearStoredSession();
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token: null, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
