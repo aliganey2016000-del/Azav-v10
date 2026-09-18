@@ -28,7 +28,6 @@ import {
   FileCheck2,
   MessageCircle,
 } from 'lucide-react';
-import type { RealTrainee } from '../../services/realDataStore';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage, JourneyChatData } from '../../types/admin.types';
 import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, buildDisplayStages, isDocumentChatStage } from '../../utils/journeyStages';
@@ -36,7 +35,6 @@ import { documentTypeLabel } from '../../utils/documentTypes';
 
 export const UniversityStudentJourneyPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [trainee] = useState<RealTrainee | null>(null);
   const [adminJourney, setAdminJourney] = useState<AdminStudentJourney | null>(null);
   const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
   const [journeyDocuments, setJourneyDocuments] = useState<DisplayDocument[]>([]);
@@ -94,33 +92,35 @@ export const UniversityStudentJourneyPage: React.FC = () => {
     );
   }
 
-  // Derive consolidated student details from either store
+  // Database-backed student details only. Missing values are shown as unavailable rather than fabricated.
   const adminStudent = adminJourney?.student;
-  const studentName = trainee?.studentName || (adminStudent ? `${adminStudent.firstName} ${adminStudent.lastName}` : 'Dr. Student Candidate');
-  const studentId = trainee?.studentId || adminStudent?.studentNumber || id || 'STU-000';
-  const email = trainee?.email || adminStudent?.email || 'student@university.edu';
-  const phone = trainee?.phone || adminStudent?.phone || '+252 61 500 0000';
-  const university = adminStudent?.university?.name || 'Faculty of Medicine & Health Sciences';
-  const studyYear = trainee?.studyYear || adminStudent?.studyYear || '5th Year Clinical Clerkship';
-  const specialty = trainee?.specialty || adminStudent?.specialty || 'General Surgery & Trauma';
-  const targetHospital = trainee?.targetHospital || adminStudent?.hospitalPlacement?.name || 'Madina Teaching Hospital';
-  const cityCountry = trainee?.cityCountry || adminStudent?.hospitalPlacement?.cityCountry || 'Mogadishu, Somalia';
-  const startDate = trainee?.startDate || adminStudent?.startDate || '2025-10-01';
-  const endDate = trainee?.endDate || adminStudent?.endDate || '2025-12-31';
-  const durationWeeks = trainee?.durationWeeks || adminStudent?.durationWeeks || 8;
-  const supervisor = trainee?.assignedSupervisor || {
-    name: adminStudent?.assignedSupervisor?.name || 'Dr. Sarah Jenkins',
-    title: adminStudent?.assignedSupervisor?.title || 'Consultant General Surgeon',
-    phone: adminStudent?.assignedSupervisor?.phone || '+252 61 700 0110',
-    email: adminStudent?.assignedSupervisor?.email || 'sjenkins@hospital.org',
+  const studentName = adminStudent
+    ? [adminStudent.firstName, adminStudent.lastName].filter(Boolean).join(' ')
+    : 'Student';
+  const studentId = adminStudent?.studentNumber || id || '—';
+  const email = adminStudent?.email || '—';
+  const phone = adminStudent?.phone || '—';
+  const university = adminStudent?.university?.name || '—';
+  const studyYear = adminStudent?.studyYear || '—';
+  const specialty = adminStudent?.specialty || '—';
+  const targetHospital = adminStudent?.hospitalPlacement?.name || 'Pending AZAAM placement';
+  const cityCountry = adminStudent?.hospitalPlacement?.cityCountry || '—';
+  const startDate = adminStudent?.startDate || '—';
+  const endDate = adminStudent?.endDate || '—';
+  const durationWeeks = adminStudent?.durationWeeks || 0;
+  const supervisor = {
+    name: adminStudent?.assignedSupervisor?.name || 'Not assigned',
+    title: adminStudent?.assignedSupervisor?.title || '—',
+    phone: adminStudent?.assignedSupervisor?.phone || '—',
+    email: adminStudent?.assignedSupervisor?.email || '—',
   };
-  const attendancePercent = trainee?.attendancePercent ?? adminStudent?.attendancePercent ?? 94;
-  const logbookSigned = trainee?.logbookProceduresSigned ?? adminStudent?.logbookSigned ?? 36;
-  const logbookRequired = trainee?.logbookRequired ?? adminStudent?.logbookRequired ?? 40;
-  const evaluationGrade = trainee?.evaluationGrade || adminStudent?.evaluationGrade || 'Honors (A)';
-  const evaluationScore = trainee?.evaluationScore ?? adminStudent?.evaluationScore ?? 92;
-  const certificateIssued = trainee?.certificateIssued ?? adminStudent?.certificateIssued ?? false;
-  const certificateNumber = trainee?.certificateNumber || adminStudent?.certificateCode || 'AZAAM-CERT-2025-VERIFIED';
+  const attendancePercent = adminStudent?.attendancePercent ?? 0;
+  const logbookSigned = adminStudent?.logbookSigned ?? 0;
+  const logbookRequired = adminStudent?.logbookRequired ?? 0;
+  const evaluationGrade = adminStudent?.evaluationGrade || 'Pending';
+  const evaluationScore = adminStudent?.evaluationScore ?? 0;
+  const certificateIssued = adminStudent?.certificateIssued ?? false;
+  const certificateNumber = adminStudent?.certificateCode || '—';
   const chatUnread = chatData?.unreadCount || 0;
   const stageUnread = (stageKey: string) =>
     (chatData?.messages || []).filter(
@@ -433,20 +433,19 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                   <div className="text-[11px] text-slate-500">{documentTypeLabel(doc.type)}</div>
                   <div className="flex gap-2 pt-1">
                     <button
-                      onClick={() => doc.dataUrl && window.open(doc.dataUrl, '_blank')}
+                      type="button"
+                      onClick={() => handleStageDocumentDownload(doc)}
                       className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-200"
                     >
                       <ExternalLink className="h-3 w-3" /> View
                     </button>
-                    {doc.dataUrl && (
-                      <a
-                        href={doc.dataUrl}
-                        download={doc.name}
-                        className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
-                      >
-                        <Download className="h-3 w-3" /> Download
-                      </a>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleStageDocumentDownload(doc)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
+                    >
+                      <Download className="h-3 w-3" /> Download
+                    </button>
                   </div>
                 </div>
               ))}
