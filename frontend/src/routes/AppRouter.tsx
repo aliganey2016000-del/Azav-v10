@@ -44,6 +44,7 @@ import { SupervisorsPage } from '../pages/admin/SupervisorsPage';
 import { SupervisorDetailPage } from '../pages/admin/SupervisorDetailPage';
 import { StudentsManagementPage } from '../pages/admin/StudentsManagementPage';
 import { StudentJourneyAdminPage } from '../pages/admin/StudentJourneyAdminPage';
+import { JourneyChatPage } from '../pages/shared/JourneyChatPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 
 const PortalRedirect: React.FC = () => {
@@ -79,6 +80,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/users" element={<UsersManagementPage />} />
           <Route path="/admin/students" element={<StudentsManagementPage />} />
           <Route path="/admin/students/:id" element={<StudentJourneyAdminPage />} />
+          <Route path="/admin/students/:id/chat" element={<JourneyChatPage portal="admin" />} />
           <Route path="/admin/universities" element={<UniversitiesPage />} />
           <Route path="/admin/universities/:id" element={<UniversityDetailPage />} />
           <Route path="/admin/organizations" element={<OrganizationsPage />} />
@@ -92,6 +94,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/university/nominate-student" element={<UniversityNominateStudentPage />} />
           <Route path="/university/students" element={<Navigate to="/university/nominate-student" replace />} />
           <Route path="/university/students/:id" element={<UniversityStudentJourneyPage />} />
+          <Route path="/university/students/:id/chat" element={<JourneyChatPage portal="university" />} />
           <Route path="/university/student-status" element={<UniversityStudentStatusPage />} />
           <Route path="/university/mou" element={<UniversityMouPage />} />
           <Route path="/university/financials" element={<UniversityFinancialsPage />} />
