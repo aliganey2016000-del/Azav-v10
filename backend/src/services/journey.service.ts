@@ -83,6 +83,9 @@ const isAzaamActor = (actor: AuthUser) =>
 const isUniversityActor = (actor: AuthUser) =>
   actor.roles.includes(UserRole.UNIVERSITY_ADMIN) || actor.roles.includes(UserRole.UNIVERSITY_STAFF);
 
+const isStudentActor = (actor: AuthUser) =>
+  actor.roles.includes(UserRole.STUDENT) || actor.roles.includes(UserRole.INDEPENDENT_APPLICANT);
+
 const chatRoleFor = (actor: AuthUser): 'AZAAM' | 'UNIVERSITY' =>
   isAzaamActor(actor) ? 'AZAAM' : 'UNIVERSITY';
 
@@ -105,6 +108,19 @@ export class JourneyService {
         const err: any = new Error('You cannot access a student outside your university.');
         err.statusCode = 403;
         err.code = 'FORBIDDEN_TENANT';
+        throw err;
+      }
+    }
+
+    if (actor && isStudentActor(actor)) {
+      const ownsProfile =
+        Boolean(actor.studentId) &&
+        student._id.toString() === actor.studentId?.toString();
+
+      if (!ownsProfile) {
+        const err: any = new Error('You can only access your own student journey.');
+        err.statusCode = 403;
+        err.code = 'FORBIDDEN_STUDENT_SCOPE';
         throw err;
       }
     }
