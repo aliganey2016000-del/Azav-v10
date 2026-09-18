@@ -40,9 +40,7 @@ export const UsersManagementPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const canManageCredentials =
-    currentUser?.roles?.some((role) =>
-      [UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF].includes(role as UserRole)
-    ) ?? false;
+    currentUser?.roles?.includes(UserRole.SUPER_ADMIN) ?? false;
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, totalPages: 1 });
@@ -702,15 +700,19 @@ export const UsersManagementPage: React.FC = () => {
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => {
-                        setSelectedUser(u);
-                        setResetModalOpen(true);
-                      }}
-                      className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                    >
-                      <Key className="w-4 h-4" />
-                    </button>
+                    {canManageCredentials && (
+                      <button
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setResetModalOpen(true);
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                        title="Reset password"
+                        aria-label="Reset user password"
+                      >
+                        <Key className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setSelectedUser(u);
@@ -970,7 +972,7 @@ export const UsersManagementPage: React.FC = () => {
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Current passwords are securely hashed and cannot be viewed. Enter at least 12 characters only when replacing the password.
+                    Current password cannot be displayed. Set a new password to replace it. Minimum 12 characters.
                   </p>
                 </div>
               </div>
@@ -1158,7 +1160,7 @@ export const UsersManagementPage: React.FC = () => {
       )}
 
       {/* Reset Password Modal */}
-      {selectedUser && resetModalOpen && (
+      {selectedUser && resetModalOpen && canManageCredentials && (
         <Modal
           isOpen={resetModalOpen}
           onClose={() => setResetModalOpen(false)}
