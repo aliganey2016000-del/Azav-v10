@@ -116,5 +116,20 @@ adminRouter.post(
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
   JourneyController.actOnStage
 );
+adminRouter.post(
+  '/students/:id/journey/:stageKey/update',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  JourneyController.addStageUpdate
+);
+adminRouter.post(
+  '/students/:id/journey/:stageKey/comment',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.UNIVERSITY_ADMIN,
+    UserRole.UNIVERSITY_STAFF
+  ),
+  JourneyController.addComment
+);
 
 adminRouter.get('/audit-logs', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.getAuditLogs);
