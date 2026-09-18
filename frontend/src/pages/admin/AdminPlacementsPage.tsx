@@ -10,10 +10,13 @@ import {
   Eye,
   Filter,
   Loader2,
+  MoreVertical,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  Stethoscope,
+  GraduationCap,
   UserRound,
   Users,
   X,
@@ -130,6 +133,7 @@ export const AdminPlacementsPage: React.FC = () => {
   const [showHospitalForm, setShowHospitalForm] = useState(false);
   const [editingPlacement, setEditingPlacement] = useState<RecordObject | null>(null);
   const [viewingPlacement, setViewingPlacement] = useState<RecordObject | null>(null);
+  const [openMobileMenuId, setOpenMobileMenuId] = useState<string | null>(null);
   const [form, setForm] = useState<PlacementFormState>(EMPTY_FORM);
   const [hospitalForm, setHospitalForm] = useState({
     name: '',
@@ -885,80 +889,142 @@ export const AdminPlacementsPage: React.FC = () => {
               </table>
             </div>
 
-            <div className="divide-y divide-slate-100 lg:hidden">
+            <div className="space-y-3 p-3 lg:hidden">
               {paginatedPlacements.map((placement) => {
                 const user = studentUser(placement);
+                const placementId = asId(placement);
+                const menuOpen = openMobileMenuId === placementId;
+
                 return (
-                  <article key={asId(placement)} className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-50 text-xs font-black text-teal-700">
+                  <article
+                    key={placementId}
+                    className="relative overflow-visible rounded-[22px] border border-sky-200 bg-gradient-to-br from-white via-blue-50/35 to-sky-50/60 p-4 shadow-[0_10px_30px_rgba(37,99,235,0.10)]"
+                  >
+                    <button
+                      type="button"
+                      aria-label="Placement actions"
+                      aria-expanded={menuOpen}
+                      onClick={() => setOpenMobileMenuId(menuOpen ? null : placementId)}
+                      className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-100/90 text-blue-700 shadow-sm transition hover:bg-blue-200"
+                    >
+                      <MoreVertical className="h-5 w-5" />
+                    </button>
+
+                    {menuOpen && (
+                      <div className="absolute right-3 top-14 z-30 w-48 overflow-hidden rounded-2xl border border-blue-100 bg-white p-1.5 shadow-2xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMobileMenuId(null);
+                            setViewingPlacement(placement);
+                          }}
+                          className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-extrabold text-blue-700 transition hover:bg-blue-50"
+                        >
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                            <Eye className="h-4 w-4" />
+                          </span>
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenMobileMenuId(null);
+                            openEditForm(placement);
+                          }}
+                          className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-extrabold text-sky-700 transition hover:bg-sky-50"
+                        >
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                            <Pencil className="h-4 w-4" />
+                          </span>
+                          Edit
+                        </button>
+                        {!['COMPLETED', 'CANCELLED'].includes(placement.status) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMobileMenuId(null);
+                              void endPlacement(placement);
+                            }}
+                            className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-extrabold text-rose-600 transition hover:bg-rose-50"
+                          >
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                              <CheckCircle2 className="h-4 w-4" />
+                            </span>
+                            End Placement
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-3 pr-12">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white bg-gradient-to-br from-blue-100 to-sky-50 text-sm font-black text-blue-800 shadow-sm">
                         {(user?.firstName?.[0] || 'S').toUpperCase()}
                         {(user?.lastName?.[0] || '').toUpperCase()}
                       </div>
+
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <h3 className="truncate text-sm font-black text-slate-950">{fullName(user)}</h3>
-                            <p className="mt-0.5 text-[11px] text-slate-500">
-                              {placement.studentId?.studentNumber || user?.email || '-'}
-                            </p>
-                          </div>
-                          <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${statusClass(placement.status)}`}>
-                            {statusLabel(placement.status)}
-                          </span>
-                        </div>
+                        <h3 className="truncate text-base font-black tracking-tight text-slate-950">
+                          {fullName(user)}
+                        </h3>
+                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                          ID: {placement.studentId?.studentNumber || user?.email || '-'}
+                        </p>
+                        <span className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black shadow-sm ${statusClass(placement.status)}`}>
+                          {statusLabel(placement.status)}
+                        </span>
+                      </div>
+                    </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                          <div>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Hospital</div>
-                            <div className="mt-1 font-bold text-slate-700">{hospitalName(placement)}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Department</div>
-                            <div className="mt-1 font-bold text-slate-700">{departmentName(placement)}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Programme</div>
-                            <div className="mt-1 font-bold text-slate-700">{programmeName(placement)}</div>
-                          </div>
-                          <div>
-                            <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Supervisor</div>
-                            <div className="mt-1 font-bold text-slate-700">{supervisorName(placement)}</div>
-                          </div>
+                    <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-0 overflow-hidden rounded-2xl border border-blue-100 bg-white/80">
+                      <div className="flex min-w-0 items-center gap-2.5 border-b border-r border-blue-100 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                          <Building2 className="h-4.5 w-4.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-blue-500">Hospital</div>
+                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{hospitalName(placement)}</div>
                         </div>
+                      </div>
 
-                        <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-                          <CalendarDays className="h-4 w-4 text-teal-600" />
-                          {formatDate(placement.startDate)} — {formatDate(placement.endDate)}
+                      <div className="flex min-w-0 items-center gap-2.5 border-b border-blue-100 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                          <Stethoscope className="h-4.5 w-4.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-blue-500">Department</div>
+                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{departmentName(placement)}</div>
                         </div>
+                      </div>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setViewingPlacement(placement)}
-                            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-extrabold text-slate-600"
-                          >
-                            <Eye className="h-4 w-4" />
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditForm(placement)}
-                            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-extrabold text-slate-600"
-                          >
-                            <Pencil className="h-4 w-4" />
-                            Edit
-                          </button>
-                          {!['COMPLETED', 'CANCELLED'].includes(placement.status) && (
-                            <button
-                              type="button"
-                              onClick={() => void endPlacement(placement)}
-                              className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-emerald-50 px-3 text-xs font-extrabold text-emerald-700"
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              End Placement
-                            </button>
-                          )}
+                      <div className="flex min-w-0 items-center gap-2.5 border-b border-r border-blue-100 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
+                          <GraduationCap className="h-4.5 w-4.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-blue-500">Programme</div>
+                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{programmeName(placement)}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex min-w-0 items-center gap-2.5 border-b border-blue-100 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
+                          <UserRound className="h-4.5 w-4.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-blue-500">Supervisor</div>
+                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{supervisorName(placement)}</div>
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 flex min-w-0 items-center gap-2.5 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                          <CalendarDays className="h-4.5 w-4.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-blue-500">Dates</div>
+                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">
+                            {formatDate(placement.startDate)} — {formatDate(placement.endDate)}
+                          </div>
                         </div>
                       </div>
                     </div>
