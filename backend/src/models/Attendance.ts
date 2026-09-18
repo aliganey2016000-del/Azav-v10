@@ -4,6 +4,7 @@ import { AttendanceStatus } from '../types/index.js';
 export interface IAttendance extends Document {
   attachmentId: mongoose.Types.ObjectId;
   studentId: mongoose.Types.ObjectId;
+  rotationId?: mongoose.Types.ObjectId | null;
   date: Date;
   status: AttendanceStatus;
   checkIn?: string;
@@ -18,6 +19,7 @@ const AttendanceSchema = new Schema<IAttendance>(
   {
     attachmentId: { type: Schema.Types.ObjectId, ref: 'ClinicalAttachment', required: true, index: true },
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+    rotationId: { type: Schema.Types.ObjectId, ref: 'ClinicalRotation', default: null, index: true },
     date: { type: Date, required: true },
     status: { type: String, enum: Object.values(AttendanceStatus), default: AttendanceStatus.PRESENT },
     checkIn: { type: String },
