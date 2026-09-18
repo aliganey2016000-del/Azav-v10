@@ -138,7 +138,6 @@ export const UniversityNominateStudentPage: React.FC = () => {
         fullName: form.fullName.trim(),
         studentNumber: form.studentId.trim(),
         email: form.email.trim(),
-        ...(form.password ? { password: form.password } : {}),
         phone: form.phone,
         program: form.program,
         specialty: form.requestedSpecialty || form.program,
@@ -147,8 +146,14 @@ export const UniversityNominateStudentPage: React.FC = () => {
       };
 
       const studentId = editingId
-        ? (await AdminApiService.updateNomination(editingId, payload))._id
-        : (await AdminApiService.nominateStudent(payload))._id;
+        ? (await AdminApiService.updateNomination(editingId, {
+            ...payload,
+            ...(form.password ? { password: form.password } : {}),
+          }))._id
+        : (await AdminApiService.nominateStudent({
+            ...payload,
+            password: form.password,
+          }))._id;
 
       for (const doc of Object.values(form.documents)) {
         await AdminApiService.uploadStudentDocument(studentId, { originalName: doc.name, mimeType: doc.mimeType, base64Data: doc.base64Data, type: doc.docType });
