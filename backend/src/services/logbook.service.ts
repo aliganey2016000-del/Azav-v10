@@ -28,13 +28,6 @@ export class LogbookService {
       throw err;
     }
 
-    if (data.supervisorId && (!attachment.supervisorId || data.supervisorId.toString() !== attachment.supervisorId.toString())) {
-      const err: any = new Error('Supervisor does not match the clinical attachment supervisor.');
-      err.statusCode = 400;
-      err.code = 'SUPERVISOR_ATTACHMENT_MISMATCH';
-      throw err;
-    }
-
     const entryDate = new Date(data.date);
     entryDate.setUTCHours(0, 0, 0, 0);
 
@@ -44,6 +37,17 @@ export class LogbookService {
       endDate: { $gte: entryDate },
       status: { $ne: 'CANCELLED' },
     }).select('_id supervisorId');
+
+    const expectedSupervisorId = rotation?.supervisorId || attachment.supervisorId;
+    if (
+      data.supervisorId &&
+      (!expectedSupervisorId || data.supervisorId.toString() !== expectedSupervisorId.toString())
+    ) {
+      const err: any = new Error('Supervisor does not match the student rotation for this logbook date.');
+      err.statusCode = 400;
+      err.code = 'SUPERVISOR_ROTATION_MISMATCH';
+      throw err;
+    }
 
     const entry = new LogbookEntry({
       attachmentId: data.attachmentId,
