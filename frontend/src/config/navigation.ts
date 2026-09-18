@@ -119,18 +119,6 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         icon: Building,
         roles: [UserRole.SUPER_ADMIN],
       },
-      {
-        label: 'Clinical Training',
-        path: '/admin/clinical-training',
-        icon: Briefcase,
-        roles: [UserRole.SUPER_ADMIN],
-      },
-      {
-        label: 'Completion & Certificates',
-        path: '/admin/completion-certificates',
-        icon: Award,
-        roles: [UserRole.SUPER_ADMIN],
-      },
     ],
   },
   {
@@ -312,18 +300,6 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         label: 'Placements',
         path: '/admin/placements',
         icon: Building,
-        roles: [UserRole.AZAAM_STAFF],
-      },
-      {
-        label: 'Clinical Training',
-        path: '/admin/clinical-training',
-        icon: Briefcase,
-        roles: [UserRole.AZAAM_STAFF],
-      },
-      {
-        label: 'Completion & Certificates',
-        path: '/admin/completion-certificates',
-        icon: Award,
         roles: [UserRole.AZAAM_STAFF],
       },
     ],
