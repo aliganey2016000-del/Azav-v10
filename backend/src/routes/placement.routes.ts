@@ -90,6 +90,18 @@ certificateRouter.post(
 
 export const universityRouter = Router();
 universityRouter.get('/', UniversityController.list);
+universityRouter.get(
+  '/mou/current',
+  authenticate,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF),
+  UniversityController.getCurrentMou
+);
+universityRouter.put(
+  '/mou/current',
+  authenticate,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN),
+  UniversityController.upsertCurrentMou
+);
 universityRouter.post('/', authenticate, requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), UniversityController.create);
 
 export const organizationRouter = Router();
