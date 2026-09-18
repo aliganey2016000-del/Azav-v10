@@ -198,7 +198,25 @@ export interface AdminJourneyComment {
   author: 'AZAAM' | 'UNIVERSITY';
   authorName?: string;
   message: string;
+  readBy?: ('AZAAM' | 'UNIVERSITY')[];
   createdAt: string;
+}
+
+export interface JourneyChatMessage extends AdminJourneyComment {
+  stageKey: 'PERMIT' | 'VISA' | 'RESIDENCE';
+  stageTitle: string;
+}
+
+export interface JourneyChatData {
+  viewerRole: 'AZAAM' | 'UNIVERSITY';
+  unreadCount: number;
+  messages: JourneyChatMessage[];
+  availableStages: {
+    stageKey: 'PERMIT' | 'VISA' | 'RESIDENCE';
+    title: string;
+    status: string;
+    enabled: boolean;
+  }[];
 }
 
 export interface AdminJourneyStage {
