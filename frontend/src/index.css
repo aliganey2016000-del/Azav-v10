@@ -176,154 +176,269 @@ html.dark ::-webkit-scrollbar-thumb {
   border-radius: 999px;
 }
 
+/* =========================================================
+   AZAAM MEDICS — SYSTEM-WIDE LIGHT / DARK DESIGN SYSTEM
+   The <html>.dark class is the single source of truth.
+   ========================================================= */
 
-/* Option A: University Management keeps a dark hero with light content surfaces, even when the app theme is dark. */
-html.dark .university-option-a {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+:root {
+  --azaam-page: #f5f8fb;
+  --azaam-surface: #ffffff;
+  --azaam-surface-soft: #f8fafc;
+  --azaam-surface-muted: #f1f5f9;
+  --azaam-border: #e2e8f0;
+  --azaam-text: #0f172a;
+  --azaam-text-muted: #64748b;
 }
 
-html.dark .university-option-a .bg-white {
-  background-color: #ffffff !important;
+html.dark {
+  --azaam-page: #08111f;
+  --azaam-surface: #0f1b2d;
+  --azaam-surface-soft: #0b1626;
+  --azaam-surface-muted: #172338;
+  --azaam-border: #27364d;
+  --azaam-text: #f1f5f9;
+  --azaam-text-muted: #94a3b8;
 }
 
-html.dark .university-option-a [class*="bg-white/"] {
-  background-color: rgba(255, 255, 255, 0.96) !important;
+body,
+#root {
+  background: var(--azaam-page);
+  color: var(--azaam-text);
 }
 
-html.dark .university-option-a .bg-slate-50,
-html.dark .university-option-a [class*="bg-slate-50/"] {
-  background-color: #f8fafc !important;
+/* Core neutral surfaces */
+html.dark .bg-white {
+  background-color: #0f1b2d !important;
+}
+html.dark [class*="bg-white/"] {
+  background-color: rgba(15, 27, 45, 0.94) !important;
+}
+html.dark .bg-slate-50,
+html.dark [class*="bg-slate-50/"] {
+  background-color: #0b1626 !important;
+}
+html.dark .bg-slate-100,
+html.dark [class*="bg-slate-100/"] {
+  background-color: #172338 !important;
+}
+html.dark .bg-slate-200,
+html.dark [class*="bg-slate-200/"] {
+  background-color: #223149 !important;
+}
+html.dark [class*="bg-[#f5f8fb]"],
+html.dark [class*="bg-[#f5f3ee]"] {
+  background-color: #08111f !important;
 }
 
-html.dark .university-option-a .bg-slate-100,
-html.dark .university-option-a [class*="bg-slate-100/"] {
-  background-color: #f1f5f9 !important;
+/* Soft colored surfaces become rich dark tints instead of bright cards. */
+html.dark .bg-blue-50,
+html.dark [class*="bg-blue-50/"] {
+  background-color: rgba(37, 99, 235, 0.13) !important;
+}
+html.dark .bg-blue-100 {
+  background-color: rgba(37, 99, 235, 0.20) !important;
+}
+html.dark .bg-sky-50,
+html.dark [class*="bg-sky-50/"] {
+  background-color: rgba(14, 165, 233, 0.12) !important;
+}
+html.dark .bg-sky-100 {
+  background-color: rgba(14, 165, 233, 0.19) !important;
+}
+html.dark .bg-teal-50,
+html.dark [class*="bg-teal-50/"] {
+  background-color: rgba(13, 148, 136, 0.13) !important;
+}
+html.dark .bg-teal-100 {
+  background-color: rgba(13, 148, 136, 0.21) !important;
+}
+html.dark .bg-emerald-50,
+html.dark [class*="bg-emerald-50/"] {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+}
+html.dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.20) !important;
+}
+html.dark .bg-indigo-50,
+html.dark [class*="bg-indigo-50/"] {
+  background-color: rgba(99, 102, 241, 0.13) !important;
+}
+html.dark .bg-indigo-100 {
+  background-color: rgba(99, 102, 241, 0.21) !important;
+}
+html.dark .bg-violet-50,
+html.dark [class*="bg-violet-50/"] {
+  background-color: rgba(139, 92, 246, 0.13) !important;
+}
+html.dark .bg-violet-100 {
+  background-color: rgba(139, 92, 246, 0.21) !important;
+}
+html.dark .bg-purple-50,
+html.dark [class*="bg-purple-50/"] {
+  background-color: rgba(168, 85, 247, 0.13) !important;
+}
+html.dark .bg-amber-50,
+html.dark [class*="bg-amber-50/"] {
+  background-color: rgba(245, 158, 11, 0.13) !important;
+}
+html.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.21) !important;
+}
+html.dark .bg-orange-50,
+html.dark [class*="bg-orange-50/"] {
+  background-color: rgba(249, 115, 22, 0.13) !important;
+}
+html.dark .bg-rose-50,
+html.dark [class*="bg-rose-50/"] {
+  background-color: rgba(244, 63, 94, 0.12) !important;
+}
+html.dark .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.20) !important;
+}
+html.dark .bg-red-50,
+html.dark [class*="bg-red-50/"] {
+  background-color: rgba(239, 68, 68, 0.12) !important;
 }
 
-html.dark .university-option-a .bg-slate-200,
-html.dark .university-option-a [class*="bg-slate-200/"] {
-  background-color: #e2e8f0 !important;
-}
+/* Pastel gradients used by dashboards/cards keep their identity in dark mode. */
+html.dark [class*="from-blue-50"] { --tw-gradient-from: rgba(37, 99, 235, 0.18) !important; }
+html.dark [class*="from-sky-50"] { --tw-gradient-from: rgba(14, 165, 233, 0.17) !important; }
+html.dark [class*="from-teal-50"] { --tw-gradient-from: rgba(13, 148, 136, 0.17) !important; }
+html.dark [class*="from-emerald-50"] { --tw-gradient-from: rgba(16, 185, 129, 0.17) !important; }
+html.dark [class*="from-indigo-50"] { --tw-gradient-from: rgba(99, 102, 241, 0.17) !important; }
+html.dark [class*="from-violet-50"] { --tw-gradient-from: rgba(139, 92, 246, 0.17) !important; }
+html.dark [class*="from-amber-50"] { --tw-gradient-from: rgba(245, 158, 11, 0.17) !important; }
+html.dark [class*="from-orange-50"] { --tw-gradient-from: rgba(249, 115, 22, 0.17) !important; }
+html.dark [class*="from-rose-50"] { --tw-gradient-from: rgba(244, 63, 94, 0.17) !important; }
+html.dark [class*="via-white"] { --tw-gradient-via: rgba(15, 27, 45, 0.97) !important; }
+html.dark [class*="to-white"] { --tw-gradient-to: #0f1b2d !important; }
 
-html.dark .university-option-a .text-slate-950,
-html.dark .university-option-a .text-slate-900,
-html.dark .university-option-a .text-slate-800,
-html.dark .university-option-a .text-slate-700 {
-  color: #0f172a !important;
+/* Typography */
+html.dark .text-slate-950,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700 {
+  color: #f1f5f9 !important;
 }
-
-html.dark .university-option-a .text-slate-600,
-html.dark .university-option-a .text-slate-500 {
-  color: #64748b !important;
+html.dark .text-slate-600,
+html.dark .text-slate-500 {
+  color: #cbd5e1 !important;
 }
-
-html.dark .university-option-a .text-slate-400 {
+html.dark .text-slate-400 {
   color: #94a3b8 !important;
 }
 
-html.dark .university-option-a .border-slate-100,
-html.dark .university-option-a .border-slate-200,
-html.dark .university-option-a .border-slate-300,
-html.dark .university-option-a [class*="border-slate-100/"],
-html.dark .university-option-a [class*="border-slate-200/"],
-html.dark .university-option-a [class*="border-slate-300/"] {
-  border-color: #e2e8f0 !important;
+/* Accent text remains readable on dark surfaces. */
+html.dark .text-blue-700,
+html.dark .text-blue-800,
+html.dark .text-blue-900 { color: #93c5fd !important; }
+html.dark .text-sky-700,
+html.dark .text-sky-800,
+html.dark .text-sky-900 { color: #7dd3fc !important; }
+html.dark .text-teal-700,
+html.dark .text-teal-800,
+html.dark .text-teal-900 { color: #5eead4 !important; }
+html.dark .text-emerald-700,
+html.dark .text-emerald-800,
+html.dark .text-emerald-900 { color: #6ee7b7 !important; }
+html.dark .text-indigo-700,
+html.dark .text-indigo-800,
+html.dark .text-indigo-900 { color: #a5b4fc !important; }
+html.dark .text-violet-700,
+html.dark .text-violet-800,
+html.dark .text-violet-900 { color: #c4b5fd !important; }
+html.dark .text-amber-700,
+html.dark .text-amber-800,
+html.dark .text-amber-900 { color: #fcd34d !important; }
+html.dark .text-orange-700,
+html.dark .text-orange-800,
+html.dark .text-orange-900 { color: #fdba74 !important; }
+html.dark .text-rose-700,
+html.dark .text-rose-800,
+html.dark .text-rose-900 { color: #fda4af !important; }
+
+/* Borders */
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark [class*="border-slate-100/"],
+html.dark [class*="border-slate-200/"],
+html.dark [class*="border-slate-300/"] {
+  border-color: #27364d !important;
+}
+html.dark .border-blue-100,
+html.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.30) !important; }
+html.dark .border-teal-100,
+html.dark .border-teal-200 { border-color: rgba(45, 212, 191, 0.28) !important; }
+html.dark .border-emerald-100,
+html.dark .border-emerald-200 { border-color: rgba(52, 211, 153, 0.28) !important; }
+html.dark .border-indigo-100,
+html.dark .border-indigo-200 { border-color: rgba(129, 140, 248, 0.28) !important; }
+html.dark .border-violet-100,
+html.dark .border-violet-200 { border-color: rgba(167, 139, 250, 0.28) !important; }
+html.dark .border-amber-100,
+html.dark .border-amber-200 { border-color: rgba(251, 191, 36, 0.30) !important; }
+html.dark .border-rose-100,
+html.dark .border-rose-200 { border-color: rgba(251, 113, 133, 0.28) !important; }
+
+/* Forms, tables and overlays */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #0b1626;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+html.dark option,
+html.dark optgroup {
+  background-color: #0f1b2d;
+  color: #f1f5f9;
+}
+html.dark table {
+  color: #e2e8f0;
+}
+html.dark tr {
+  border-color: #27364d;
 }
 
-html.dark .university-option-a input,
-html.dark .university-option-a textarea,
-html.dark .university-option-a select {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #0f172a !important;
+/* Shared components should transition together when the theme changes. */
+body,
+header,
+aside,
+main,
+section,
+article,
+[class*="rounded-"],
+input,
+textarea,
+select,
+button {
+  transition-property: background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
 }
 
-html.dark .university-option-a input::placeholder,
-html.dark .university-option-a textarea::placeholder {
-  color: #94a3b8 !important;
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-
-html.dark .university-option-a table {
-  color: #334155 !important;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
-
-html.dark .university-option-a tr {
-  border-color: #f1f5f9 !important;
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }
-
-
-/* Option A: User Management keeps a dark hero with light content surfaces, even when the app theme is dark. */
-html.dark .user-management-option-a {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+html.dark ::-webkit-scrollbar-track {
+  background: #08111f;
 }
-
-html.dark .user-management-option-a .bg-white {
-  background-color: #ffffff !important;
-}
-
-html.dark .user-management-option-a [class*="bg-white/"] {
-  background-color: rgba(255, 255, 255, 0.96) !important;
-}
-
-html.dark .user-management-option-a .bg-slate-50,
-html.dark .user-management-option-a [class*="bg-slate-50/"] {
-  background-color: #f8fafc !important;
-}
-
-html.dark .user-management-option-a .bg-slate-100,
-html.dark .user-management-option-a [class*="bg-slate-100/"] {
-  background-color: #f1f5f9 !important;
-}
-
-html.dark .user-management-option-a .bg-slate-200,
-html.dark .user-management-option-a [class*="bg-slate-200/"] {
-  background-color: #e2e8f0 !important;
-}
-
-html.dark .user-management-option-a .text-slate-950,
-html.dark .user-management-option-a .text-slate-900,
-html.dark .user-management-option-a .text-slate-800,
-html.dark .user-management-option-a .text-slate-700 {
-  color: #0f172a !important;
-}
-
-html.dark .user-management-option-a .text-slate-600,
-html.dark .user-management-option-a .text-slate-500 {
-  color: #64748b !important;
-}
-
-html.dark .user-management-option-a .text-slate-400 {
-  color: #94a3b8 !important;
-}
-
-html.dark .user-management-option-a .border-slate-100,
-html.dark .user-management-option-a .border-slate-200,
-html.dark .user-management-option-a .border-slate-300,
-html.dark .user-management-option-a [class*="border-slate-100/"],
-html.dark .user-management-option-a [class*="border-slate-200/"],
-html.dark .user-management-option-a [class*="border-slate-300/"] {
-  border-color: #e2e8f0 !important;
-}
-
-html.dark .user-management-option-a input,
-html.dark .user-management-option-a textarea,
-html.dark .user-management-option-a select {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #0f172a !important;
-}
-
-html.dark .user-management-option-a input::placeholder,
-html.dark .user-management-option-a textarea::placeholder {
-  color: #94a3b8 !important;
-}
-
-html.dark .user-management-option-a table {
-  color: #334155 !important;
-}
-
-html.dark .user-management-option-a tr {
-  border-color: #f1f5f9 !important;
+html.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
 }
