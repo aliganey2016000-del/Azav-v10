@@ -27,94 +27,50 @@ import {
   Home,
   FileCheck2,
 } from 'lucide-react';
-import { RealDataStore, RealTrainee } from '../../services/realDataStore';
+import type { RealTrainee } from '../../services/realDataStore';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, addMockStageComment, markCommentsSeen, buildDisplayStages, isDocumentChatStage } from '../../utils/journeyStages';
-import { useAuth } from '../../context/AuthContext';
+import { AdminStudentJourney, AdminJourneyStage, JourneyChatData } from '../../types/admin.types';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, buildDisplayStages, isDocumentChatStage } from '../../utils/journeyStages';
 import { documentTypeLabel } from '../../utils/documentTypes';
 
 export const UniversityStudentJourneyPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
-  const authorName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
-  const [trainee, setTrainee] = useState<RealTrainee | null>(null);
+  const trainee: RealTrainee | null = null;
   const [adminJourney, setAdminJourney] = useState<AdminStudentJourney | null>(null);
   const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
   const [journeyDocuments, setJourneyDocuments] = useState<DisplayDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
+  const [chatData, setChatData] = useState<JourneyChatData | null>(null);
   const [activeTab, setActiveTab] = useState<
     'journey' | 'profile' | 'documents' | 'financials' | 'visa' | 'placement' | 'attendance' | 'logbook' | 'evaluation' | 'certificate'
   >('journey');
 
-  const loadJourneyData = (studentId: string) => {
-    if (isMockId(studentId)) {
-      const { stages, documents } = loadMockJourney(studentId);
-      setAzaamStages(stages);
-      setJourneyDocuments(documents);
-    } else {
-      Promise.all([
-        AdminApiService.getStudentAzaamJourney(studentId).catch(() => []),
-        AdminApiService.getStudentDocuments(studentId).catch(() => []),
-      ]).then(([stages, docs]) => {
-        setAzaamStages(stages);
-        setJourneyDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
-      });
-    }
+  const loadJourneyData = async (studentId: string) => {
+    const [stages, docs, chat] = await Promise.all([
+      AdminApiService.getStudentAzaamJourney(studentId),
+      AdminApiService.getStudentDocuments(studentId),
+      AdminApiService.getJourneyChat(studentId),
+    ]);
+    setAzaamStages(stages);
+    setJourneyDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
+    setChatData(chat);
   };
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
 
-    // 1. Try to find in RealDataStore (Trainees list)
-    const localTrainees = RealDataStore.getTrainees();
-    const found = localTrainees.find((t) => t.id === id || t.studentId === id);
-    if (found) {
-      setTrainee(found);
-    }
-
-    // 2. Also try to fetch from AdminApiService for mock/seeded IDs
-    AdminApiService.getStudentById(id)
-      .then((res) => setAdminJourney(res))
-      .catch(() => {})
+    Promise.all([
+      AdminApiService.getStudentById(id).then((res) => setAdminJourney(res)),
+      loadJourneyData(id),
+    ])
+      .catch((e: any) => {
+        console.error(e);
+      })
       .finally(() => setLoading(false));
-
-    // 3. Load the real AZAAM-controlled journey + submitted documents (mock or backend)
-    loadJourneyData(id);
-    markCommentsSeen('UNIVERSITY');
   }, [id]);
 
-  const handleSendComment = async (stageKey: string) => {
-    if (!id) return;
-    const message = (commentDraft[stageKey] || '').trim();
-    if (!message) return;
-
-    try {
-      if (isMockId(id)) {
-        const { stages } = addMockStageComment(id, stageKey, 'UNIVERSITY', authorName, message);
-        setAzaamStages(stages);
-      } else {
-        const stages = await AdminApiService.addJourneyComment(id, stageKey, message);
-        setAzaamStages(stages);
-      }
-      setCommentDraft((prev) => ({ ...prev, [stageKey]: '' }));
-    } catch (e: any) {
-      window.alert(e?.response?.data?.error?.message || e.message || 'Failed to send update.');
-    }
-  };
-
   const handleStageDocumentDownload = async (doc: DisplayDocument) => {
-    if (doc.dataUrl) {
-      const link = window.document.createElement('a');
-      link.href = doc.dataUrl;
-      link.setAttribute('download', doc.name);
-      window.document.body.appendChild(link);
-      link.click();
-      link.remove();
-      return;
-    }
     await AdminApiService.downloadDocument(doc.id, doc.name);
   };
 
@@ -156,6 +112,14 @@ export const UniversityStudentJourneyPage: React.FC = () => {
   const evaluationScore = trainee?.evaluationScore ?? adminStudent?.evaluationScore ?? 92;
   const certificateIssued = trainee?.certificateIssued ?? adminStudent?.certificateIssued ?? false;
   const certificateNumber = trainee?.certificateNumber || adminStudent?.certificateCode || 'AZAAM-CERT-2025-VERIFIED';
+  const chatUnread = chatData?.unreadCount || 0;
+  const stageUnread = (stageKey: string) =>
+    (chatData?.messages || []).filter(
+      (message) =>
+        message.stageKey === stageKey &&
+        message.author !== 'UNIVERSITY' &&
+        !(message.readBy || []).includes('UNIVERSITY')
+    ).length;
 
   return (
     <div className="space-y-6">
@@ -204,23 +168,37 @@ export const UniversityStudentJourneyPage: React.FC = () => {
           </div>
 
           {/* Quick Metrics Badge */}
-          <div className="flex items-center gap-3 bg-white/10 backdrop-blur p-4 rounded-xl border border-white/10">
-            <div className="text-center px-2">
-              <div className="text-lg font-bold text-white">{attendancePercent}%</div>
-              <div className="text-[10px] text-slate-300 uppercase tracking-wider">Attendance</div>
-            </div>
-            <div className="w-px h-8 bg-white/20" />
-            <div className="text-center px-2">
-              <div className="text-lg font-bold text-emerald-400 font-mono">
-                {logbookSigned}/{logbookRequired}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 bg-white/10 backdrop-blur p-4 rounded-xl border border-white/10">
+              <div className="text-center px-2">
+                <div className="text-lg font-bold text-white">{attendancePercent}%</div>
+                <div className="text-[10px] text-slate-300 uppercase tracking-wider">Attendance</div>
               </div>
-              <div className="text-[10px] text-slate-300 uppercase tracking-wider">Logbook</div>
+              <div className="w-px h-8 bg-white/20" />
+              <div className="text-center px-2">
+                <div className="text-lg font-bold text-emerald-400 font-mono">
+                  {logbookSigned}/{logbookRequired}
+                </div>
+                <div className="text-[10px] text-slate-300 uppercase tracking-wider">Logbook</div>
+              </div>
+              <div className="w-px h-8 bg-white/20" />
+              <div className="text-center px-2">
+                <div className="text-lg font-bold text-purple-300">{evaluationGrade}</div>
+                <div className="text-[10px] text-slate-300 uppercase tracking-wider">Evaluation</div>
+              </div>
             </div>
-            <div className="w-px h-8 bg-white/20" />
-            <div className="text-center px-2">
-              <div className="text-lg font-bold text-purple-300">{evaluationGrade}</div>
-              <div className="text-[10px] text-slate-300 uppercase tracking-wider">Evaluation</div>
-            </div>
+            <Link
+              to={`/university/students/${id}/chat`}
+              className="relative inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#00a884] px-4 text-sm font-extrabold text-white shadow-lg transition hover:bg-[#029978]"
+            >
+              <CheckCircle2 className="h-5 w-5" />
+              Open Chat
+              {chatUnread > 0 && (
+                <span className="absolute -right-2 -top-2 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white ring-2 ring-slate-950">
+                  {chatUnread > 99 ? '99+' : chatUnread}
+                </span>
+              )}
+            </Link>
           </div>
         </div>
 
@@ -326,47 +304,18 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                       )}
 
                       {isDocumentChatStage(stage.key) && stage.uiStatus !== 'PENDING' && (
-                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-                          <p className="mb-2 text-[11px] font-extrabold text-slate-600 dark:text-slate-300">University ↔ AZAAM Updates</p>
-                          {stage.comments && stage.comments.length > 0 ? (
-                            <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
-                              {stage.comments.map((c) => (
-                                <div
-                                  key={c.id}
-                                  className={
-                                    'max-w-[92%] rounded-xl p-2.5 text-[11px] ' +
-                                    (c.author === 'UNIVERSITY'
-                                      ? 'ml-auto bg-sky-100 text-sky-950 dark:bg-sky-500/15 dark:text-sky-100'
-                                      : 'mr-auto border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200')
-                                  }
-                                >
-                                  <div className="mb-1 flex items-center justify-between gap-2">
-                                    <span className="font-extrabold">{c.authorName || (c.author === 'AZAAM' ? 'AZAAM' : 'University')}</span>
-                                    <span className="text-[9px] opacity-60">{new Date(c.createdAt).toLocaleString()}</span>
-                                  </div>
-                                  <p className="whitespace-pre-wrap break-words">{c.message}</p>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="mb-3 text-[10px] text-slate-400">No updates yet.</p>
+                        <Link
+                          to={`/university/students/${id}/chat?stage=${stage.key}`}
+                          className="relative mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#00a884]/30 bg-emerald-50 px-4 text-xs font-extrabold text-emerald-800 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Chat with AZAAM
+                          {stageUnread(stage.key) > 0 && (
+                            <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
+                              {stageUnread(stage.key) > 99 ? '99+' : stageUnread(stage.key)}
+                            </span>
                           )}
-                          <div className="flex items-end gap-2">
-                            <textarea
-                              value={commentDraft[stage.key] || ''}
-                              onChange={(e) => setCommentDraft((prev) => ({ ...prev, [stage.key]: e.target.value }))}
-                              placeholder="Write an update for AZAAM..."
-                              className="min-h-10 flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleSendComment(stage.key)}
-                              className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 px-3 text-xs font-extrabold text-white hover:bg-sky-700"
-                            >
-                              Send
-                            </button>
-                          </div>
-                        </div>
+                        </Link>
                       )}
                     </div>
                   </div>
