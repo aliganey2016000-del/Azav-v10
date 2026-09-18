@@ -1,5 +1,10 @@
 import { Student } from '../models/Student.js';
 import { User } from '../models/User.js';
+import { Application } from '../models/Application.js';
+import { Organization } from '../models/Organization.js';
+import { Department } from '../models/Department.js';
+import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
+import { Placement, ClinicalAttachment } from '../models/Placement.js';
 import { DocumentModel } from '../models/Document.js';
 import {
   JourneyMilestone,
@@ -10,7 +15,8 @@ import {
   JOURNEY_STAGE_ORDER,
 } from '../models/JourneyMilestone.js';
 import { AuditLog } from '../models/Notification.js';
-import { AuthUser, UserRole } from '../types/index.js';
+import { PlacementService } from './placement.service.js';
+import { AuthUser, UserRole, PlacementStatus } from '../types/index.js';
 
 const STAGE_LABELS: Record<JourneyStageKey, { title: string; description: string }> = {
   [JourneyStageKey.AZAAM_REVIEW]: {
@@ -35,7 +41,7 @@ const STAGE_LABELS: Record<JourneyStageKey, { title: string; description: string
   },
   [JourneyStageKey.PLACEMENT]: {
     title: 'Hospital Placement',
-    description: 'AZAAM assigns the approved teaching hospital and department.',
+    description: 'AZAAM assigns the teaching hospital, department and supervisor, then confirms placement with photo evidence.',
   },
   [JourneyStageKey.TRAINING]: {
     title: 'Clinical Training',
@@ -60,6 +66,15 @@ const EVIDENCE_UPDATE_STAGES = new Set<JourneyStageKey>([
 const STAGE_UPDATE_STAGES = new Set<JourneyStageKey>([
   ...DOCUMENT_UPDATE_STAGES,
   ...EVIDENCE_UPDATE_STAGES,
+]);
+
+const CUSTOM_WORKFLOW_STAGES = new Set<JourneyStageKey>([
+  JourneyStageKey.PLACEMENT,
+]);
+
+const NON_APPROVAL_STAGES = new Set<JourneyStageKey>([
+  ...STAGE_UPDATE_STAGES,
+  ...CUSTOM_WORKFLOW_STAGES,
 ]);
 
 const isAzaamActor = (actor: AuthUser) =>
@@ -175,7 +190,9 @@ export class JourneyService {
         ? 'DOCUMENT_CHAT'
         : EVIDENCE_UPDATE_STAGES.has(m.stageKey as JourneyStageKey)
           ? 'EVIDENCE'
-          : 'APPROVAL',
+          : CUSTOM_WORKFLOW_STAGES.has(m.stageKey as JourneyStageKey)
+            ? 'PLACEMENT'
+            : 'APPROVAL',
     }));
 
     return {
@@ -198,11 +215,13 @@ export class JourneyService {
       throw err;
     }
 
-    if (STAGE_UPDATE_STAGES.has(stageKey)) {
+    if (NON_APPROVAL_STAGES.has(stageKey)) {
       const err: any = new Error(
         stageKey === JourneyStageKey.TRANSPORT
           ? 'Arrival & Airport Pickup does not use Approve/Reject. Confirm the arrival status and upload photo evidence instead.'
-          : 'This stage does not use Approve/Reject. Upload the stage document and post an update instead.'
+          : stageKey === JourneyStageKey.PLACEMENT
+            ? 'Hospital Placement does not use Approve/Reject. Select the hospital and placement details, upload photo evidence, then confirm the placement.'
+            : 'This stage does not use Approve/Reject. Upload the stage document and post an update instead.'
       );
       err.statusCode = 400;
       err.code = 'STAGE_UPDATE_REQUIRED';
@@ -273,6 +292,267 @@ export class JourneyService {
       entityId: milestone._id,
       before: { status: fromStatus },
       after: { status: toStatus, reason: milestone.reason },
+    });
+
+    return this.getJourney(studentId, actor);
+  }
+
+  static async confirmPlacement(
+    studentId: string,
+    input: {
+      organizationId?: string;
+      departmentId?: string;
+      supervisorId?: string;
+      startDate?: string;
+      endDate?: string;
+      documentIds?: string[];
+      comment?: string;
+    },
+    actor: AuthUser
+  ) {
+    if (!isAzaamActor(actor)) {
+      const err: any = new Error('Only AZAAM staff can confirm a hospital placement.');
+      err.statusCode = 403;
+      err.code = 'FORBIDDEN_PLACEMENT_CONFIRMATION';
+      throw err;
+    }
+
+    const organizationId = input.organizationId?.trim();
+    const departmentId = input.departmentId?.trim() || undefined;
+    const supervisorId = input.supervisorId?.trim() || undefined;
+    const documentIds = Array.from(new Set((input.documentIds || []).filter(Boolean)));
+    const comment = input.comment?.trim();
+
+    if (!organizationId || !input.startDate || !input.endDate) {
+      const err: any = new Error('Hospital, start date and end date are required.');
+      err.statusCode = 400;
+      err.code = 'PLACEMENT_DETAILS_REQUIRED';
+      throw err;
+    }
+
+    if (documentIds.length === 0) {
+      const err: any = new Error('Upload at least one placement photo showing the student at the hospital.');
+      err.statusCode = 400;
+      err.code = 'PLACEMENT_EVIDENCE_REQUIRED';
+      throw err;
+    }
+
+    const startDate = new Date(input.startDate);
+    const endDate = new Date(input.endDate);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
+      const err: any = new Error('Placement dates are invalid. End date must be on or after start date.');
+      err.statusCode = 400;
+      err.code = 'INVALID_PLACEMENT_DATES';
+      throw err;
+    }
+
+    await this.getJourney(studentId, actor);
+
+    const milestone = await JourneyMilestone.findOne({
+      studentId,
+      stageKey: JourneyStageKey.PLACEMENT,
+    });
+
+    if (!milestone) {
+      const err: any = new Error('Hospital Placement stage was not found for this student.');
+      err.statusCode = 404;
+      err.code = 'PLACEMENT_STAGE_NOT_FOUND';
+      throw err;
+    }
+
+    if (milestone.status === JourneyStageStatus.LOCKED) {
+      const err: any = new Error('Hospital Placement is not open yet.');
+      err.statusCode = 400;
+      err.code = 'STAGE_LOCKED';
+      throw err;
+    }
+
+    if (milestone.status === JourneyStageStatus.COMPLETED) {
+      const err: any = new Error('Hospital Placement has already been confirmed.');
+      err.statusCode = 400;
+      err.code = 'PLACEMENT_ALREADY_CONFIRMED';
+      throw err;
+    }
+
+    const docs: any[] = await DocumentModel.find({
+      _id: { $in: documentIds },
+      $or: [{ studentId }, { ownerId: studentId }],
+    }).select('_id type mimeType');
+
+    if (
+      docs.length !== documentIds.length ||
+      docs.some(
+        (doc: any) =>
+          doc.type !== 'PLACEMENT_EVIDENCE' ||
+          !String(doc.mimeType || '').toLowerCase().startsWith('image/')
+      )
+    ) {
+      const err: any = new Error('Hospital placement confirmation requires valid image evidence uploaded for this student.');
+      err.statusCode = 400;
+      err.code = 'INVALID_PLACEMENT_EVIDENCE';
+      throw err;
+    }
+
+    const organization: any = await Organization.findOne({
+      _id: organizationId,
+      status: 'ACTIVE',
+    });
+
+    if (!organization) {
+      const err: any = new Error('Selected hospital is not active or does not exist.');
+      err.statusCode = 404;
+      err.code = 'HOSPITAL_NOT_FOUND';
+      throw err;
+    }
+
+    let department: any = null;
+    if (departmentId) {
+      department = await Department.findOne({
+        _id: departmentId,
+        organizationId,
+        status: 'ACTIVE',
+      });
+      if (!department) {
+        const err: any = new Error('Selected department does not belong to the selected hospital.');
+        err.statusCode = 400;
+        err.code = 'DEPARTMENT_HOSPITAL_MISMATCH';
+        throw err;
+      }
+    }
+
+    let supervisor: any = null;
+    if (supervisorId) {
+      supervisor = await ClinicalSupervisor.findOne({
+        _id: supervisorId,
+        organizationId,
+        status: 'ACTIVE',
+      }).populate('userId', 'firstName lastName');
+      if (!supervisor) {
+        const err: any = new Error('Selected supervisor does not belong to the selected hospital.');
+        err.statusCode = 400;
+        err.code = 'SUPERVISOR_HOSPITAL_MISMATCH';
+        throw err;
+      }
+    }
+
+    const application: any = await Application.findOne({ studentId }).sort({ createdAt: -1 });
+    if (!application) {
+      const err: any = new Error('No application was found for this student.');
+      err.statusCode = 404;
+      err.code = 'APPLICATION_NOT_FOUND';
+      throw err;
+    }
+
+    const activeStatuses = [PlacementStatus.PENDING, PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE];
+    let placement: any = await Placement.findOne({
+      studentId,
+      organizationId,
+      status: { $in: activeStatuses },
+      startDate,
+      endDate,
+    });
+
+    if (!placement) {
+      const overlapping: any = await Placement.findOne({
+        studentId,
+        status: { $in: activeStatuses },
+        $or: [{ startDate: { $lte: endDate }, endDate: { $gte: startDate } }],
+      });
+
+      if (overlapping) {
+        if (overlapping.organizationId.toString() !== organizationId) {
+          const err: any = new Error('Student already has another active or pending placement in this date range.');
+          err.statusCode = 400;
+          err.code = 'ROTATION_OVERLAP';
+          throw err;
+        }
+        placement = overlapping;
+      }
+    }
+
+    if (!placement) {
+      const created = await PlacementService.createPlacement(actor.userId, {
+        applicationId: application._id.toString(),
+        studentId,
+        organizationId,
+        departmentId,
+        supervisorId,
+        startDate,
+        endDate,
+      });
+      placement = created.placement;
+    } else {
+      placement.departmentId = departmentId || null;
+      placement.supervisorId = supervisorId || null;
+      placement.startDate = startDate;
+      placement.endDate = endDate;
+      placement.status = PlacementStatus.CONFIRMED;
+      await placement.save();
+
+      await ClinicalAttachment.findOneAndUpdate(
+        { placementId: placement._id },
+        {
+          $set: {
+            organizationId,
+            departmentId: departmentId || null,
+            supervisorId: supervisorId || null,
+            startDate,
+            endDate,
+          },
+        },
+        { runValidators: true }
+      );
+    }
+
+    const existing = new Set((milestone.documents || []).map((id: any) => id.toString()));
+    docs.forEach((doc: any) => existing.add(doc._id.toString()));
+    milestone.documents = Array.from(existing) as any;
+    milestone.status = JourneyStageStatus.COMPLETED;
+    milestone.actedBy = actor.userId as any;
+    milestone.actedAt = new Date();
+
+    const supervisorName = supervisor?.userId
+      ? [supervisor.userId.firstName, supervisor.userId.lastName].filter(Boolean).join(' ').trim()
+      : '';
+    const placementSummary = [
+      `Hospital: ${organization.name}`,
+      department?.name ? `Department: ${department.name}` : null,
+      supervisorName ? `Supervisor: ${supervisorName}` : null,
+      `Dates: ${startDate.toISOString().slice(0, 10)} to ${endDate.toISOString().slice(0, 10)}`,
+      comment ? `Note: ${comment}` : null,
+    ]
+      .filter(Boolean)
+      .join(' • ');
+
+    milestone.comments.push({
+      author: 'AZAAM',
+      authorUserId: actor.userId as any,
+      authorName: await this.authorName(actor),
+      message: placementSummary,
+      readBy: ['AZAAM'],
+      createdAt: new Date(),
+    } as any);
+
+    await milestone.save();
+    await this.unlockNext(studentId, milestone.order);
+
+    await AuditLog.create({
+      actorUserId: actor.userId,
+      actorId: actor.userId,
+      actorEmail: actor.email,
+      action: 'journey.placement_confirm',
+      entityType: 'JourneyMilestone',
+      entityId: milestone._id,
+      after: {
+        stageKey: JourneyStageKey.PLACEMENT,
+        placementId: placement._id,
+        organizationId,
+        departmentId,
+        supervisorId,
+        startDate,
+        endDate,
+        documentIds,
+      },
     });
 
     return this.getJourney(studentId, actor);
