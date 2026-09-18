@@ -43,6 +43,8 @@ export const EVIDENCE_UPDATE_STAGE_KEYS = ['TRANSPORT'] as const;
 export const isEvidenceUpdateStage = (stageKey: string) =>
   (EVIDENCE_UPDATE_STAGE_KEYS as readonly string[]).includes(stageKey);
 
+export const isPlacementStage = (stageKey: string) => stageKey === 'PLACEMENT';
+
 export const STATUS_LABEL: Record<UiStatus, string> = {
   COMPLETED: 'COMPLETED',
   CURRENT: 'IN PROGRESS',
@@ -109,7 +111,8 @@ export const buildDisplayStages = (
         canAct &&
         uiStatus !== 'PENDING' &&
         !isDocumentChatStage(stage.stageKey) &&
-        !isEvidenceUpdateStage(stage.stageKey),
+        !isEvidenceUpdateStage(stage.stageKey) &&
+        !isPlacementStage(stage.stageKey),
       hasDocument: true,
       documents: stage.documents,
       comments: stage.comments,
