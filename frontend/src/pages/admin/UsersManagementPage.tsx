@@ -7,6 +7,7 @@ import {
   CheckCircle,
   XCircle,
   Eye,
+  EyeOff,
   Edit2,
   RefreshCw,
   Users,
@@ -25,6 +26,7 @@ import {
 import { AdminApiService } from '../../services/admin.service';
 import { AdminUser, AdminUniversity, AdminOrganization, PaginationMeta } from '../../types/admin.types';
 import { UserRole } from '../../types/frontend';
+import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/admin/PageHeader';
 import { SearchInput } from '../../components/admin/SearchInput';
 import { Pagination } from '../../components/admin/Pagination';
@@ -34,7 +36,13 @@ import { ConfirmDialog } from '../../components/admin/ConfirmDialog';
 import { LoadingState, ErrorState, EmptyState } from '../../components/admin/States';
 
 export const UsersManagementPage: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const canManageCredentials =
+    currentUser?.roles?.some((role) =>
+      [UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF].includes(role as UserRole)
+    ) ?? false;
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, totalPages: 1 });
@@ -82,13 +90,16 @@ export const UsersManagementPage: React.FC = () => {
   const [editFormData, setEditFormData] = useState({
     firstName: '',
     lastName: '',
+    email: '',
     phone: '',
+    newPassword: '',
     role: UserRole.STUDENT,
     status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'PENDING',
     universityId: '',
     organizationId: '',
   });
 
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
 
   // Extract Filters from URL Query Params
@@ -247,12 +258,15 @@ export const UsersManagementPage: React.FC = () => {
     setEditFormData({
       firstName: user.firstName,
       lastName: user.lastName,
+      email: user.email,
       phone: user.phone || '',
+      newPassword: '',
       role: (user.roles?.[0] as UserRole) || UserRole.STUDENT,
       status: user.status,
       universityId: user.universityId?._id || '',
       organizationId: user.organizationId?._id || '',
     });
+    setShowEditPassword(false);
     setEditModalOpen(true);
   };
 
@@ -261,10 +275,17 @@ export const UsersManagementPage: React.FC = () => {
     e.preventDefault();
     if (!selectedUser) return;
     try {
+      if (canManageCredentials && editFormData.newPassword && editFormData.newPassword.length < 12) {
+        showToast('error', 'New password must be at least 12 characters.');
+        return;
+      }
+
       setActionLoading(true);
+
       await AdminApiService.updateUser(selectedUser._id, {
         firstName: editFormData.firstName.trim(),
         lastName: editFormData.lastName.trim(),
+        ...(canManageCredentials ? { email: editFormData.email.trim().toLowerCase() } : {}),
         phone: editFormData.phone.trim(),
         roles: [editFormData.role],
         status: editFormData.status,
@@ -272,9 +293,19 @@ export const UsersManagementPage: React.FC = () => {
         organizationId: isOrganizationRole(editFormData.role) ? editFormData.organizationId || null : null,
       });
 
+      if (canManageCredentials && editFormData.newPassword) {
+        await AdminApiService.resetUserPassword(selectedUser._id, editFormData.newPassword);
+      }
+
       setEditModalOpen(false);
       setSelectedUser(null);
-      showToast('success', 'User details updated successfully.');
+      setShowEditPassword(false);
+      showToast(
+        'success',
+        editFormData.newPassword
+          ? 'User details and password updated successfully.'
+          : 'User details updated successfully.'
+      );
       fetchUsers();
     } catch (err: any) {
       showToast('error', err.message || 'Failed to update user.');
@@ -903,7 +934,49 @@ export const UsersManagementPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {canManageCredentials && (
+              <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-3 space-y-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Login Email / Username *</label>
+                  <input
+                    type="email"
+                    required
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">This email is the user's sign-in identifier.</p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showEditPassword ? 'text' : 'password'}
+                      minLength={12}
+                      value={editFormData.newPassword}
+                      onChange={(e) => setEditFormData({ ...editFormData, newPassword: e.target.value })}
+                      placeholder="Leave blank to keep current password"
+                      className="w-full p-2.5 pr-10 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword((value) => !value)}
+                      className="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-slate-700"
+                      aria-label={showEditPassword ? 'Hide new password' : 'Show new password'}
+                      title={showEditPassword ? 'Hide new password' : 'Show new password'}
+                    >
+                      {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Current passwords are securely hashed and cannot be viewed. Enter at least 12 characters only when replacing the password.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Phone Number</label>
                 <input
@@ -1101,10 +1174,10 @@ export const UsersManagementPage: React.FC = () => {
               <input
                 type="password"
                 required
-                minLength={6}
+                minLength={12}
                 value={resetPasswordValue}
                 onChange={(e) => setResetPasswordValue(e.target.value)}
-                placeholder="Enter at least 6 characters"
+                placeholder="Enter at least 12 characters"
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none font-mono"
               />
             </div>
