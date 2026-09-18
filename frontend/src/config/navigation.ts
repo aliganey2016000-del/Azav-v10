@@ -26,6 +26,7 @@ import {
   Plane,
   TrendingUp,
   BarChart3,
+  CalendarDays,
 } from 'lucide-react';
 import { UserRole } from '../types/frontend';
 
@@ -116,6 +117,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         label: 'Placements',
         path: '/admin/placements',
         icon: Building,
+        roles: [UserRole.SUPER_ADMIN],
+      },
+      {
+        label: 'Clinical Rotations',
+        path: '/admin/rotations',
+        icon: CalendarDays,
         roles: [UserRole.SUPER_ADMIN],
       },
     ],
@@ -301,6 +308,12 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         icon: Building,
         roles: [UserRole.AZAAM_STAFF],
       },
+      {
+        label: 'Clinical Rotations',
+        path: '/admin/rotations',
+        icon: CalendarDays,
+        roles: [UserRole.AZAAM_STAFF],
+      },
     ],
   },
   {
@@ -425,6 +438,12 @@ const UNIVERSITY_ADMIN_NAVIGATION: NavigationSection[] = [
         label: 'Placements',
         path: '/university/placements',
         icon: Building,
+        roles: [UserRole.UNIVERSITY_ADMIN],
+      },
+      {
+        label: 'Rotations',
+        path: '/university/rotations',
+        icon: CalendarDays,
         roles: [UserRole.UNIVERSITY_ADMIN],
       },
       {
@@ -597,6 +616,12 @@ const UNIVERSITY_STAFF_NAVIGATION: NavigationSection[] = [
         label: 'Placements',
         path: '/university/placements',
         icon: Building,
+        roles: [UserRole.UNIVERSITY_STAFF],
+      },
+      {
+        label: 'Rotations',
+        path: '/university/rotations',
+        icon: CalendarDays,
         roles: [UserRole.UNIVERSITY_STAFF],
       },
       {
@@ -1130,6 +1155,12 @@ const STUDENT_NAVIGATION: NavigationSection[] = [
         label: 'Placement',
         path: '/student/placement',
         icon: Building,
+        roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
+      },
+      {
+        label: 'Rotations',
+        path: '/student/rotations',
+        icon: CalendarDays,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
       {
