@@ -35,7 +35,7 @@ import { documentTypeLabel } from '../../utils/documentTypes';
 
 export const UniversityStudentJourneyPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const trainee: RealTrainee | null = null;
+  const [trainee] = useState<RealTrainee | null>(null);
   const [adminJourney, setAdminJourney] = useState<AdminStudentJourney | null>(null);
   const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
   const [journeyDocuments, setJourneyDocuments] = useState<DisplayDocument[]>([]);
