@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -128,6 +129,7 @@ export const AdminPlacementsPage: React.FC = () => {
   const [hospitalSaving, setHospitalSaving] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [showHospitalForm, setShowHospitalForm] = useState(false);
@@ -332,6 +334,16 @@ export const AdminPlacementsPage: React.FC = () => {
       to: '',
       search: '',
     });
+
+  const activeAdvancedFilterCount = [
+    filters.university,
+    filters.hospital,
+    filters.department,
+    filters.programme,
+    filters.status,
+    filters.from,
+    filters.to,
+  ].filter(Boolean).length;
 
   const loadHospitalDependencies = async (organizationId: string) => {
     setDepartments([]);
@@ -646,129 +658,274 @@ export const AdminPlacementsPage: React.FC = () => {
         })}
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
+        <div className="lg:hidden">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-teal-600" />
-            <h2 className="text-sm font-black text-slate-950">Filters</h2>
-          </div>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="text-xs font-extrabold text-teal-700 hover:text-teal-800"
-          >
-            Reset
-          </button>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">University</span>
-            <select
-              value={filters.university}
-              onChange={(event) => setFilters((current) => ({ ...current, university: event.target.value }))}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-            >
-              <option value="">All Universities</option>
-              {universityOptions.map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">Hospital</span>
-            <select
-              value={filters.hospital}
-              onChange={(event) => setFilters((current) => ({ ...current, hospital: event.target.value }))}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-            >
-              <option value="">All Hospitals</option>
-              {organizations.map((organization) => (
-                <option key={asId(organization)} value={asId(organization)}>
-                  {organization.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">Department</span>
-            <select
-              value={filters.department}
-              onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-            >
-              <option value="">All Departments</option>
-              {departmentOptions.map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">Programme</span>
-            <select
-              value={filters.programme}
-              onChange={(event) => setFilters((current) => ({ ...current, programme: event.target.value }))}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-            >
-              <option value="">All Programmes</option>
-              {programmeOptions.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">Status</span>
-            <select
-              value={filters.status}
-              onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-            >
-              <option value="">All Status</option>
-              <option value="PENDING">Pending</option>
-              <option value="CONFIRMED">Scheduled</option>
-              <option value="ACTIVE">Active</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">From</span>
-            <input
-              type="date"
-              value={filters.from}
-              onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-            />
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">To</span>
-            <input
-              type="date"
-              value={filters.to}
-              onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-            />
-          </label>
-
-          <label className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-500">Search Student</span>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <input
                 type="search"
                 value={filters.search}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
-                placeholder="Name, ID or email..."
-                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-teal-500"
+                placeholder="Search student..."
+                className="min-h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-blue-500"
               />
             </div>
-          </label>
+
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters((current) => !current)}
+              aria-expanded={showMobileFilters}
+              className="relative inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-extrabold text-blue-700 transition hover:bg-blue-100"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {activeAdvancedFilterCount > 0 && (
+                <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-black text-white">
+                  {activeAdvancedFilterCount}
+                </span>
+              )}
+              <ChevronDown className={`h-4 w-4 transition-transform ${showMobileFilters ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          {showMobileFilters && (
+            <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/40 p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">More filters</span>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-[11px] font-extrabold text-blue-700"
+                >
+                  Reset all
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <label className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500">University</span>
+                  <select
+                    value={filters.university}
+                    onChange={(event) => setFilters((current) => ({ ...current, university: event.target.value }))}
+                    className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="">All</option>
+                    {universityOptions.map(([id, name]) => (
+                      <option key={id} value={id}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500">Hospital</span>
+                  <select
+                    value={filters.hospital}
+                    onChange={(event) => setFilters((current) => ({ ...current, hospital: event.target.value }))}
+                    className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="">All</option>
+                    {organizations.map((organization) => (
+                      <option key={asId(organization)} value={asId(organization)}>
+                        {organization.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500">Department</span>
+                  <select
+                    value={filters.department}
+                    onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}
+                    className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="">All</option>
+                    {departmentOptions.map(([id, name]) => (
+                      <option key={id} value={id}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500">Programme</span>
+                  <select
+                    value={filters.programme}
+                    onChange={(event) => setFilters((current) => ({ ...current, programme: event.target.value }))}
+                    className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="">All</option>
+                    {programmeOptions.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500">Status</span>
+                  <select
+                    value={filters.status}
+                    onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
+                    className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
+                  >
+                    <option value="">All</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="CONFIRMED">Scheduled</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                </label>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500">From</span>
+                    <input
+                      type="date"
+                      value={filters.from}
+                      onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
+                      className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-500"
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500">To</span>
+                    <input
+                      type="date"
+                      value={filters.to}
+                      onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
+                      className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-500"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden lg:block">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-teal-600" />
+              <h2 className="text-sm font-black text-slate-950">Filters</h2>
+            </div>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-xs font-extrabold text-teal-700 hover:text-teal-800"
+            >
+              Reset
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">University</span>
+              <select
+                value={filters.university}
+                onChange={(event) => setFilters((current) => ({ ...current, university: event.target.value }))}
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
+              >
+                <option value="">All Universities</option>
+                {universityOptions.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">Hospital</span>
+              <select
+                value={filters.hospital}
+                onChange={(event) => setFilters((current) => ({ ...current, hospital: event.target.value }))}
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
+              >
+                <option value="">All Hospitals</option>
+                {organizations.map((organization) => (
+                  <option key={asId(organization)} value={asId(organization)}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">Department</span>
+              <select
+                value={filters.department}
+                onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
+              >
+                <option value="">All Departments</option>
+                {departmentOptions.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">Programme</span>
+              <select
+                value={filters.programme}
+                onChange={(event) => setFilters((current) => ({ ...current, programme: event.target.value }))}
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
+              >
+                <option value="">All Programmes</option>
+                {programmeOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">Status</span>
+              <select
+                value={filters.status}
+                onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
+              >
+                <option value="">All Status</option>
+                <option value="PENDING">Pending</option>
+                <option value="CONFIRMED">Scheduled</option>
+                <option value="ACTIVE">Active</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">From</span>
+              <input
+                type="date"
+                value={filters.from}
+                onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))}
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
+              />
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">To</span>
+              <input
+                type="date"
+                value={filters.to}
+                onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
+                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
+              />
+            </label>
+
+            <label className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-500">Search Student</span>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="search"
+                  value={filters.search}
+                  onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+                  placeholder="Name, ID or email..."
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-teal-500"
+                />
+              </div>
+            </label>
+          </div>
         </div>
       </section>
 
