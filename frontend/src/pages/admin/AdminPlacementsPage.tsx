@@ -204,12 +204,12 @@ export const AdminPlacementsPage: React.FC = () => {
 
   const universityName = (placement: RecordObject) => {
     const application = appForPlacement(placement);
-    return application?.universityId?.name || 'Independent';
+    return application?.universityId?.name || placement.studentId?.universityId?.name || 'Independent';
   };
 
   const programmeName = (placement: RecordObject) => {
     const application = appForPlacement(placement);
-    return application?.programmeId?.name || application?.programmeText || '-';
+    return application?.programmeId?.name || application?.programmeText || placement.studentId?.programmeId?.name || '-';
   };
 
   const hospitalName = (placement: RecordObject) =>
