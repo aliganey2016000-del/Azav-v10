@@ -251,3 +251,79 @@ html.dark .university-option-a table {
 html.dark .university-option-a tr {
   border-color: #f1f5f9 !important;
 }
+
+
+/* Option A: User Management keeps a dark hero with light content surfaces, even when the app theme is dark. */
+html.dark .user-management-option-a {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.dark .user-management-option-a .bg-white {
+  background-color: #ffffff !important;
+}
+
+html.dark .user-management-option-a [class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+html.dark .user-management-option-a .bg-slate-50,
+html.dark .user-management-option-a [class*="bg-slate-50/"] {
+  background-color: #f8fafc !important;
+}
+
+html.dark .user-management-option-a .bg-slate-100,
+html.dark .user-management-option-a [class*="bg-slate-100/"] {
+  background-color: #f1f5f9 !important;
+}
+
+html.dark .user-management-option-a .bg-slate-200,
+html.dark .user-management-option-a [class*="bg-slate-200/"] {
+  background-color: #e2e8f0 !important;
+}
+
+html.dark .user-management-option-a .text-slate-950,
+html.dark .user-management-option-a .text-slate-900,
+html.dark .user-management-option-a .text-slate-800,
+html.dark .user-management-option-a .text-slate-700 {
+  color: #0f172a !important;
+}
+
+html.dark .user-management-option-a .text-slate-600,
+html.dark .user-management-option-a .text-slate-500 {
+  color: #64748b !important;
+}
+
+html.dark .user-management-option-a .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+html.dark .user-management-option-a .border-slate-100,
+html.dark .user-management-option-a .border-slate-200,
+html.dark .user-management-option-a .border-slate-300,
+html.dark .user-management-option-a [class*="border-slate-100/"],
+html.dark .user-management-option-a [class*="border-slate-200/"],
+html.dark .user-management-option-a [class*="border-slate-300/"] {
+  border-color: #e2e8f0 !important;
+}
+
+html.dark .user-management-option-a input,
+html.dark .user-management-option-a textarea,
+html.dark .user-management-option-a select {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.dark .user-management-option-a input::placeholder,
+html.dark .user-management-option-a textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.dark .user-management-option-a table {
+  color: #334155 !important;
+}
+
+html.dark .user-management-option-a tr {
+  border-color: #f1f5f9 !important;
+}
