@@ -38,6 +38,11 @@ export const DOCUMENT_CHAT_STAGE_KEYS = ['PERMIT', 'VISA', 'RESIDENCE'] as const
 export const isDocumentChatStage = (stageKey: string) =>
   (DOCUMENT_CHAT_STAGE_KEYS as readonly string[]).includes(stageKey);
 
+export const EVIDENCE_UPDATE_STAGE_KEYS = ['TRANSPORT'] as const;
+
+export const isEvidenceUpdateStage = (stageKey: string) =>
+  (EVIDENCE_UPDATE_STAGE_KEYS as readonly string[]).includes(stageKey);
+
 export const STATUS_LABEL: Record<UiStatus, string> = {
   COMPLETED: 'COMPLETED',
   CURRENT: 'IN PROGRESS',
@@ -103,7 +108,8 @@ export const buildDisplayStages = (
       actionable:
         canAct &&
         uiStatus !== 'PENDING' &&
-        !isDocumentChatStage(stage.stageKey),
+        !isDocumentChatStage(stage.stageKey) &&
+        !isEvidenceUpdateStage(stage.stageKey),
       hasDocument: true,
       documents: stage.documents,
       comments: stage.comments,
