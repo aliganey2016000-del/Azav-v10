@@ -495,7 +495,7 @@ export class AdminService {
       if (updateData.lastName) user.lastName = updateData.lastName;
       if (
         updateData.email &&
-        (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF))
+        currentUser.roles.includes(UserRole.SUPER_ADMIN)
       ) {
         const normalizedEmail = updateData.email.trim().toLowerCase();
         const duplicate = memoryUsers.find(
@@ -560,7 +560,7 @@ export class AdminService {
     if (updateData.lastName) user.lastName = updateData.lastName;
     if (
       updateData.email &&
-      (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF))
+      currentUser.roles.includes(UserRole.SUPER_ADMIN)
     ) {
       const normalizedEmail = updateData.email.trim().toLowerCase();
       const duplicate = await User.findOne({
