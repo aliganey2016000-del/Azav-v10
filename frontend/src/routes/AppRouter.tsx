@@ -34,6 +34,7 @@ import { StudentJourneyAdminPage } from '../pages/admin/StudentJourneyAdminPage'
 import { JourneyChatPage } from '../pages/shared/JourneyChatPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 import { AdminTrainingOperationsPage } from '../pages/admin/AdminTrainingOperationsPage';
+import { AdminPlacementsPage } from '../pages/admin/AdminPlacementsPage';
 
 const PortalRedirect: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -69,7 +70,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/supervisors" element={<SupervisorsPage />} />
           <Route path="/admin/supervisors/:id" element={<SupervisorDetailPage />} />
           <Route path="/admin/applications" element={<PortalResourcePage eyebrow="Platform Management" title="Applications" description="Review live student applications submitted to AZAAM." endpoint="/applications" />} />
-          <Route path="/admin/placements" element={<PortalResourcePage eyebrow="Training Operations" title="Placements" description="Review live hospital placements and placement capacity records." endpoint="/placements" />} />
+          <Route path="/admin/placements" element={<AdminPlacementsPage />} />
           <Route path="/admin/clinical-training" element={<AdminTrainingOperationsPage mode="clinical" />} />
           <Route path="/admin/completion-certificates" element={<AdminTrainingOperationsPage mode="completion" />} />
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />

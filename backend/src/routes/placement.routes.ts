@@ -19,6 +19,16 @@ placementRouter.post(
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
   PlacementController.create
 );
+placementRouter.patch(
+  '/:id',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  PlacementController.update
+);
+placementRouter.patch(
+  '/:id/status',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  PlacementController.updateStatus
+);
 
 export const attendanceRouter = Router();
 attendanceRouter.use(authenticate);

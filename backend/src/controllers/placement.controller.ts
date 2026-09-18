@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { PlacementService } from '../services/placement.service.js';
 import { Student } from '../models/Student.js';
 import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
-import { UserRole } from '../types/index.js';
+import { PlacementStatus, UserRole } from '../types/index.js';
 
 export class PlacementController {
   static async create(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
@@ -46,6 +46,63 @@ export class PlacementController {
       res.status(201).json({
         success: true,
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async update(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const { organizationId, departmentId, supervisorId, startDate, endDate } = req.body;
+
+      const placement = await PlacementService.updatePlacement(req.user.userId, req.params.id, {
+        organizationId,
+        departmentId,
+        supervisorId,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: { placement },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateStatus(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const { status } = req.body;
+      if (!status || !Object.values(PlacementStatus).includes(status as PlacementStatus)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'A valid placement status is required' },
+        });
+        return;
+      }
+
+      const placement = await PlacementService.updatePlacementStatus(
+        req.user.userId,
+        req.params.id,
+        status as PlacementStatus
+      );
+
+      res.status(200).json({
+        success: true,
+        data: { placement },
       });
     } catch (error) {
       next(error);
