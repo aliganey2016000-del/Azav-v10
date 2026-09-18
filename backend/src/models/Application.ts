@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './Programme.js';
 import { ApplicationStatus, ApplicantType } from '../types/index.js';
 
 export interface IApplication extends Document {
