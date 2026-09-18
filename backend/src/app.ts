@@ -18,6 +18,7 @@ import {
 import { adminRouter } from './routes/admin.routes.js';
 import { financeRouter } from './routes/finance.routes.js';
 import { notificationRouter } from './routes/notification.routes.js';
+import { rotationRouter } from './routes/rotation.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { isDatabaseConnected } from './config/database.js';
 import { env } from './config/env.js';
@@ -63,6 +64,7 @@ export function createApp() {
   app.use('/api/v1/applications', applicationRouter);
   app.use('/api/v1/documents', documentRouter);
   app.use('/api/v1/placements', placementRouter);
+  app.use('/api/v1/rotations', rotationRouter);
   app.use('/api/v1/attendance', attendanceRouter);
   app.use('/api/v1/logbooks', logbookRouter);
   app.use('/api/v1/evaluations', evaluationRouter);
