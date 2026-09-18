@@ -119,18 +119,49 @@ export class JourneyService {
   }
 
   private static async ensureMilestones(studentId: string, docsCount: number) {
-    let milestones = await JourneyMilestone.find({ studentId }).sort({ order: 1 });
+    // Clinical Training and Completion/Certificate are managed in their own modules,
+    // not as student-journey approval steps.
+    await JourneyMilestone.deleteMany({
+      studentId,
+      stageKey: { $in: [JourneyStageKey.TRAINING, JourneyStageKey.COMPLETION] },
+    });
 
-    if (milestones.length === 0) {
-      const toCreate = JOURNEY_STAGE_ORDER.map((stageKey, index) => ({
+    let milestones = await JourneyMilestone.find({
+      studentId,
+      stageKey: { $in: JOURNEY_STAGE_ORDER },
+    }).sort({ order: 1 });
+
+    const existingKeys = new Set(milestones.map((milestone) => milestone.stageKey));
+    const missing = JOURNEY_STAGE_ORDER
+      .map((stageKey, index) => ({ stageKey, index }))
+      .filter(({ stageKey }) => !existingKeys.has(stageKey));
+
+    if (missing.length > 0) {
+      await JourneyMilestone.insertMany(
+        missing.map(({ stageKey, index }) => ({
+          studentId,
+          stageKey,
+          order: index,
+          status: index === 0 && docsCount > 0 ? JourneyStageStatus.CURRENT : JourneyStageStatus.LOCKED,
+        }))
+      );
+      milestones = await JourneyMilestone.find({
         studentId,
-        stageKey,
-        order: index,
-        status: index === 0 && docsCount > 0 ? JourneyStageStatus.CURRENT : JourneyStageStatus.LOCKED,
-      }));
-      await JourneyMilestone.insertMany(toCreate);
-      milestones = await JourneyMilestone.find({ studentId }).sort({ order: 1 });
-    } else if (docsCount > 0 && milestones[0].status === JourneyStageStatus.LOCKED) {
+        stageKey: { $in: JOURNEY_STAGE_ORDER },
+      }).sort({ order: 1 });
+    }
+
+    for (const milestone of milestones) {
+      const expectedOrder = JOURNEY_STAGE_ORDER.indexOf(milestone.stageKey);
+      if (expectedOrder >= 0 && milestone.order !== expectedOrder) {
+        milestone.order = expectedOrder;
+        await milestone.save();
+      }
+    }
+
+    milestones.sort((a, b) => a.order - b.order);
+
+    if (docsCount > 0 && milestones[0]?.status === JourneyStageStatus.LOCKED) {
       milestones[0].status = JourneyStageStatus.CURRENT;
       await milestones[0].save();
     }
@@ -155,7 +186,10 @@ export class JourneyService {
 
     await this.ensureMilestones(studentId, docsCount);
 
-    const milestones: any[] = await JourneyMilestone.find({ studentId })
+    const milestones: any[] = await JourneyMilestone.find({
+      studentId,
+      stageKey: { $in: JOURNEY_STAGE_ORDER },
+    })
       .sort({ order: 1 })
       .populate('documents', 'originalName type mimeType createdAt status')
       .lean();
