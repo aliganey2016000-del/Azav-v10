@@ -102,17 +102,17 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         roles: [UserRole.SUPER_ADMIN],
       },
-    ],
-  },
-  {
-    title: 'TRAINING OPERATIONS',
-    items: [
       {
         label: 'Applications',
         path: '/admin/applications',
         icon: FileText,
         roles: [UserRole.SUPER_ADMIN],
       },
+    ],
+  },
+  {
+    title: 'TRAINING OPERATIONS',
+    items: [
       {
         label: 'Placements',
         path: '/admin/placements',
@@ -120,26 +120,14 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.SUPER_ADMIN],
       },
       {
-        label: 'Clinical Attachments',
-        path: '/admin/clinical-attachments',
-        icon: Briefcase,
+        label: 'Clinical Training',
+        path: '/admin/clinical-training',
+        icon: Activity,
         roles: [UserRole.SUPER_ADMIN],
       },
       {
-        label: 'Attendance',
-        path: '/admin/attendance',
-        icon: CheckSquare,
-        roles: [UserRole.SUPER_ADMIN],
-      },
-      {
-        label: 'Logbooks',
-        path: '/admin/logbooks',
-        icon: BookOpen,
-        roles: [UserRole.SUPER_ADMIN],
-      },
-      {
-        label: 'Evaluations',
-        path: '/admin/evaluations',
+        label: 'Completion & Certificates',
+        path: '/admin/completion-certificates',
         icon: Award,
         roles: [UserRole.SUPER_ADMIN],
       },
@@ -187,12 +175,6 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         label: 'Documents',
         path: '/admin/documents',
         icon: FileText,
-        roles: [UserRole.SUPER_ADMIN],
-      },
-      {
-        label: 'Certificates',
-        path: '/admin/certificates',
-        icon: ShieldCheck,
         roles: [UserRole.SUPER_ADMIN],
       },
     ],
@@ -315,17 +297,17 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         roles: [UserRole.AZAAM_STAFF],
       },
-    ],
-  },
-  {
-    title: 'TRAINING OPERATIONS',
-    items: [
       {
         label: 'Applications',
         path: '/admin/applications',
         icon: FileText,
         roles: [UserRole.AZAAM_STAFF],
       },
+    ],
+  },
+  {
+    title: 'TRAINING OPERATIONS',
+    items: [
       {
         label: 'Placements',
         path: '/admin/placements',
@@ -333,26 +315,14 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.AZAAM_STAFF],
       },
       {
-        label: 'Clinical Attachments',
-        path: '/admin/clinical-attachments',
-        icon: Briefcase,
+        label: 'Clinical Training',
+        path: '/admin/clinical-training',
+        icon: Activity,
         roles: [UserRole.AZAAM_STAFF],
       },
       {
-        label: 'Attendance',
-        path: '/admin/attendance',
-        icon: CheckSquare,
-        roles: [UserRole.AZAAM_STAFF],
-      },
-      {
-        label: 'Logbooks',
-        path: '/admin/logbooks',
-        icon: BookOpen,
-        roles: [UserRole.AZAAM_STAFF],
-      },
-      {
-        label: 'Evaluations',
-        path: '/admin/evaluations',
+        label: 'Completion & Certificates',
+        path: '/admin/completion-certificates',
         icon: Award,
         roles: [UserRole.AZAAM_STAFF],
       },
@@ -394,12 +364,6 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         label: 'Documents',
         path: '/admin/documents',
         icon: FileText,
-        roles: [UserRole.AZAAM_STAFF],
-      },
-      {
-        label: 'Certificates',
-        path: '/admin/certificates',
-        icon: ShieldCheck,
         roles: [UserRole.AZAAM_STAFF],
       },
     ],
