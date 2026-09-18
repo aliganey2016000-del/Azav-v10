@@ -32,6 +32,7 @@ import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
 import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, addMockStageComment, markCommentsSeen, buildDisplayStages } from '../../utils/journeyStages';
 import { useAuth } from '../../context/AuthContext';
+import { documentTypeLabel } from '../../utils/documentTypes';
 
 export const UniversityStudentJourneyPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -409,7 +410,7 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="font-bold text-slate-900 truncate">{doc.name}</div>
-                  <div className="text-[11px] text-slate-500">{doc.type}</div>
+                  <div className="text-[11px] text-slate-500">{documentTypeLabel(doc.type)}</div>
                   <div className="flex gap-2 pt-1">
                     <button
                       onClick={() => doc.dataUrl && window.open(doc.dataUrl, '_blank')}
