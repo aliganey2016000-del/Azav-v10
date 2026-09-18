@@ -18,8 +18,6 @@ export const JOURNEY_STAGE_ORDER: JourneyStageKey[] = [
   JourneyStageKey.RESIDENCE,
   JourneyStageKey.TRANSPORT,
   JourneyStageKey.PLACEMENT,
-  JourneyStageKey.TRAINING,
-  JourneyStageKey.COMPLETION,
 ];
 
 export enum JourneyStageStatus {

@@ -155,24 +155,33 @@ export const AdminPlacementsPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     setError('');
-    try {
-      const [placementsResponse, applicationsResponse, organizationsResponse] = await Promise.all([
-        api.get('/placements'),
-        api.get('/applications'),
-        api.get('/organizations'),
-      ]);
 
-      setPlacements(asArray(placementsResponse, 'placements'));
-      setApplications(asArray(applicationsResponse, 'applications'));
-      setOrganizations(asArray(organizationsResponse, 'organizations'));
-    } catch (requestError: any) {
+    const [placementsResult, applicationsResult, organizationsResult] = await Promise.allSettled([
+      api.get('/placements'),
+      api.get('/applications'),
+      api.get('/organizations'),
+    ]);
+
+    if (placementsResult.status === 'fulfilled') {
+      setPlacements(asArray(placementsResult.value, 'placements'));
+    } else {
+      const requestError: any = placementsResult.reason;
+      setPlacements([]);
       setError(
         requestError?.response?.data?.error?.message ||
           'Unable to load placement records. Please try again.'
       );
-    } finally {
-      setLoading(false);
     }
+
+    if (applicationsResult.status === 'fulfilled') {
+      setApplications(asArray(applicationsResult.value, 'applications'));
+    }
+
+    if (organizationsResult.status === 'fulfilled') {
+      setOrganizations(asArray(organizationsResult.value, 'organizations'));
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -185,8 +194,13 @@ export const AdminPlacementsPage: React.FC = () => {
     return map;
   }, [applications]);
 
-  const appForPlacement = (placement: RecordObject) =>
-    applicationMap.get(asId(placement.applicationId));
+  const appForPlacement = (placement: RecordObject) => {
+    const fromMap = applicationMap.get(asId(placement.applicationId));
+    if (fromMap) return fromMap;
+    return placement.applicationId && typeof placement.applicationId === 'object'
+      ? placement.applicationId
+      : undefined;
+  };
 
   const universityName = (placement: RecordObject) => {
     const application = appForPlacement(placement);
@@ -249,7 +263,11 @@ export const AdminPlacementsPage: React.FC = () => {
     const search = filters.search.trim().toLowerCase();
 
     return placements.filter((placement) => {
-      const application = applicationMap.get(asId(placement.applicationId));
+      const application =
+        applicationMap.get(asId(placement.applicationId)) ||
+        (placement.applicationId && typeof placement.applicationId === 'object'
+          ? placement.applicationId
+          : undefined);
       const user = placement.studentId?.userId;
       const studentName = fullName(user);
       const studentNumber = placement.studentId?.studentNumber || '';

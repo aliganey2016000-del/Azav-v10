@@ -5,6 +5,7 @@ import { Organization } from '../models/Organization.js';
 import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
 import { ApplicationService } from './application.service.js';
 import { AuditLog } from '../models/Notification.js';
+import { JourneyMilestone, JourneyStageKey, JourneyStageStatus } from '../models/JourneyMilestone.js';
 import { PlacementStatus, ClinicalAttachmentStatus, ApplicationStatus } from '../types/index.js';
 
 export class PlacementService {
@@ -333,9 +334,127 @@ export class PlacementService {
     return updated;
   }
 
+  static async reconcileJourneyPlacements() {
+    const completedPlacementStages = await JourneyMilestone.find({
+      stageKey: JourneyStageKey.PLACEMENT,
+      status: JourneyStageStatus.COMPLETED,
+    }).select('_id studentId');
+
+    for (const milestone of completedPlacementStages) {
+      const audit: any = await AuditLog.findOne({
+        action: 'journey.placement_confirm',
+        entityType: 'JourneyMilestone',
+        entityId: milestone._id,
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const after: any = audit?.after;
+      if (!after) continue;
+
+      const organizationId = after.organizationId ? String(after.organizationId) : '';
+      const startDate = after.startDate ? new Date(after.startDate) : null;
+      const endDate = after.endDate ? new Date(after.endDate) : null;
+
+      if (
+        !organizationId ||
+        !startDate ||
+        !endDate ||
+        Number.isNaN(startDate.getTime()) ||
+        Number.isNaN(endDate.getTime())
+      ) {
+        continue;
+      }
+
+      if (after.placementId) {
+        const existingById = await Placement.exists({ _id: after.placementId });
+        if (existingById) continue;
+      }
+
+      const existingPlacement = await Placement.findOne({
+        studentId: milestone.studentId,
+        organizationId,
+        startDate,
+        endDate,
+      }).select('_id');
+
+      if (existingPlacement) continue;
+
+      const application: any = await Application.findOne({
+        studentId: milestone.studentId,
+      })
+        .sort({ createdAt: -1 })
+        .select('_id');
+
+      const createdBy = audit.actorUserId || audit.actorId;
+      if (!application || !createdBy) continue;
+
+      let placement: any;
+      try {
+        placement = await Placement.create({
+          ...(after.placementId ? { _id: after.placementId } : {}),
+          applicationId: application._id,
+          studentId: milestone.studentId,
+          organizationId,
+          departmentId: after.departmentId || null,
+          supervisorId: after.supervisorId || null,
+          startDate,
+          endDate,
+          status: PlacementStatus.CONFIRMED,
+          createdBy,
+        });
+      } catch (error: any) {
+        if (error?.code === 11000 && after.placementId) {
+          placement = await Placement.findById(after.placementId);
+        } else {
+          throw error;
+        }
+      }
+
+      if (!placement) continue;
+
+      await ClinicalAttachment.findOneAndUpdate(
+        { placementId: placement._id },
+        {
+          $setOnInsert: {
+            placementId: placement._id,
+            studentId: milestone.studentId,
+            organizationId,
+            departmentId: after.departmentId || null,
+            supervisorId: after.supervisorId || null,
+            startDate,
+            endDate,
+            status: ClinicalAttachmentStatus.NOT_STARTED,
+          },
+        },
+        { upsert: true, new: true, runValidators: true }
+      );
+
+      await AuditLog.create({
+        actorUserId: createdBy,
+        actorId: createdBy,
+        action: 'placement.reconciled_from_journey',
+        entityType: 'Placement',
+        entityId: placement._id,
+        after: {
+          studentId: milestone.studentId,
+          organizationId,
+          journeyMilestoneId: milestone._id,
+        },
+      });
+    }
+  }
+
   static async getPlacements(filters: any) {
     return Placement.find(filters)
       .populate({ path: 'studentId', populate: { path: 'userId', select: 'firstName lastName email' } })
+      .populate({
+        path: 'applicationId',
+        populate: [
+          { path: 'universityId', select: 'name code' },
+          { path: 'programmeId', select: 'name code' },
+        ],
+      })
       .populate('organizationId')
       .populate('departmentId')
       .populate({ path: 'supervisorId', populate: { path: 'userId', select: 'firstName lastName email' } })
