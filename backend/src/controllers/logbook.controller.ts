@@ -47,6 +47,7 @@ export class LogbookController {
         .populate({ path: 'studentId', populate: { path: 'userId', select: 'firstName lastName email' } })
         .populate('supervisorId')
         .populate('attachmentId')
+        .populate('rotationId', 'title sequence startDate endDate status')
         .sort({ date: -1 })
         .limit(500);
 
