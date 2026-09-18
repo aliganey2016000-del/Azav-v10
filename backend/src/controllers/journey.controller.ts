@@ -78,6 +78,38 @@ export class JourneyController {
     }
   }
 
+  static async getChat(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'User not authenticated' } });
+        return;
+      }
+      const data = await JourneyService.getChat(req.params.id, req.user);
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        error: { code: error.code || 'SERVER_ERROR', message: error.message },
+      });
+    }
+  }
+
+  static async markChatRead(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'User not authenticated' } });
+        return;
+      }
+      const data = await JourneyService.markChatRead(req.params.id, req.user);
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        error: { code: error.code || 'SERVER_ERROR', message: error.message },
+      });
+    }
+  }
+
   static async addComment(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {
