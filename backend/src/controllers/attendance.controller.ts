@@ -46,6 +46,7 @@ export class AttendanceController {
       const attendanceLogs = await Attendance.find(filter)
         .populate({ path: 'studentId', populate: { path: 'userId', select: 'firstName lastName email' } })
         .populate('attachmentId')
+        .populate('rotationId', 'title sequence startDate endDate status')
         .sort({ date: -1 })
         .limit(500);
 
