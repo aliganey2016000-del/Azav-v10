@@ -13,28 +13,14 @@ import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-import { ApplicationsPage } from '../pages/ApplicationsPage';
-import { PlacementsPage } from '../pages/PlacementsPage';
-import { AttendancePage } from '../pages/AttendancePage';
-import { LogbookPage } from '../pages/LogbookPage';
-import { EvaluationsPage } from '../pages/EvaluationsPage';
-import { CertificatesPage } from '../pages/CertificatesPage';
 import { PortalResourcePage } from '../pages/PortalResourcePage';
+import { LivePortalDashboardPage } from '../pages/LivePortalDashboardPage';
 
-import { UniversityDashboardPage } from '../pages/university/UniversityDashboardPage';
-import { UniversityMouPage } from '../pages/university/UniversityMouPage';
 import { UniversityNominateStudentPage } from '../pages/university/UniversityNominateStudentPage';
 import { UniversityStudentStatusPage } from '../pages/university/UniversityStudentStatusPage';
 import { UniversityStudentJourneyPage } from '../pages/university/UniversityStudentJourneyPage';
-import { UniversityFinancialsPage } from '../pages/university/UniversityFinancialsPage';
 
-import { OrganizationDashboardPage } from '../pages/organization/OrganizationDashboardPage';
-import { OrganizationPlacementsPage } from '../pages/organization/OrganizationPlacementsPage';
 import { OrganizationDepartmentsPage } from '../pages/organization/OrganizationDepartmentsPage';
-import { OrganizationSupervisorsPage } from '../pages/organization/OrganizationSupervisorsPage';
-import { SupervisorDashboardPage } from '../pages/supervisor/SupervisorDashboardPage';
-import { SupervisorTraineesPage } from '../pages/supervisor/SupervisorTraineesPage';
-import { StudentDashboardPage } from '../pages/student/StudentDashboardPage';
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
 import { UsersManagementPage } from '../pages/admin/UsersManagementPage';
 import { UniversitiesPage } from '../pages/admin/UniversitiesPage';
@@ -84,14 +70,26 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
 
-          <Route path="/university/dashboard" element={<UniversityDashboardPage />} />
+          <Route path="/university/dashboard" element={
+            <LivePortalDashboardPage
+              eyebrow="University Portal"
+              title="University Dashboard"
+              description="Live university clinical-training data loaded directly from the AZAAM database."
+              metrics={[
+                { label: 'Applications', endpoint: '/applications', candidateKeys: ['applications'] },
+                { label: 'Placements', endpoint: '/placements', candidateKeys: ['placements'] },
+                { label: 'Certificates', endpoint: '/certificates', candidateKeys: ['certificates'] },
+                { label: 'Finance Records', endpoint: '/finance' },
+              ]}
+            />
+          } />
           <Route path="/university/nominate-student" element={<UniversityNominateStudentPage />} />
           <Route path="/university/students" element={<Navigate to="/university/nominate-student" replace />} />
           <Route path="/university/students/:id" element={<UniversityStudentJourneyPage />} />
           <Route path="/university/students/:id/chat" element={<JourneyChatPage portal="university" />} />
           <Route path="/university/student-status" element={<UniversityStudentStatusPage />} />
-          <Route path="/university/mou" element={<UniversityMouPage />} />
-          <Route path="/university/financials" element={<UniversityFinancialsPage />} />
+          <Route path="/university/mou" element={<PortalResourcePage eyebrow="University Admin" title="MoU & Agreement" description="View the university partnership agreement stored in the live database." endpoint="/universities/mou/current" />} />
+          <Route path="/university/financials" element={<PortalResourcePage eyebrow="University Admin" title="Financials" description="Review live finance records associated with this authenticated account." endpoint="/finance" />} />
           <Route path="/university/applications" element={<PortalResourcePage eyebrow="University Admin" title="Student Applications" description="Review live applications submitted by or associated with this university." endpoint="/applications" />} />
           <Route path="/university/clinical-attachments" element={<PortalResourcePage eyebrow="University Admin" title="Clinical Attachments" description="Track clinical attachment records coordinated for university students." endpoint="/placements" />} />
           <Route path="/university/attendance" element={<PortalResourcePage eyebrow="University Admin" title="Student Attendance" description="Review live attendance records returned for university clinical attachments." endpoint="/attendance" />} />
@@ -100,43 +98,79 @@ export const AppRouter: React.FC = () => (
           <Route path="/university/certificates" element={<PortalResourcePage eyebrow="University Admin" title="Student Certificates" description="Review live certificates issued for university students." endpoint="/certificates" />} />
           <Route path="/university" element={<Navigate to="/university/dashboard" replace />} />
 
-          <Route path="/organization/dashboard" element={<OrganizationDashboardPage />} />
-          <Route path="/organization/placements" element={<OrganizationPlacementsPage />} />
-          <Route path="/organization/clinical-attachments" element={<OrganizationPlacementsPage />} />
+          <Route path="/organization/dashboard" element={
+            <LivePortalDashboardPage
+              eyebrow="Healthcare Organization"
+              title="Organization Dashboard"
+              description="Live placement, attendance, evaluation and certificate data from the database."
+              metrics={[
+                { label: 'Placements', endpoint: '/placements', candidateKeys: ['placements'] },
+                { label: 'Attendance', endpoint: '/attendance', candidateKeys: ['attendanceLogs'] },
+                { label: 'Evaluations', endpoint: '/evaluations', candidateKeys: ['evaluations'] },
+                { label: 'Certificates', endpoint: '/certificates', candidateKeys: ['certificates'] },
+              ]}
+            />
+          } />
+          <Route path="/organization/placements" element={<PortalResourcePage eyebrow="Organization Admin" title="Clinical Placements" description="Review live clinical placements assigned to this organization." endpoint="/placements" />} />
+          <Route path="/organization/clinical-attachments" element={<PortalResourcePage eyebrow="Organization Admin" title="Clinical Attachments" description="Review live clinical attachment placement records." endpoint="/placements" />} />
           <Route path="/organization/departments" element={<OrganizationDepartmentsPage />} />
-          <Route path="/organization/trainees" element={<OrganizationPlacementsPage />} />
-          <Route path="/organization/attendance" element={<AttendancePage />} />
-          <Route path="/organization/logbooks" element={<LogbookPage />} />
-          <Route path="/organization/evaluations" element={<EvaluationsPage />} />
-          <Route path="/organization/supervisors" element={<OrganizationSupervisorsPage />} />
+          <Route path="/organization/trainees" element={<PortalResourcePage eyebrow="Organization Admin" title="Trainees" description="Review trainees currently represented in live placement records." endpoint="/placements" />} />
+          <Route path="/organization/attendance" element={<PortalResourcePage eyebrow="Organization Admin" title="Attendance" description="Review attendance records persisted in the database." endpoint="/attendance" />} />
+          <Route path="/organization/logbooks" element={<PortalResourcePage eyebrow="Organization Admin" title="Logbooks" description="Review clinical logbook records persisted in the database." endpoint="/logbooks" />} />
+          <Route path="/organization/evaluations" element={<PortalResourcePage eyebrow="Organization Admin" title="Evaluations" description="Review clinical evaluations persisted in the database." endpoint="/evaluations" />} />
+          <Route path="/organization/supervisors" element={<PortalResourcePage eyebrow="Organization Admin" title="Supervisors" description="Review supervisors registered for this organization." endpoint="/organizations/current/supervisors" />} />
           <Route path="/organization/staff" element={<UsersManagementPage />} />
           <Route path="/organization/documents" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Documents" description="Review documents submitted for organization and placement compliance." endpoint="/documents" />} />
-          <Route path="/organization/certificates" element={<CertificatesPage />} />
+          <Route path="/organization/certificates" element={<PortalResourcePage eyebrow="Organization Admin" title="Certificates" description="Review certificates persisted in the database." endpoint="/certificates" />} />
           <Route path="/organization/profile" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Profile" description="View the organization profile currently associated with this account." endpoint="/auth/me" />} />
           <Route path="/organization" element={<Navigate to="/organization/dashboard" replace />} />
 
-          <Route path="/supervisor/dashboard" element={<SupervisorDashboardPage />} />
-          <Route path="/supervisor/trainees" element={<SupervisorTraineesPage />} />
-          <Route path="/supervisor/clinical-attachments" element={<SupervisorTraineesPage />} />
-          <Route path="/supervisor/attendance" element={<AttendancePage />} />
-          <Route path="/supervisor/logbooks" element={<LogbookPage />} />
-          <Route path="/supervisor/evaluations" element={<EvaluationsPage />} />
+          <Route path="/supervisor/dashboard" element={
+            <LivePortalDashboardPage
+              eyebrow="Clinical Supervisor"
+              title="Supervisor Dashboard"
+              description="Live assigned placements and clinical records loaded from the database."
+              metrics={[
+                { label: 'Placements', endpoint: '/placements', candidateKeys: ['placements'] },
+                { label: 'Attendance', endpoint: '/attendance', candidateKeys: ['attendanceLogs'] },
+                { label: 'Logbook Entries', endpoint: '/logbooks', candidateKeys: ['entries'] },
+                { label: 'Evaluations', endpoint: '/evaluations', candidateKeys: ['evaluations'] },
+              ]}
+            />
+          } />
+          <Route path="/supervisor/trainees" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Assigned Trainees" description="Review live trainee placements assigned to your supervisor account." endpoint="/placements" />} />
+          <Route path="/supervisor/clinical-attachments" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Clinical Attachments" description="Review live assigned clinical attachments." endpoint="/placements" />} />
+          <Route path="/supervisor/attendance" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Attendance" description="Review live attendance records for assigned clinical attachments." endpoint="/attendance" />} />
+          <Route path="/supervisor/logbooks" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Logbooks" description="Review live logbook records for assigned trainees." endpoint="/logbooks" />} />
+          <Route path="/supervisor/evaluations" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Evaluations" description="Review live evaluations for assigned trainees." endpoint="/evaluations" />} />
           <Route path="/supervisor/documents" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Trainee Documents" description="Review live documents available for assigned trainees and placements." endpoint="/documents" />} />
-          <Route path="/supervisor/certificates" element={<CertificatesPage />} />
+          <Route path="/supervisor/certificates" element={<PortalResourcePage eyebrow="Clinical Supervisor" title="Certificates" description="Review live certificates associated with assigned trainees." endpoint="/certificates" />} />
           <Route path="/supervisor" element={<Navigate to="/supervisor/dashboard" replace />} />
 
-          <Route path="/student/dashboard" element={<StudentDashboardPage />} />
-          <Route path="/student/applications" element={<ApplicationsPage />} />
-          <Route path="/student/application-status" element={<ApplicationsPage />} />
-          <Route path="/student/clinical-attachment" element={<PlacementsPage />} />
-          <Route path="/student/attendance" element={<AttendancePage />} />
-          <Route path="/student/logbook" element={<LogbookPage />} />
-          <Route path="/student/evaluations" element={<EvaluationsPage />} />
+          <Route path="/student/dashboard" element={
+            <LivePortalDashboardPage
+              eyebrow="Student Portal"
+              title="Student Dashboard"
+              description="Your live applications, placements, certificates and finance records from the database."
+              metrics={[
+                { label: 'Applications', endpoint: '/applications', candidateKeys: ['applications'] },
+                { label: 'Placements', endpoint: '/placements', candidateKeys: ['placements'] },
+                { label: 'Certificates', endpoint: '/certificates', candidateKeys: ['certificates'] },
+                { label: 'Finance Records', endpoint: '/finance' },
+              ]}
+            />
+          } />
+          <Route path="/student/applications" element={<PortalResourcePage eyebrow="Student" title="Applications" description="Review applications saved in the live database." endpoint="/applications" />} />
+          <Route path="/student/application-status" element={<PortalResourcePage eyebrow="Student" title="Application Status" description="Track the live status of your database-backed applications." endpoint="/applications" />} />
+          <Route path="/student/clinical-attachment" element={<PortalResourcePage eyebrow="Student" title="Clinical Attachment" description="Review your live clinical placement records." endpoint="/placements" />} />
+          <Route path="/student/attendance" element={<PortalResourcePage eyebrow="Student" title="Attendance" description="Review your attendance records stored in the database." endpoint="/attendance" />} />
+          <Route path="/student/logbook" element={<PortalResourcePage eyebrow="Student" title="Logbook" description="Review your clinical logbook records stored in the database." endpoint="/logbooks" />} />
+          <Route path="/student/evaluations" element={<PortalResourcePage eyebrow="Student" title="Evaluations" description="Review your live clinical evaluations." endpoint="/evaluations" />} />
           <Route path="/student/finance/fees" element={<PortalResourcePage eyebrow="Student" title="Training Fees" description="Review fee records and payment obligations returned by the live finance service." endpoint="/finance" />} />
           <Route path="/student/finance/payments" element={<PortalResourcePage eyebrow="Student" title="Payments" description="Review payment records associated with your clinical training applications." endpoint="/finance" />} />
           <Route path="/student/finance/history" element={<PortalResourcePage eyebrow="Student" title="Payment History" description="Review the live payment history available to your account." endpoint="/finance" />} />
           <Route path="/student/documents" element={<PortalResourcePage eyebrow="Student" title="My Documents" description="Upload and review documents required for application and placement clearance." endpoint="/documents" />} />
-          <Route path="/student/certificates" element={<CertificatesPage />} />
+          <Route path="/student/certificates" element={<PortalResourcePage eyebrow="Student" title="Certificates" description="Review your issued certificates stored in the database." endpoint="/certificates" />} />
           <Route path="/student/notifications" element={<PortalResourcePage eyebrow="Student" title="Notifications" description="Review account and placement updates delivered by the AIMN notification service." endpoint="/notifications" />} />
           <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />
           <Route path="/dashboard" element={<PortalRedirect />} />
