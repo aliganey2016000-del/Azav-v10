@@ -435,9 +435,9 @@ const UNIVERSITY_ADMIN_NAVIGATION: NavigationSection[] = [
     title: 'TRAINING MONITORING',
     items: [
       {
-        label: 'Clinical Attachments',
-        path: '/university/clinical-attachments',
-        icon: Briefcase,
+        label: 'Placements',
+        path: '/university/placements',
+        icon: Building,
         roles: [UserRole.UNIVERSITY_ADMIN],
       },
       {
@@ -619,9 +619,9 @@ const UNIVERSITY_STAFF_NAVIGATION: NavigationSection[] = [
     title: 'TRAINING MONITORING',
     items: [
       {
-        label: 'Clinical Attachments',
-        path: '/university/clinical-attachments',
-        icon: Briefcase,
+        label: 'Placements',
+        path: '/university/placements',
+        icon: Building,
         roles: [UserRole.UNIVERSITY_STAFF],
       },
       {
