@@ -48,12 +48,16 @@ export const StudentJourneyAdminPage: React.FC = () => {
       applyMockJourney(studentId);
       return;
     }
-    const [stages, docs] = await Promise.all([
-      AdminApiService.getStudentAzaamJourney(studentId).catch(() => []),
-      AdminApiService.getStudentDocuments(studentId).catch(() => []),
-    ]);
+    const stages = await AdminApiService.getStudentAzaamJourney(studentId).catch(() => []);
     setAzaamStages(stages);
-    setDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
+
+    try {
+      const docs = await AdminApiService.getStudentDocuments(studentId);
+      setDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
+    } catch (e: any) {
+      setDocuments([]);
+      setActionError(e?.response?.data?.error?.message || e.message || 'Student documents could not be loaded.');
+    }
   };
 
   useEffect(() => {
@@ -229,17 +233,29 @@ export const StudentJourneyAdminPage: React.FC = () => {
                     {stage.key === 'DOCUMENTS_SUBMITTED' && documents.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {documents.map((doc) => (
-                          <div key={doc.id} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-slate-200 px-3 py-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="h-3.5 w-3.5 shrink-0 text-blue-700" />
-                              <span className="truncate text-xs font-bold text-slate-800">{doc.name}</span>
-                              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{documentTypeLabel(doc.type)}</span>
+                          <div key={doc.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900/70">
+                            <div className="flex min-w-0 items-start gap-2">
+                              <FileText className="mt-0.5 h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
+                              <div className="min-w-0">
+                                <p className="break-words text-xs font-extrabold text-slate-800 dark:text-slate-100">{doc.name}</p>
+                                <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                                  {documentTypeLabel(doc.type)}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <button onClick={() => (doc.dataUrl ? window.open(doc.dataUrl, '_blank') : handleDownload(doc))} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-200">
+                            <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => (doc.dataUrl ? window.open(doc.dataUrl, '_blank') : handleDownload(doc))}
+                                className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-blue-100 px-3 text-[11px] font-bold text-blue-800 hover:bg-blue-200 dark:bg-blue-500/15 dark:text-blue-300"
+                              >
                                 <Eye className="h-3 w-3" /> View
                               </button>
-                              <button onClick={() => handleDownload(doc)} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => handleDownload(doc)}
+                                className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-slate-100 px-3 text-[11px] font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                              >
                                 <Download className="h-3 w-3" /> Download
                               </button>
                             </div>
