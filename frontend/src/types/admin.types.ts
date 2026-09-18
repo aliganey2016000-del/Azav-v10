@@ -227,7 +227,7 @@ export interface AdminJourneyStage {
   actedAt?: string;
   title: string;
   description: string;
-  updateMode?: 'APPROVAL' | 'DOCUMENT_CHAT' | 'EVIDENCE';
+  updateMode?: 'APPROVAL' | 'DOCUMENT_CHAT' | 'EVIDENCE' | 'PLACEMENT';
   documents?: { id: string; name: string; type: string; dataUrl?: string; mimeType?: string; uploadedAt?: string; status?: string }[];
   comments?: AdminJourneyComment[];
 }
