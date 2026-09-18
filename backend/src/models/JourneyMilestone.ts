@@ -50,6 +50,7 @@ export interface IJourneyMilestoneComment {
   authorUserId: mongoose.Types.ObjectId;
   authorName: string;
   message: string;
+  readBy: ('AZAAM' | 'UNIVERSITY')[];
   createdAt: Date;
 }
 
@@ -86,6 +87,10 @@ const JourneyMilestoneCommentSchema = new Schema<IJourneyMilestoneComment>(
     authorUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     authorName: { type: String, required: true, trim: true },
     message: { type: String, required: true, trim: true, maxlength: 2000 },
+    readBy: {
+      type: [{ type: String, enum: ['AZAAM', 'UNIVERSITY'] }],
+      default: [],
+    },
     createdAt: { type: Date, default: Date.now, required: true },
   },
   { _id: true }
