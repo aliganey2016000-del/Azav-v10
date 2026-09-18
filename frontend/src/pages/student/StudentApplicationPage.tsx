@@ -153,7 +153,7 @@ export const StudentApplicationPage: React.FC = () => {
       responseType: 'blob',
     });
     return new Blob([response.data], {
-      type: response.headers?.['content-type'] || 'application/octet-stream',
+      type: String(response.headers?.['content-type'] || 'application/octet-stream'),
     });
   };
 
