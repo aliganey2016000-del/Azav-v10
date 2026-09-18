@@ -6,7 +6,12 @@ import { JourneyStageAction, JourneyStageKey } from '../models/JourneyMilestone.
 export class JourneyController {
   static async getJourney(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const data = await JourneyService.getJourney(req.params.id);
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'User not authenticated' } });
+        return;
+      }
+
+      const data = await JourneyService.getJourney(req.params.id, req.user);
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(error.statusCode || 500).json({
@@ -35,6 +40,55 @@ export class JourneyController {
       }
 
       const data = await JourneyService.actOnStage(req.params.id, stageKey, action, reason, req.user);
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        error: { code: error.code || 'SERVER_ERROR', message: error.message },
+      });
+    }
+  }
+
+  static async addStageUpdate(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'User not authenticated' } });
+        return;
+      }
+
+      const stageKey = req.params.stageKey as JourneyStageKey;
+      const { documentIds, comment } = req.body;
+
+      const data = await JourneyService.addStageUpdate(
+        req.params.id,
+        stageKey,
+        {
+          documentIds: Array.isArray(documentIds) ? documentIds : [],
+          comment,
+        },
+        req.user
+      );
+
+      res.json({ success: true, data });
+    } catch (error: any) {
+      res.status(error.statusCode || 500).json({
+        success: false,
+        error: { code: error.code || 'SERVER_ERROR', message: error.message },
+      });
+    }
+  }
+
+  static async addComment(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'User not authenticated' } });
+        return;
+      }
+
+      const stageKey = req.params.stageKey as JourneyStageKey;
+      const { message } = req.body;
+
+      const data = await JourneyService.addComment(req.params.id, stageKey, message, req.user);
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(error.statusCode || 500).json({
