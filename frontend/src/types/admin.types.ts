@@ -193,12 +193,12 @@ export interface AdminStudent {
   updatedAt: string;
 }
 
-export interface AdminJourneyInvoice {
-  amount: number;
-  amountPaid: number;
-  balance: number;
-  status: 'IN_PROGRESS' | 'COMPLETED';
-  updatedAt: string;
+export interface AdminJourneyComment {
+  id: string;
+  author: 'AZAAM' | 'UNIVERSITY';
+  authorName?: string;
+  message: string;
+  createdAt: string;
 }
 
 export interface AdminJourneyStage {
@@ -209,9 +209,8 @@ export interface AdminJourneyStage {
   actedAt?: string;
   title: string;
   description: string;
-  invoice?: AdminJourneyInvoice;
   documents?: { id: string; name: string; type: string; dataUrl?: string }[];
-  paymentProof?: { id: string; name: string; type: string; dataUrl?: string }[];
+  comments?: AdminJourneyComment[];
 }
 
 export interface AdminStudentJourney {

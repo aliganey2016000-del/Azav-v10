@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types/frontend';
 import { getPortalConfig, getPortalRoot } from '../config/navigation';
+import { getUnreadComments, markCommentsSeen, FlatComment } from '../utils/journeyStages';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -37,11 +38,32 @@ export const PortalLayout: React.FC = () => {
     if (typeof window === 'undefined') return 'light';
     return window.localStorage.getItem('azaam_theme') === 'dark' ? 'dark' : 'light';
   });
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadComments, setUnreadComments] = useState<FlatComment[]>([]);
 
   const currentRole = user?.roles?.[0] || UserRole.STUDENT;
   const portalConfig = getPortalConfig(currentRole);
   const isAdminPortal = currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.AZAAM_STAFF;
   const darkMode = theme === 'dark';
+  const commentRole = currentRole === UserRole.AZAAM_STAFF || currentRole === UserRole.SUPER_ADMIN
+    ? 'AZAAM'
+    : currentRole === UserRole.UNIVERSITY_ADMIN || currentRole === UserRole.UNIVERSITY_STAFF
+    ? 'UNIVERSITY'
+    : null;
+  const journeyPathFor = (studentId: string) => (commentRole === 'AZAAM' ? `/admin/students/${studentId}` : `/university/students/${studentId}`);
+
+  // Refresh unread comment count on navigation (RealDataStore has no live events, so poll on route change).
+  useEffect(() => {
+    if (!commentRole) return;
+    setUnreadComments(getUnreadComments(commentRole));
+  }, [commentRole, location.pathname]);
+
+  const handleOpenComment = (studentId: string) => {
+    if (commentRole) markCommentsSeen(commentRole);
+    setUnreadComments([]);
+    setNotifOpen(false);
+    navigate(journeyPathFor(studentId));
+  };
 
   useEffect(() => {
     setMobileDrawerOpen(false);
@@ -174,14 +196,46 @@ export const PortalLayout: React.FC = () => {
               {darkMode ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </button>
 
-            <button
-              type="button"
-              className="relative hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 md:inline-flex dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#0b1626]" />
-            </button>
+            {commentRole && (
+              <div className="relative hidden md:block">
+                <button
+                  type="button"
+                  onClick={() => setNotifOpen((open) => !open)}
+                  className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadComments.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white ring-2 ring-white dark:ring-[#0b1626]">
+                      {unreadComments.length > 9 ? '9+' : unreadComments.length}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-[#0f2238]">
+                    <div className="border-b border-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 dark:border-slate-800 dark:text-slate-200">
+                      New Comments
+                    </div>
+                    {unreadComments.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">No new comments.</div>
+                    ) : (
+                      <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                        {unreadComments.slice(0, 8).map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => handleOpenComment(c.studentId)}
+                            className="block w-full px-4 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                          >
+                            <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100">{c.authorName || c.author} • {c.stageTitle}</p>
+                            <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{c.studentName}: {c.message}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="hidden items-center gap-2 rounded-xl px-1 py-1 sm:flex sm:px-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-xs font-extrabold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">

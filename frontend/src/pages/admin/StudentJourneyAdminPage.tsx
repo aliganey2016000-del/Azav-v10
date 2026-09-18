@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, DollarSign, Download, Eye, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2, MessageCircle, Send, Upload } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
 import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
 import { useAuth } from '../../context/AuthContext';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, actOnMockStage, updateMockStageInvoice, buildDisplayStages } from '../../utils/journeyStages';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, actOnMockStage, addMockStageComment, markCommentsSeen, buildDisplayStages } from '../../utils/journeyStages';
 
 type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
 
@@ -21,6 +21,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const canAct = Boolean(user?.roles?.some((r) => r === 'AZAAM_STAFF' || r === 'SUPER_ADMIN'));
+  const authorName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
 
   const [data, setData] = useState<AdminStudentJourney | null>(null);
   const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
@@ -28,13 +29,12 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [formState, setFormState] = useState<Record<string, { action: ActionType; reason: string; invoiceAmount: string; invoiceAmountPaid: string; files: File[] }>>({});
+  const [formState, setFormState] = useState<Record<string, { action: ActionType; reason: string; files: File[] }>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [editingInvoiceKey, setEditingInvoiceKey] = useState<string | null>(null);
-  const [invoiceEditDraft, setInvoiceEditDraft] = useState<{ amount: string; amountPaid: string }>({ amount: '', amountPaid: '' });
+  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
 
-  const emptyDraft = { action: 'APPROVE' as ActionType, reason: '', invoiceAmount: '', invoiceAmountPaid: '', files: [] as File[] };
+  const emptyDraft = { action: 'APPROVE' as ActionType, reason: '', files: [] as File[] };
 
   const applyMockJourney = (studentId: string) => {
     const { stages, documents: docs } = loadMockJourney(studentId);
@@ -64,6 +64,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
       })
       .catch((e: any) => setError(e.message || 'Failed to load student journey.'))
       .finally(() => setLoading(false));
+    markCommentsSeen('AZAAM');
   }, [id]);
 
   const stages = useMemo<DisplayStage[]>(
@@ -82,8 +83,6 @@ export const StudentJourneyAdminPage: React.FC = () => {
     setSubmitting(stageKey);
     try {
       if (isMockId(id)) {
-        const invoiceAmount = draft.invoiceAmount.trim() ? Number(draft.invoiceAmount) : undefined;
-        const invoiceAmountPaid = draft.invoiceAmountPaid.trim() ? Number(draft.invoiceAmountPaid) : 0;
         const docs = await Promise.all(
           draft.files.map(async (file) => ({
             id: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -94,9 +93,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
           }))
         );
         const { stages } = actOnMockStage(id, stageKey, draft.action, draft.reason.trim() || undefined, {
-          invoiceAmount: draft.action === 'APPROVE' ? invoiceAmount : undefined,
-          invoiceAmountPaid: draft.action === 'APPROVE' ? invoiceAmountPaid : undefined,
-          documents: draft.action === 'APPROVE' ? docs : undefined,
+          documents: docs.length ? docs : undefined,
         });
         setAzaamStages(stages);
       } else {
@@ -111,13 +108,13 @@ export const StudentJourneyAdminPage: React.FC = () => {
     }
   };
 
-  const handleSaveInvoice = (stageKey: string) => {
-    if (!id) return;
-    const amount = Number(invoiceEditDraft.amount) || 0;
-    const amountPaid = Number(invoiceEditDraft.amountPaid) || 0;
-    const { stages } = updateMockStageInvoice(id, stageKey, amount, amountPaid);
+  const handleSendComment = (stageKey: string) => {
+    if (!id || !isMockId(id)) return;
+    const message = (commentDraft[stageKey] || '').trim();
+    if (!message) return;
+    const { stages } = addMockStageComment(id, stageKey, 'AZAAM', authorName, message);
     setAzaamStages(stages);
-    setEditingInvoiceKey(null);
+    setCommentDraft((prev) => ({ ...prev, [stageKey]: '' }));
   };
 
   const handleDownload = async (doc: DisplayDocument) => {
@@ -217,43 +214,6 @@ export const StudentJourneyAdminPage: React.FC = () => {
                       </p>
                     )}
 
-                    {stage.invoice && (
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-800">
-                          <DollarSign className="h-3.5 w-3.5" /> Invoice: ${stage.invoice.amount} • Paid: ${stage.invoice.amountPaid} • Balance: ${stage.invoice.balance}
-                        </span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${stage.invoice.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {stage.invoice.status}
-                        </span>
-                        {canAct && editingInvoiceKey !== stage.key && (
-                          <button
-                            onClick={() => {
-                              setEditingInvoiceKey(stage.key);
-                              setInvoiceEditDraft({ amount: String(stage.invoice!.amount), amountPaid: String(stage.invoice!.amountPaid) });
-                            }}
-                            className="text-[11px] font-bold text-teal-700 hover:underline"
-                          >
-                            Edit
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {editingInvoiceKey === stage.key && (
-                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-2">
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-slate-700">
-                          Amount:
-                          <input type="number" min="0" value={invoiceEditDraft.amount} onChange={(e) => setInvoiceEditDraft((p) => ({ ...p, amount: e.target.value }))} className="w-24 rounded border border-slate-300 px-1.5 py-1 text-xs" />
-                        </label>
-                        <label className="flex items-center gap-1 text-[11px] font-bold text-slate-700">
-                          Paid:
-                          <input type="number" min="0" value={invoiceEditDraft.amountPaid} onChange={(e) => setInvoiceEditDraft((p) => ({ ...p, amountPaid: e.target.value }))} className="w-24 rounded border border-slate-300 px-1.5 py-1 text-xs" />
-                        </label>
-                        <button onClick={() => handleSaveInvoice(stage.key)} className="rounded-lg bg-teal-600 px-2.5 py-1 text-[11px] font-black text-white hover:bg-teal-700">Save</button>
-                        <button onClick={() => setEditingInvoiceKey(null)} className="text-[11px] font-bold text-slate-500 hover:underline">Cancel</button>
-                      </div>
-                    )}
-
                     {(stage.documents && stage.documents.length > 0) && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {stage.documents.map((doc) => (
@@ -262,20 +222,6 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             {doc.dataUrl ? <a href={doc.dataUrl} target="_blank" rel="noreferrer" className="hover:underline">{doc.name}</a> : doc.name}
                           </span>
                         ))}
-                      </div>
-                    )}
-
-                    {(stage.paymentProof && stage.paymentProof.length > 0) && (
-                      <div className="mt-2">
-                        <p className="text-[11px] font-black text-slate-500">University payment proof:</p>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {stage.paymentProof.map((doc) => (
-                            <span key={doc.id} className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-800">
-                              <FileText className="h-3.5 w-3.5" />
-                              {doc.dataUrl ? <a href={doc.dataUrl} target="_blank" rel="noreferrer" className="hover:underline">{doc.name}</a> : doc.name}
-                            </span>
-                          ))}
-                        </div>
                       </div>
                     )}
 
@@ -332,35 +278,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
                           </button>
                         </div>
 
-                        {id && isMockId(id) && draft.action === 'APPROVE' && stage.hasInvoice && (
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <DollarSign className="h-3.5 w-3.5 text-violet-600" />
-                            <label className="flex items-center gap-1 font-bold text-slate-700">
-                              Invoice amount:
-                              <input
-                                type="number"
-                                min="0"
-                                value={draft.invoiceAmount}
-                                onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, invoiceAmount: e.target.value } }))}
-                                placeholder="0.00"
-                                className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
-                              />
-                            </label>
-                            <label className="flex items-center gap-1 font-bold text-slate-700">
-                              Collected:
-                              <input
-                                type="number"
-                                min="0"
-                                value={draft.invoiceAmountPaid}
-                                onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, invoiceAmountPaid: e.target.value } }))}
-                                placeholder="0.00"
-                                className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
-                              />
-                            </label>
-                          </div>
-                        )}
-
-                        {id && isMockId(id) && draft.action === 'APPROVE' && stage.hasDocument && (
+                        {id && isMockId(id) && (
                           <label className="flex cursor-pointer items-center gap-2 text-xs">
                             <Upload className="h-3.5 w-3.5 text-blue-600" />
                             <span className="font-bold text-slate-700">Attach document (optional):</span>
@@ -373,6 +291,34 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             {draft.files.length > 0 && <span className="font-semibold text-blue-700">{draft.files.length} file(s) selected</span>}
                           </label>
                         )}
+                      </div>
+                    )}
+
+                    {id && isMockId(id) && stage.uiStatus !== 'PENDING' && (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-black text-slate-600"><MessageCircle className="h-3.5 w-3.5" /> Comments</p>
+                        {stage.comments && stage.comments.length > 0 && (
+                          <div className="mb-2 space-y-2">
+                            {stage.comments.map((c) => (
+                              <div key={c.id} className={`rounded-lg p-2 text-[11px] ${c.author === 'AZAAM' ? 'bg-teal-50 text-teal-900' : 'bg-white border border-slate-200 text-slate-700'}`}>
+                                <span className="font-black">{c.author === 'AZAAM' ? (c.authorName || 'AZAAM') : (c.authorName || 'University')}:</span> {c.message}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={commentDraft[stage.key] || ''}
+                            onChange={(e) => setCommentDraft((prev) => ({ ...prev, [stage.key]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSendComment(stage.key)}
+                            placeholder="Write a comment for the university…"
+                            className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                          />
+                          <button onClick={() => handleSendComment(stage.key)} className="inline-flex items-center gap-1 rounded-lg bg-slate-700 px-2.5 py-1.5 text-xs font-black text-white hover:bg-slate-800">
+                            <Send className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

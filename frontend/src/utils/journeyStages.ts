@@ -1,8 +1,10 @@
-import { RealDataStore, RealTraineeDocument, RealTraineeStage } from '../services/realDataStore';
-import { AdminJourneyStage, AdminJourneyInvoice } from '../types/admin.types';
+import { RealDataStore, RealTraineeDocument, RealTraineeComment, RealTraineeStage } from '../services/realDataStore';
+import { AdminJourneyStage } from '../types/admin.types';
 
 export type UiStatus = 'COMPLETED' | 'CURRENT' | 'PENDING' | 'REJECTED' | 'CORRECTION_REQUESTED';
 export type StageAction = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
+
+export type DisplayComment = { id: string; author: 'AZAAM' | 'UNIVERSITY'; authorName?: string; message: string; createdAt: string };
 
 export type DisplayStage = {
   key: string;
@@ -11,18 +13,16 @@ export type DisplayStage = {
   uiStatus: UiStatus;
   reason?: string;
   actionable: boolean;
-  hasInvoice: boolean;
   hasDocument: boolean;
-  invoice?: AdminJourneyInvoice;
   documents?: DisplayDocument[];
-  paymentProof?: DisplayDocument[];
+  comments?: DisplayComment[];
 };
 
 export type DisplayDocument = { id: string; name: string; type: string; dataUrl?: string };
 
 export const STATUS_LABEL: Record<UiStatus, string> = {
   COMPLETED: 'COMPLETED',
-  CURRENT: 'PENDING AZAAM ACTION',
+  CURRENT: 'IN PROGRESS',
   PENDING: 'UPCOMING',
   REJECTED: 'REJECTED',
   CORRECTION_REQUESTED: 'CORRECTION REQUESTED',
@@ -46,38 +46,22 @@ export const BADGE_STYLE: Record<UiStatus, string> = {
 
 export const isMockId = (studentId: string) => !/^[0-9a-fA-F]{24}$/.test(studentId);
 
-export const MOCK_STAGE_DEFS: { stageKey: string; title: string; description: string; hasInvoice: boolean; hasDocument: boolean }[] = [
-  { stageKey: 'AZAAM_REVIEW', title: 'AZAAM Review & Approval', description: 'AZAAM verifies submitted documents and may Approve, Reject or Request Correction.', hasInvoice: false, hasDocument: false },
-  { stageKey: 'PERMIT', title: 'Permit / Host Acceptance Letter', description: 'Issued after AZAAM approval by the host institution.', hasInvoice: true, hasDocument: true },
-  { stageKey: 'VISA', title: 'Entry Visa', description: 'Entry visa processing follows host acceptance.', hasInvoice: true, hasDocument: true },
-  { stageKey: 'RESIDENCE', title: 'Residence Visa', description: 'Residence permit/visa is processed by AZAAM.', hasInvoice: true, hasDocument: true },
-  { stageKey: 'TRANSPORT', title: 'Travel & Transportation', description: 'AZAAM confirms arrival/transport after the student reaches the destination.', hasInvoice: true, hasDocument: true },
-  { stageKey: 'PLACEMENT', title: 'Hospital Placement', description: 'AZAAM assigns the approved teaching hospital and department.', hasInvoice: true, hasDocument: true },
-  { stageKey: 'TRAINING', title: 'Clinical Training', description: 'Attendance, logbook and supervisor evaluation during placement.', hasInvoice: false, hasDocument: false },
-  { stageKey: 'COMPLETION', title: 'Completion & Certificate', description: 'Final evaluation and certificate are completed at the end of training.', hasInvoice: false, hasDocument: false },
+export const MOCK_STAGE_DEFS: { stageKey: string; title: string; description: string }[] = [
+  { stageKey: 'AZAAM_REVIEW', title: 'AZAAM Review & Approval', description: 'AZAAM verifies submitted documents and may Approve, Reject or Request Correction.' },
+  { stageKey: 'PERMIT', title: 'Permit / Host Acceptance Letter', description: 'Issued after AZAAM approval by the host institution.' },
+  { stageKey: 'VISA', title: 'Entry Visa', description: 'Entry visa processing follows host acceptance.' },
+  { stageKey: 'RESIDENCE', title: 'Residence Visa', description: 'Residence permit/visa is processed by AZAAM.' },
+  { stageKey: 'TRANSPORT', title: 'Travel & Transportation', description: 'AZAAM confirms arrival/transport after the student reaches the destination.' },
+  { stageKey: 'PLACEMENT', title: 'Hospital Placement', description: 'AZAAM assigns the approved teaching hospital and department.' },
+  { stageKey: 'TRAINING', title: 'Clinical Training', description: 'Attendance, logbook and supervisor evaluation during placement.' },
+  { stageKey: 'COMPLETION', title: 'Completion & Certificate', description: 'Final evaluation and certificate are completed at the end of training.' },
 ];
-
-const STAGE_DEF_BY_KEY = Object.fromEntries(MOCK_STAGE_DEFS.map((d) => [d.stageKey, d]));
 
 export const mapApplicationStatusToStageStatus = (status?: string): AdminJourneyStage['status'] => {
   if (status === 'ACCEPTED') return 'COMPLETED';
   if (status === 'REJECTED') return 'REJECTED';
   if (status === 'CORRECTION_REQUESTED') return 'CORRECTION_REQUESTED';
   return 'CURRENT';
-};
-
-const toInvoice = (raw: RealTraineeStage | undefined): AdminJourneyInvoice | undefined => {
-  // Migrate the legacy single `fee` field into a full invoice the first time it's read.
-  const invoice = raw?.invoice || (raw?.fee !== undefined ? { amount: raw.fee, amountPaid: raw.fee, updatedAt: raw.actedAt || new Date().toISOString() } : undefined);
-  if (!invoice) return undefined;
-  const balance = Math.max(0, invoice.amount - invoice.amountPaid);
-  return {
-    amount: invoice.amount,
-    amountPaid: invoice.amountPaid,
-    balance,
-    status: balance <= 0 ? 'COMPLETED' : 'IN_PROGRESS',
-    updatedAt: invoice.updatedAt,
-  };
 };
 
 // Lazily initializes and returns a trainee's persisted per-stage records,
@@ -115,9 +99,8 @@ export const loadMockJourney = (studentId: string): { stages: AdminJourneyStage[
       actedAt: record?.actedAt,
       title: def.title,
       description: def.description,
-      invoice: toInvoice(record),
       documents: toDisplayDocs(record?.documents),
-      paymentProof: toDisplayDocs(record?.paymentProof),
+      comments: (record?.comments || []) as DisplayComment[],
     };
   });
   const documents = toDisplayDocs(trainee?.documents);
@@ -129,7 +112,7 @@ export const actOnMockStage = (
   stageKey: string,
   action: StageAction,
   reason: string | undefined,
-  extra?: { invoiceAmount?: number; invoiceAmountPaid?: number; documents?: RealTraineeDocument[] }
+  extra?: { documents?: RealTraineeDocument[] }
 ): { stages: AdminJourneyStage[]; documents: DisplayDocument[] } => {
   const stages = ensureTraineeStages(studentId).map((s) => ({ ...s }));
   const index = stages.findIndex((s) => s.stageKey === stageKey);
@@ -142,9 +125,6 @@ export const actOnMockStage = (
   stage.status = toStatus;
   stage.reason = toStatus === 'COMPLETED' ? undefined : reason?.trim();
   stage.actedAt = new Date().toISOString();
-  if (extra?.invoiceAmount !== undefined) {
-    stage.invoice = { amount: extra.invoiceAmount, amountPaid: extra.invoiceAmountPaid || 0, updatedAt: stage.actedAt };
-  }
   if (extra?.documents?.length) stage.documents = [...(stage.documents || []), ...extra.documents];
 
   if (toStatus === 'COMPLETED' && stages[index + 1]?.status === 'LOCKED') {
@@ -163,24 +143,9 @@ export const actOnMockStage = (
   return loadMockJourney(studentId);
 };
 
-// Lets AZAAM correct the invoice (amount / amount collected) on a stage after the fact,
-// without reopening or changing its approval status.
-export const updateMockStageInvoice = (
-  studentId: string,
-  stageKey: string,
-  invoiceAmount: number,
-  invoiceAmountPaid: number
-): { stages: AdminJourneyStage[]; documents: DisplayDocument[] } => {
-  const stages = ensureTraineeStages(studentId).map((s) => ({ ...s }));
-  const stage = stages.find((s) => s.stageKey === stageKey);
-  if (!stage) throw new Error('Unknown journey stage');
-  stage.invoice = { amount: invoiceAmount, amountPaid: invoiceAmountPaid, updatedAt: new Date().toISOString() };
-  RealDataStore.updateTrainee(studentId, { stages });
-  return loadMockJourney(studentId);
-};
-
-// University-side: attach a bank payment / deposit slip as proof of payment for a stage's invoice.
-export const addMockPaymentProof = (
+// Attaches a document to a stage without changing its approval status
+// (used when AZAAM or the university needs to add a file outside of an approve/reject action).
+export const addMockStageDocument = (
   studentId: string,
   stageKey: string,
   documents: RealTraineeDocument[]
@@ -188,7 +153,29 @@ export const addMockPaymentProof = (
   const stages = ensureTraineeStages(studentId).map((s) => ({ ...s }));
   const stage = stages.find((s) => s.stageKey === stageKey);
   if (!stage) throw new Error('Unknown journey stage');
-  stage.paymentProof = [...(stage.paymentProof || []), ...documents];
+  stage.documents = [...(stage.documents || []), ...documents];
+  RealDataStore.updateTrainee(studentId, { stages });
+  return loadMockJourney(studentId);
+};
+
+export const addMockStageComment = (
+  studentId: string,
+  stageKey: string,
+  author: 'AZAAM' | 'UNIVERSITY',
+  authorName: string | undefined,
+  message: string
+): { stages: AdminJourneyStage[]; documents: DisplayDocument[] } => {
+  const stages = ensureTraineeStages(studentId).map((s) => ({ ...s }));
+  const stage = stages.find((s) => s.stageKey === stageKey);
+  if (!stage) throw new Error('Unknown journey stage');
+  const comment: RealTraineeComment = {
+    id: `CMT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    author,
+    authorName,
+    message: message.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  stage.comments = [...(stage.comments || []), comment];
   RealDataStore.updateTrainee(studentId, { stages });
   return loadMockJourney(studentId);
 };
@@ -206,7 +193,6 @@ export const buildDisplayStages = (
       description: 'Student nominated by the university and submitted to AZAAM.',
       uiStatus: 'COMPLETED',
       actionable: false,
-      hasInvoice: false,
       hasDocument: false,
     },
     {
@@ -215,26 +201,54 @@ export const buildDisplayStages = (
       description: docsSubmitted ? `${documents.length} supporting document(s) received.` : 'Waiting for required supporting documents.',
       uiStatus: docsSubmitted ? 'COMPLETED' : 'CURRENT',
       actionable: false,
-      hasInvoice: false,
       hasDocument: false,
     },
   ];
   azaamStages.forEach((s) => {
     const uiStatus: UiStatus = s.status === 'LOCKED' ? 'PENDING' : (s.status as UiStatus);
-    const def = STAGE_DEF_BY_KEY[s.stageKey];
     list.push({
       key: s.stageKey,
       title: s.title,
       description: s.description,
       uiStatus,
       reason: s.reason,
-      actionable: canAct && (uiStatus === 'CURRENT' || uiStatus === 'REJECTED' || uiStatus === 'CORRECTION_REQUESTED'),
-      hasInvoice: def?.hasInvoice || false,
-      hasDocument: def?.hasDocument || false,
-      invoice: s.invoice,
+      // Once a stage has started, AZAAM can (re-)set its status any time new documents come in,
+      // even after it was already approved/completed.
+      actionable: canAct && uiStatus !== 'PENDING',
+      hasDocument: true,
       documents: s.documents,
-      paymentProof: s.paymentProof,
+      comments: s.comments,
     });
   });
   return list;
+};
+
+// --- Notifications: unread stage-comment counts, tracked per role via localStorage ---
+
+const LAST_SEEN_KEY = (role: 'AZAAM' | 'UNIVERSITY') => `azaam_comments_last_seen_${role}`;
+
+export type FlatComment = DisplayComment & { studentId: string; studentName: string; stageKey: string; stageTitle: string };
+
+export const getAllStageComments = (): FlatComment[] => {
+  const trainees = RealDataStore.getTrainees();
+  const flat: FlatComment[] = [];
+  trainees.forEach((t) => {
+    (t.stages || []).forEach((s) => {
+      const def = MOCK_STAGE_DEFS.find((d) => d.stageKey === s.stageKey);
+      (s.comments || []).forEach((c) => {
+        flat.push({ ...c, studentId: t.id, studentName: t.studentName, stageKey: s.stageKey, stageTitle: def?.title || s.stageKey });
+      });
+    });
+  });
+  return flat.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+};
+
+export const getUnreadComments = (viewerRole: 'AZAAM' | 'UNIVERSITY'): FlatComment[] => {
+  const lastSeen = localStorage.getItem(LAST_SEEN_KEY(viewerRole)) || '';
+  const otherRole = viewerRole === 'AZAAM' ? 'UNIVERSITY' : 'AZAAM';
+  return getAllStageComments().filter((c) => c.author === otherRole && c.createdAt > lastSeen);
+};
+
+export const markCommentsSeen = (viewerRole: 'AZAAM' | 'UNIVERSITY') => {
+  localStorage.setItem(LAST_SEEN_KEY(viewerRole), new Date().toISOString());
 };
