@@ -139,7 +139,10 @@ export const StudentJourneyAdminPage: React.FC = () => {
   }, [placementForm.organizationId]);
 
   const stages = useMemo<DisplayStage[]>(
-    () => buildDisplayStages(documents, azaamStages, canAct),
+    () =>
+      buildDisplayStages(documents, azaamStages, canAct).filter(
+        (stage) => stage.key !== 'TRAINING' && stage.key !== 'COMPLETION'
+      ),
     [documents, azaamStages, canAct]
   );
 
@@ -408,7 +411,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
       setAzaamStages(stages);
       setStageUpdateFiles((prev) => ({ ...prev, PLACEMENT: [] }));
       setPlacementForm((prev) => ({ ...prev, note: '' }));
-      setActionSuccess('Hospital placement has been confirmed successfully. Clinical Training is now open.');
+      setActionSuccess('Hospital placement has been confirmed successfully and saved to Placements.');
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || e.message || 'Failed to confirm hospital placement.');
     } finally {
@@ -431,7 +434,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const s: any = data.student;
   const completedCount = stages.filter((x) => x.uiStatus === 'COMPLETED').length;
   const current = stages.find((x) => x.uiStatus !== 'COMPLETED');
-  const icons = [FileText, FileText, ShieldCheck, FileText, Plane, Home, Car, Building2, Stethoscope, Award];
+  const icons = [FileText, FileText, ShieldCheck, FileText, Plane, Home, Car, Building2];
   const chatUnread = chatData?.unreadCount || 0;
   const stageUnread = (stageKey: string) =>
     (chatData?.messages || []).filter(
@@ -465,8 +468,8 @@ export const StudentJourneyAdminPage: React.FC = () => {
             </div>
             <div className="flex min-w-56 flex-col gap-3">
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
-                <div className="flex justify-between text-xs font-bold"><span>Journey Progress</span><span>{completedCount}/10</span></div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${completedCount * 10}%` }} /></div>
+                <div className="flex justify-between text-xs font-bold"><span>Journey Progress</span><span>{completedCount}/{stages.length}</span></div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${stages.length ? (completedCount / stages.length) * 100 : 0}%` }} /></div>
                 <p className="mt-2 text-[11px] text-slate-300">University view follows every AZAAM-controlled milestone.</p>
               </div>
               <Link
