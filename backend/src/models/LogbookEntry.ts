@@ -4,6 +4,7 @@ import { LogbookStatus } from '../types/index.js';
 export interface ILogbookEntry extends Document {
   attachmentId: mongoose.Types.ObjectId;
   studentId: mongoose.Types.ObjectId;
+  rotationId?: mongoose.Types.ObjectId | null;
   supervisorId?: mongoose.Types.ObjectId | null;
   date: Date;
   clinicalActivity: string;
@@ -20,6 +21,7 @@ const LogbookEntrySchema = new Schema<ILogbookEntry>(
   {
     attachmentId: { type: Schema.Types.ObjectId, ref: 'ClinicalAttachment', required: true, index: true },
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+    rotationId: { type: Schema.Types.ObjectId, ref: 'ClinicalRotation', default: null, index: true },
     supervisorId: { type: Schema.Types.ObjectId, ref: 'ClinicalSupervisor', default: null, index: true },
     date: { type: Date, required: true },
     clinicalActivity: { type: String, required: true, trim: true },
