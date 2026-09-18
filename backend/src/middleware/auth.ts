@@ -40,31 +40,20 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
       studentId?: string | null;
     };
 
-    let user: any = null;
+    let user: any;
     try {
       user = await User.findById(decoded.sub).select(
         'email roles status universityId organizationId studentId'
       );
     } catch {
-      if (env.NODE_ENV === 'production') {
-        res.status(503).json({
-          success: false,
-          error: {
-            code: 'AUTH_BACKEND_UNAVAILABLE',
-            message: 'Authentication backend is temporarily unavailable',
-          },
-        });
-        return;
-      }
-    }
-
-    // Development and test environments may use the in-memory store. Production
-    // must never authenticate against demo/fallback users if MongoDB is unavailable.
-    if (!user && env.NODE_ENV !== 'production') {
-      const { memoryUsers } = await import('../services/memoryStore.js');
-      user = memoryUsers.find(
-        (u) => u._id === decoded.sub || u.id === decoded.sub || u.email.toLowerCase() === decoded.email.toLowerCase()
-      );
+      res.status(503).json({
+        success: false,
+        error: {
+          code: 'AUTH_BACKEND_UNAVAILABLE',
+          message: 'Authentication database is temporarily unavailable',
+        },
+      });
+      return;
     }
 
     if (!user) {
