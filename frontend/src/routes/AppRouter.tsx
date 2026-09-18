@@ -36,6 +36,7 @@ import { JourneyChatPage } from '../pages/shared/JourneyChatPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 import { AdminPlacementsPage } from '../pages/admin/AdminPlacementsPage';
 import { StudentApplicationPage } from '../pages/student/StudentApplicationPage';
+import { StudentPlacementPage } from '../pages/student/StudentPlacementPage';
 
 const PortalRedirect: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -170,7 +171,8 @@ export const AppRouter: React.FC = () => (
           } />
           <Route path="/student/applications" element={<StudentApplicationPage />} />
           <Route path="/student/application-status" element={<PortalResourcePage eyebrow="Student" title="Application Status" description="Track the live status of your database-backed applications." endpoint="/applications" />} />
-          <Route path="/student/clinical-attachment" element={<PortalResourcePage eyebrow="Student" title="Clinical Attachment" description="Review your live clinical placement records." endpoint="/placements" />} />
+          <Route path="/student/placement" element={<StudentPlacementPage />} />
+          <Route path="/student/clinical-attachment" element={<Navigate to="/student/placement" replace />} />
           <Route path="/student/attendance" element={<PortalResourcePage eyebrow="Student" title="Attendance" description="Review your attendance records stored in the database." endpoint="/attendance" />} />
           <Route path="/student/logbook" element={<PortalResourcePage eyebrow="Student" title="Logbook" description="Review your clinical logbook records stored in the database." endpoint="/logbooks" />} />
           <Route path="/student/evaluations" element={<PortalResourcePage eyebrow="Student" title="Evaluations" description="Review your live clinical evaluations." endpoint="/evaluations" />} />
