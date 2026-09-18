@@ -493,6 +493,19 @@ export class AdminService {
       const user = memoryUsers[idx];
       if (updateData.firstName) user.firstName = updateData.firstName;
       if (updateData.lastName) user.lastName = updateData.lastName;
+      if (
+        updateData.email &&
+        (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF))
+      ) {
+        const normalizedEmail = updateData.email.trim().toLowerCase();
+        const duplicate = memoryUsers.find(
+          (candidate) =>
+            (candidate._id !== userId && candidate.id !== userId) &&
+            candidate.email.toLowerCase() === normalizedEmail
+        );
+        if (duplicate) throw new Error('User with this email already exists');
+        user.email = normalizedEmail;
+      }
       if (updateData.phone !== undefined) user.phone = updateData.phone;
       if (updateData.roles && Array.isArray(updateData.roles)) {
         if (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF)) {
@@ -545,6 +558,18 @@ export class AdminService {
 
     if (updateData.firstName) user.firstName = updateData.firstName;
     if (updateData.lastName) user.lastName = updateData.lastName;
+    if (
+      updateData.email &&
+      (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF))
+    ) {
+      const normalizedEmail = updateData.email.trim().toLowerCase();
+      const duplicate = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: user._id },
+      });
+      if (duplicate) throw new Error('User with this email already exists');
+      user.email = normalizedEmail;
+    }
     if (updateData.phone !== undefined) user.phone = updateData.phone;
     if (updateData.roles && Array.isArray(updateData.roles)) {
       if (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF)) {
