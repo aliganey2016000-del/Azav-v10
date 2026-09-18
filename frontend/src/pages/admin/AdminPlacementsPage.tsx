@@ -159,7 +159,7 @@ export const AdminPlacementsPage: React.FC = () => {
     const [placementsResult, applicationsResult, organizationsResult] = await Promise.allSettled([
       api.get('/placements'),
       api.get('/applications'),
-      api.get('/organizations'),
+      api.get('/admin/organizations', { params: { page: 1, limit: 500, status: 'ACTIVE' } }),
     ]);
 
     if (placementsResult.status === 'fulfilled') {
