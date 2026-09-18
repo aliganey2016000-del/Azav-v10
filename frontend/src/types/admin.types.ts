@@ -209,7 +209,8 @@ export interface AdminJourneyStage {
   actedAt?: string;
   title: string;
   description: string;
-  documents?: { id: string; name: string; type: string; dataUrl?: string }[];
+  updateMode?: 'APPROVAL' | 'DOCUMENT_CHAT';
+  documents?: { id: string; name: string; type: string; dataUrl?: string; mimeType?: string; uploadedAt?: string; status?: string }[];
   comments?: AdminJourneyComment[];
 }
 
