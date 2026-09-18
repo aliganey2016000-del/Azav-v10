@@ -119,13 +119,6 @@ export class JourneyService {
   }
 
   private static async ensureMilestones(studentId: string, docsCount: number) {
-    // Clinical Training and Completion/Certificate are managed in their own modules,
-    // not as student-journey approval steps.
-    await JourneyMilestone.deleteMany({
-      studentId,
-      stageKey: { $in: [JourneyStageKey.TRAINING, JourneyStageKey.COMPLETION] },
-    });
-
     let milestones = await JourneyMilestone.find({
       studentId,
       stageKey: { $in: JOURNEY_STAGE_ORDER },
@@ -170,7 +163,12 @@ export class JourneyService {
   }
 
   private static async unlockNext(studentId: string, currentOrder: number) {
-    const next = await JourneyMilestone.findOne({ studentId, order: currentOrder + 1 });
+    const currentStageKey = JOURNEY_STAGE_ORDER[currentOrder];
+    const currentIndex = currentStageKey ? JOURNEY_STAGE_ORDER.indexOf(currentStageKey) : -1;
+    const nextStageKey = currentIndex >= 0 ? JOURNEY_STAGE_ORDER[currentIndex + 1] : undefined;
+    if (!nextStageKey) return;
+
+    const next = await JourneyMilestone.findOne({ studentId, stageKey: nextStageKey });
     if (next && next.status === JourneyStageStatus.LOCKED) {
       next.status = JourneyStageStatus.CURRENT;
       await next.save();
