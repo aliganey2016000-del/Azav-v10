@@ -45,14 +45,16 @@ export const PortalLayout: React.FC = () => {
   const portalConfig = getPortalConfig(currentRole);
   const isAdminPortal = currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.AZAAM_STAFF;
   const darkMode = theme === 'dark';
-  const commentRole = currentRole === UserRole.AZAAM_STAFF || currentRole === UserRole.SUPER_ADMIN
-    ? 'AZAAM'
-    : currentRole === UserRole.UNIVERSITY_ADMIN || currentRole === UserRole.UNIVERSITY_STAFF
-    ? 'UNIVERSITY'
-    : null;
-  const journeyPathFor = (studentId: string) => (commentRole === 'AZAAM' ? `/admin/students/${studentId}` : `/university/students/${studentId}`);
+  const commentRole =
+    currentRole === UserRole.AZAAM_STAFF || currentRole === UserRole.SUPER_ADMIN
+      ? 'AZAAM'
+      : currentRole === UserRole.UNIVERSITY_ADMIN || currentRole === UserRole.UNIVERSITY_STAFF
+        ? 'UNIVERSITY'
+        : null;
 
-  // Refresh unread comment count on navigation (RealDataStore has no live events, so poll on route change).
+  const journeyPathFor = (studentId: string) =>
+    commentRole === 'AZAAM' ? '/admin/students/' + studentId : '/university/students/' + studentId;
+
   useEffect(() => {
     if (!commentRole) return;
     setUnreadComments(getUnreadComments(commentRole));
@@ -74,7 +76,62 @@ export const PortalLayout: React.FC = () => {
       if (event.key === 'Escape') setMobileDrawerOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
-    return (
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
+    window.localStorage.setItem('azaam_theme', theme);
+  }, [theme, darkMode]);
+
+  useEffect(() => {
+    if (!mobileDrawerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileDrawerOpen]);
+
+  const toggleSection = (title: string | undefined) => {
+    if (!title) return;
+    setExpandedSections((previous) => {
+      const next = new Set(previous);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  };
+
+  const isItemActive = (itemPath: string) => {
+    if (itemPath === location.pathname) return true;
+    return itemPath !== '/' && location.pathname.startsWith(itemPath);
+  };
+
+  const hasSectionActive = (title: string | undefined) => {
+    if (!title) return false;
+    const section = portalConfig.sections.find((item) => item.title === title);
+    return section ? section.items.some((item) => isItemActive(item.path)) : false;
+  };
+
+  useEffect(() => {
+    const next = new Set<string>();
+    portalConfig.sections.forEach((section) => {
+      if (section.title && hasSectionActive(section.title)) next.add(section.title);
+    });
+    setExpandedSections(next);
+  }, [currentRole, location.pathname]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Azaam Admin';
+  const roleLabel = String(currentRole).replaceAll('_', ' ').toLowerCase();
+
+  return (
     <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-[#f5f8fb] font-sans text-slate-800 transition-colors duration-200 dark:bg-[#08111f] dark:text-slate-100">
       {mobileDrawerOpen && (
         <button
@@ -86,7 +143,10 @@ export const PortalLayout: React.FC = () => {
       )}
 
       <aside
-        className={\`fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[86vw] max-w-[272px] shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl transition-transform duration-200 md:sticky md:top-0 md:z-20 md:h-screen md:w-64 md:max-w-64 md:translate-x-0 md:shadow-none dark:border-slate-800 dark:bg-[#0b1626] \${mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'}\`}
+        className={
+          'fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[86vw] max-w-[272px] shrink-0 flex-col border-r border-slate-200 bg-white shadow-2xl transition-transform duration-200 md:sticky md:top-0 md:z-20 md:h-screen md:w-64 md:max-w-64 md:translate-x-0 md:shadow-none dark:border-slate-800 dark:bg-[#0b1626] ' +
+          (mobileDrawerOpen ? 'translate-x-0' : '-translate-x-full')
+        }
       >
         <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-100 px-4 dark:border-slate-800">
           <Link
@@ -134,7 +194,10 @@ export const PortalLayout: React.FC = () => {
                       <span className="min-w-0 truncate">{section.title}</span>
                       {section.collapsible !== false && (
                         <ChevronRight
-                          className={\`h-3.5 w-3.5 shrink-0 transition-transform \${isExpanded ? 'rotate-90' : ''}\`}
+                          className={
+                            'h-3.5 w-3.5 shrink-0 transition-transform ' +
+                            (isExpanded ? 'rotate-90' : '')
+                          }
                         />
                       )}
                     </button>
@@ -145,19 +208,26 @@ export const PortalLayout: React.FC = () => {
                       {section.items.map((item) => {
                         const Icon = item.icon;
                         const active = isItemActive(item.path);
+
                         return (
                           <Link
                             key={item.path}
                             to={item.path}
                             onClick={() => setMobileDrawerOpen(false)}
-                            className={\`group flex min-h-10 w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-xs font-bold transition \${active
-                              ? 'bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-[0_8px_20px_rgba(13,148,136,0.22)]'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'}\`}
+                            className={
+                              'group flex min-h-10 w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-xs font-bold transition ' +
+                              (active
+                                ? 'bg-gradient-to-r from-teal-600 to-emerald-500 text-white shadow-[0_8px_20px_rgba(13,148,136,0.22)]'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white')
+                            }
                           >
                             <Icon
-                              className={\`h-[18px] w-[18px] shrink-0 \${active
-                                ? 'text-white'
-                                : 'text-slate-400 group-hover:text-slate-700 dark:text-slate-500 dark:group-hover:text-white'}\`}
+                              className={
+                                'h-[18px] w-[18px] shrink-0 ' +
+                                (active
+                                  ? 'text-white'
+                                  : 'text-slate-400 group-hover:text-slate-700 dark:text-slate-500 dark:group-hover:text-white')
+                              }
                             />
                             <span className="min-w-0 flex-1 truncate">{item.label}</span>
                             {item.badge && (
@@ -183,8 +253,12 @@ export const PortalLayout: React.FC = () => {
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-extrabold text-slate-950 dark:text-white">{displayName}</div>
-                <div className="truncate text-[10px] capitalize text-slate-500 dark:text-slate-400">{roleLabel}</div>
+                <div className="truncate text-xs font-extrabold text-slate-950 dark:text-white">
+                  {displayName}
+                </div>
+                <div className="truncate text-[10px] capitalize text-slate-500 dark:text-slate-400">
+                  {roleLabel}
+                </div>
               </div>
             </div>
           </div>
@@ -224,9 +298,11 @@ export const PortalLayout: React.FC = () => {
               className="flex min-w-0 flex-1 items-center gap-2 md:hidden"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 text-white">
-                <Activity className="h-4.5 w-4.5" />
+                <Activity className="h-4 w-4" />
               </div>
-              <span className="truncate text-[14px] font-black tracking-tight text-slate-950 dark:text-white">AZAAM MEDICS</span>
+              <span className="truncate text-[14px] font-black tracking-tight text-slate-950 dark:text-white">
+                AZAAM MEDICS
+              </span>
             </Link>
 
             {isAdminPortal ? (
@@ -242,8 +318,12 @@ export const PortalLayout: React.FC = () => {
               </div>
             ) : (
               <div className="hidden min-w-0 md:block">
-                <div className="text-xs font-extrabold text-slate-900 dark:text-white">{portalConfig.portalTitle}</div>
-                <div className="text-[10px] capitalize text-slate-500 dark:text-slate-400">{roleLabel}</div>
+                <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  {portalConfig.portalTitle}
+                </div>
+                <div className="text-[10px] capitalize text-slate-500 dark:text-slate-400">
+                  {roleLabel}
+                </div>
               </div>
             )}
 
@@ -270,7 +350,9 @@ export const PortalLayout: React.FC = () => {
                         New Comments
                       </div>
                       {unreadComments.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-xs text-slate-400">No new comments.</div>
+                        <div className="px-4 py-6 text-center text-xs text-slate-400">
+                          No new comments.
+                        </div>
                       ) : (
                         <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
                           {unreadComments.slice(0, 8).map((c) => (
@@ -313,8 +395,12 @@ export const PortalLayout: React.FC = () => {
                   {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div className="hidden min-w-0 lg:block">
-                  <div className="max-w-[140px] truncate text-xs font-extrabold text-slate-950 dark:text-white">{displayName}</div>
-                  <div className="max-w-[140px] truncate text-[10px] capitalize text-slate-500 dark:text-slate-400">{roleLabel}</div>
+                  <div className="max-w-[140px] truncate text-xs font-extrabold text-slate-950 dark:text-white">
+                    {displayName}
+                  </div>
+                  <div className="max-w-[140px] truncate text-[10px] capitalize text-slate-500 dark:text-slate-400">
+                    {roleLabel}
+                  </div>
                 </div>
                 <ChevronDown className="hidden h-4 w-4 text-slate-400 lg:block" />
               </div>
