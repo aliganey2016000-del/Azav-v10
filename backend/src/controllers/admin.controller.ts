@@ -122,8 +122,8 @@ export class AdminController {
         return;
       }
       const { newPassword } = req.body;
-      if (!newPassword || newPassword.length < 6) {
-        res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Password must be at least 6 characters' } });
+      if (!newPassword || newPassword.length < 12) {
+        res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Password must be at least 12 characters' } });
         return;
       }
       const result = await AdminService.resetUserPassword(req.params.id, newPassword, req.user, {
