@@ -122,7 +122,7 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
       {
         label: 'Clinical Training',
         path: '/admin/clinical-training',
-        icon: Activity,
+        icon: Briefcase,
         roles: [UserRole.SUPER_ADMIN],
       },
       {
@@ -317,7 +317,7 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
       {
         label: 'Clinical Training',
         path: '/admin/clinical-training',
-        icon: Activity,
+        icon: Briefcase,
         roles: [UserRole.AZAAM_STAFF],
       },
       {
