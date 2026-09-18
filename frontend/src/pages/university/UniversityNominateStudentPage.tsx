@@ -4,21 +4,22 @@ import { Award, CheckCircle2, ChevronRight, Clock3, Eye, FileText, GraduationCap
 import { useAuth } from '../../context/AuthContext';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudent } from '../../types/admin.types';
+import { NOMINATION_DOCUMENT_TYPES } from '../../utils/documentTypes';
 
-type PendingDoc = { id: string; name: string; mimeType: string; base64Data: string };
+type PendingDoc = { docType: string; name: string; mimeType: string; base64Data: string };
 
 type FormState = {
   fullName: string; studentId: string; gender: string; dateOfBirth: string; nationality: string;
   phone: string; email: string; address: string; faculty: string; program: string; academicLevel: string;
   expectedGraduationDate: string; requestedSpecialty: string; requestedDuration: string;
   preferredStartDate: string; preferredEndDate: string; trainingPurpose: string;
-  documents: PendingDoc[];
+  documents: Record<string, PendingDoc>;
 };
 
 const emptyForm: FormState = {
   fullName: '', studentId: '', gender: 'Male', dateOfBirth: '', nationality: '', phone: '', email: '', address: '',
   faculty: '', program: '', academicLevel: 'Year 5', expectedGraduationDate: '', requestedSpecialty: '', requestedDuration: '8 weeks',
-  preferredStartDate: '', preferredEndDate: '', trainingPurpose: '', documents: [],
+  preferredStartDate: '', preferredEndDate: '', trainingPurpose: '', documents: {},
 };
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -34,7 +35,7 @@ const durationToWeeks = (text: string) => parseInt(text, 10) || 8;
 
 export const UniversityNominateStudentPage: React.FC = () => {
   const { user } = useAuth();
-  const universityName = user?.universityName || user?.organizationName || 'University';
+  const [universityName, setUniversityName] = useState(user?.universityName || user?.organizationName || '');
   const [students, setStudents] = useState<AdminStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingDocCount, setExistingDocCount] = useState(0);
+  const [existingDocTypes, setExistingDocTypes] = useState<Set<string>>(new Set());
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -51,10 +53,20 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const loadStudents = () => {
     setLoading(true);
     AdminApiService.getStudents({ limit: 100 })
-      .then((res) => setStudents(res.students))
+      .then((res) => {
+        setStudents(res.students);
+        if (res.students[0]?.university?.name) setUniversityName(res.students[0].university.name);
+      })
       .catch((e: any) => setLoadError(e.message || 'Failed to load nominated students.'))
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    if (universityName || !user?.universityId) return;
+    AdminApiService.getUniversityById(user.universityId)
+      .then((res) => setUniversityName(res.university.name))
+      .catch(() => {});
+  }, [user?.universityId, universityName]);
 
   useEffect(() => {
     loadStudents();
@@ -68,32 +80,36 @@ export const UniversityNominateStudentPage: React.FC = () => {
       fullName: `${s.firstName} ${s.lastName}`.trim(), studentId: s.studentNumber, gender: 'Male', dateOfBirth: '', nationality: '',
       phone: s.phone || '', email: s.email, address: '', faculty: '', program: s.specialty, academicLevel: s.studyYear || 'Year 5',
       expectedGraduationDate: '', requestedSpecialty: s.specialty, requestedDuration: s.durationWeeks ? `${s.durationWeeks} weeks` : '8 weeks',
-      preferredStartDate: s.startDate ? s.startDate.slice(0, 10) : '', preferredEndDate: s.endDate ? s.endDate.slice(0, 10) : '', trainingPurpose: '', documents: [],
+      preferredStartDate: s.startDate ? s.startDate.slice(0, 10) : '', preferredEndDate: s.endDate ? s.endDate.slice(0, 10) : '', trainingPurpose: '', documents: {},
     });
     setStep(1);
     setEditingId(s._id);
     setFileError(null);
     setSubmitError(null);
     setExistingDocCount(s.documentsCount || 0);
+    setExistingDocTypes(new Set());
+    AdminApiService.getStudentDocuments(s._id)
+      .then((docs) => setExistingDocTypes(new Set(docs.map((d: any) => d.type))))
+      .catch(() => {});
     setOpen(true);
   };
 
-  const addFiles = async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return;
+  const setFileForType = async (docType: string, file: File | null) => {
+    if (!file) return;
     setFileError(null);
-    const accepted: PendingDoc[] = [];
-    for (const file of Array.from(fileList)) {
-      if (file.size > MAX_FILE_BYTES) {
-        setFileError(`"${file.name}" exceeds the 5MB upload limit and was skipped.`);
-        continue;
-      }
-      const base64Data = await readFileAsDataUrl(file);
-      accepted.push({ id: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: file.name, mimeType: file.type || 'application/octet-stream', base64Data });
+    if (file.size > MAX_FILE_BYTES) {
+      setFileError(`"${file.name}" exceeds the 5MB upload limit.`);
+      return;
     }
-    if (accepted.length > 0) setForm(prev => ({ ...prev, documents: [...prev.documents, ...accepted] }));
+    const base64Data = await readFileAsDataUrl(file);
+    setForm(prev => ({ ...prev, documents: { ...prev.documents, [docType]: { docType, name: file.name, mimeType: file.type || 'application/octet-stream', base64Data } } }));
   };
 
-  const removeDocument = (id: string) => setForm(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
+  const removeDocument = (docType: string) => setForm(prev => {
+    const documents = { ...prev.documents };
+    delete documents[docType];
+    return { ...prev, documents };
+  });
   const filtered = useMemo(
     () => students.filter(s => `${s.firstName} ${s.lastName} ${s.studentNumber} ${s.specialty}`.toLowerCase().includes(query.toLowerCase())),
     [students, query]
@@ -124,8 +140,8 @@ export const UniversityNominateStudentPage: React.FC = () => {
         ? (await AdminApiService.updateNomination(editingId, payload))._id
         : (await AdminApiService.nominateStudent(payload))._id;
 
-      for (const doc of form.documents) {
-        await AdminApiService.uploadStudentDocument(studentId, { originalName: doc.name, mimeType: doc.mimeType, base64Data: doc.base64Data });
+      for (const doc of Object.values(form.documents)) {
+        await AdminApiService.uploadStudentDocument(studentId, { originalName: doc.name, mimeType: doc.mimeType, base64Data: doc.base64Data, type: doc.docType });
       }
 
       loadStudents();
@@ -175,23 +191,36 @@ export const UniversityNominateStudentPage: React.FC = () => {
             {step === 1 && <Panel title="Student Information" subtitle="Basic personal and contact details" tone="blue"><Grid><Field label="Full Name *"><Input value={form.fullName} onChange={v=>change('fullName',v)} placeholder="Enter full name"/></Field><Field label="Student ID *"><Input value={form.studentId} onChange={v=>change('studentId',v)} placeholder="Enter student ID"/></Field><Field label="Gender"><Select value={form.gender} onChange={v=>change('gender',v)} options={['Male','Female','Other']}/></Field><Field label="Date of Birth"><DateInput value={form.dateOfBirth} onChange={v=>change('dateOfBirth',v)}/></Field><Field label="Nationality"><Input value={form.nationality} onChange={v=>change('nationality',v)} placeholder="Nationality"/></Field><Field label="Phone Number"><Input value={form.phone} onChange={v=>change('phone',v)} placeholder="Phone number"/></Field><Field label="Email Address *"><Input type="email" value={form.email} onChange={v=>change('email',v)} placeholder="Email address"/></Field><Field label="Address"><Input value={form.address} onChange={v=>change('address',v)} placeholder="Address"/></Field></Grid></Panel>}
             {step === 2 && <Panel title="Academic Information" subtitle={`${universityName} student academic details`} tone="emerald"><Grid><Field label="Faculty"><Input value={form.faculty} onChange={v=>change('faculty',v)} placeholder="Faculty"/></Field><Field label="Program *"><Input value={form.program} onChange={v=>change('program',v)} placeholder="Program"/></Field><Field label="Academic Level"><Select value={form.academicLevel} onChange={v=>change('academicLevel',v)} options={['Year 1','Year 2','Year 3','Year 4','Year 5','Intern']}/></Field><Field label="Expected Graduation"><DateInput value={form.expectedGraduationDate} onChange={v=>change('expectedGraduationDate',v)}/></Field></Grid></Panel>}
             {step === 3 && <Panel title="Training Request" subtitle="Requested clinical training details" tone="violet"><Grid><Field label="Clinical Specialty"><Input value={form.requestedSpecialty} onChange={v=>change('requestedSpecialty',v)} placeholder="e.g. General Surgery"/></Field><Field label="Duration"><Input value={form.requestedDuration} onChange={v=>change('requestedDuration',v)} placeholder="e.g. 8 weeks"/></Field><Field label="Preferred Start Date"><DateInput value={form.preferredStartDate} onChange={v=>change('preferredStartDate',v)}/></Field><Field label="Preferred End Date"><DateInput value={form.preferredEndDate} onChange={v=>change('preferredEndDate',v)}/></Field><Field label="Training Purpose" wide><textarea value={form.trainingPurpose} onChange={e=>change('trainingPurpose',e.target.value)} className="min-h-24 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Brief purpose of training"/></Field></Grid></Panel>}
-            {step === 4 && <Panel title="Supporting Documents" subtitle="Upload passport, transcripts, medical clearance and other required documents" tone="blue">
+            {step === 4 && <Panel title="Supporting Documents" subtitle="Upload each required document below" tone="blue">
               {existingDocCount > 0 && <p className="mb-3 text-[11px] font-bold text-slate-500">{existingDocCount} document(s) already submitted for this student.</p>}
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-300 bg-white/70 p-8 text-center hover:bg-blue-50">
-                <Upload className="h-6 w-6 text-blue-600" />
-                <span className="text-xs font-bold text-blue-700">Click to upload documents</span>
-                <span className="text-[10px] text-slate-400">PDF, image or document files, up to 5MB each</span>
-                <input type="file" multiple className="hidden" onChange={e => addFiles(e.target.files)} />
-              </label>
-              {fileError && <p className="mt-2 text-[11px] font-bold text-rose-600">{fileError}</p>}
-              {form.documents.length > 0 && <div className="mt-4 space-y-2">{form.documents.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-blue-700" /><span className="truncate text-xs font-bold text-slate-800">{doc.name}</span></div>
-                  <button type="button" onClick={() => removeDocument(doc.id)} className="shrink-0 rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              ))}</div>}
+              {fileError && <p className="mb-2 text-[11px] font-bold text-rose-600">{fileError}</p>}
+              <div className="space-y-2">
+                {NOMINATION_DOCUMENT_TYPES.map(({ key, label }) => {
+                  const doc = form.documents[key];
+                  const alreadySubmitted = !doc && existingDocTypes.has(key);
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <FileText className={`h-4 w-4 shrink-0 ${doc || alreadySubmitted ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800">{label}</div>
+                          {doc && <div className="truncate text-[11px] text-emerald-700">{doc.name}</div>}
+                          {alreadySubmitted && <div className="text-[11px] text-emerald-700">Already submitted</div>}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {doc && <button type="button" onClick={() => removeDocument(key)} className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /></button>}
+                        <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1.5 text-[11px] font-bold text-blue-800 hover:bg-blue-200">
+                          <Upload className="h-3 w-3" /> {doc || alreadySubmitted ? 'Replace' : 'Upload'}
+                          <input type="file" className="hidden" onChange={e => setFileForType(key, e.target.files?.[0] || null)} />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </Panel>}
-            {step === 5 && <div className="space-y-4"><Panel title="Review Nomination" subtitle="Confirm the information before submission" tone="emerald"><div className="grid gap-3 sm:grid-cols-2"><Review label="Student" value={form.fullName}/><Review label="Student ID" value={form.studentId}/><Review label="University" value={universityName}/><Review label="Program" value={form.program}/><Review label="Specialty" value={form.requestedSpecialty}/><Review label="Duration" value={form.requestedDuration}/><Review label="New Documents" value={form.documents.length ? `${form.documents.length} file(s) to upload` : 'None attached'}/></div></Panel><div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-800">{editingId ? 'Saving will update this student\'s nomination record.' : <>After submission, the student is added to your nomination list with <b>Pending</b> status for AZAAM coordination.</>}</div></div>}
+            {step === 5 && <div className="space-y-4"><Panel title="Review Nomination" subtitle="Confirm the information before submission" tone="emerald"><div className="grid gap-3 sm:grid-cols-2"><Review label="Student" value={form.fullName}/><Review label="Student ID" value={form.studentId}/><Review label="University" value={universityName}/><Review label="Program" value={form.program}/><Review label="Specialty" value={form.requestedSpecialty}/><Review label="Duration" value={form.requestedDuration}/></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{NOMINATION_DOCUMENT_TYPES.map(({key,label}) => <div key={key} className="flex items-center gap-2 text-xs"><span className={form.documents[key] ? 'text-emerald-600' : 'text-slate-300'}>●</span><span className={form.documents[key] ? 'font-bold text-slate-800' : 'text-slate-400'}>{label}</span></div>)}</div></Panel><div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-800">{editingId ? 'Saving will update this student\'s nomination record.' : <>After submission, the student is added to your nomination list with <b>Pending</b> status for AZAAM coordination.</>}</div></div>}
 
             <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5"><button onClick={() => step === 1 ? reset() : setStep(step-1)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">{step === 1 ? 'Cancel' : 'Back'}</button>{step < 5 ? <button onClick={() => setStep(step+1)} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md">Next <ChevronRight className="h-4 w-4"/></button> : <button onClick={submit} disabled={submitting || !form.fullName.trim() || !form.studentId.trim() || !form.email.trim()} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-5 py-2.5 text-xs font-extrabold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4"/>} {editingId ? 'Save Changes' : 'Submit Nomination'}</button>}</div>
           </div>

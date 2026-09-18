@@ -647,13 +647,12 @@ export class AdminApiService {
   }
 
   static async getUniversityById(id: string): Promise<AdminUniversityDetail> {
-    try {
-      const res = await api.get(`/admin/universities/${id}`);
-      if (res.data?.data) return res.data.data;
-    } catch (err) {}
+    const res = await api.get(`/admin/universities/${id}`);
+    if (res.data?.data) return res.data.data;
 
     const all = getStoredUniversities();
-    const uni = all.find((u) => u._id === id) || all[0];
+    const uni = all.find((u) => u._id === id);
+    if (!uni) throw new Error('University not found.');
     return {
       university: uni,
       stats: {
@@ -1362,12 +1361,12 @@ export class AdminApiService {
     return res.data.data;
   }
 
-  static async uploadStudentDocument(studentId: string, file: { originalName: string; mimeType: string; base64Data: string }): Promise<any> {
+  static async uploadStudentDocument(studentId: string, file: { originalName: string; mimeType: string; base64Data: string; type?: string }): Promise<any> {
     const res = await api.post('/documents/upload', {
       originalName: file.originalName,
       mimeType: file.mimeType,
       base64Data: file.base64Data,
-      type: 'APPLICATION_SUPPORTING_DOC',
+      type: file.type || 'APPLICATION_SUPPORTING_DOC',
       studentId,
     });
     return res.data.data.document;

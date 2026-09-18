@@ -7,6 +7,7 @@ import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, actOnMockStage, addMockStageComment, markCommentsSeen, buildDisplayStages } from '../../utils/journeyStages';
+import { documentTypeLabel } from '../../utils/documentTypes';
 
 type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
 
@@ -232,7 +233,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             <div className="flex items-center gap-2 min-w-0">
                               <FileText className="h-3.5 w-3.5 shrink-0 text-blue-700" />
                               <span className="truncate text-xs font-bold text-slate-800">{doc.name}</span>
-                              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{doc.type}</span>
+                              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{documentTypeLabel(doc.type)}</span>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
                               <button onClick={() => (doc.dataUrl ? window.open(doc.dataUrl, '_blank') : handleDownload(doc))} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2 py-1 text-[11px] font-bold text-blue-800 hover:bg-blue-200">
