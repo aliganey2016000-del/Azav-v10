@@ -214,7 +214,7 @@ export const UniversityStudentJourneyPage: React.FC = () => {
         {/* Tab Navigation */}
         <div className="flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-4 text-xs">
           {[
-            { id: 'journey', label: '10-Stage Journey', icon: Sparkles },
+            { id: 'journey', label: 'Student Journey', icon: Sparkles },
             { id: 'profile', label: 'Student Bio', icon: GraduationCap },
             { id: 'documents', label: 'Documents', icon: FileText },
             { id: 'financials', label: 'Finance & Invoices', icon: DollarSign },
