@@ -18,7 +18,11 @@ export type DisplayStage = {
   comments?: DisplayComment[];
 };
 
-export type DisplayDocument = { id: string; name: string; type: string; dataUrl?: string };
+export type DisplayDocument = { id: string; name: string; type: string; dataUrl?: string; mimeType?: string; uploadedAt?: string; status?: string };
+
+export const DOCUMENT_CHAT_STAGE_KEYS = ['PERMIT', 'VISA', 'RESIDENCE'] as const;
+export const isDocumentChatStage = (stageKey: string) =>
+  (DOCUMENT_CHAT_STAGE_KEYS as readonly string[]).includes(stageKey);
 
 export const STATUS_LABEL: Record<UiStatus, string> = {
   COMPLETED: 'COMPLETED',
@@ -214,7 +218,7 @@ export const buildDisplayStages = (
       reason: s.reason,
       // Once a stage has started, AZAAM can (re-)set its status any time new documents come in,
       // even after it was already approved/completed.
-      actionable: canAct && uiStatus !== 'PENDING',
+      actionable: canAct && uiStatus !== 'PENDING' && !isDocumentChatStage(s.stageKey),
       hasDocument: true,
       documents: s.documents,
       comments: s.comments,
