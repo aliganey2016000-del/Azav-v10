@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, GraduationCap, Eye, CheckCircle, XCircle, ShieldAlert, MapPin, UserRound, Phone, Mail, Building2 } from 'lucide-react';
+import { Plus, GraduationCap, Eye, Pencil, CheckCircle, XCircle, ShieldAlert, MapPin, UserRound, Phone, Mail, Building2 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminUniversity, PaginationMeta } from '../../types/admin.types';
 import { PageHeader } from '../../components/admin/PageHeader';
@@ -21,6 +21,7 @@ export const UniversitiesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedUni, setSelectedUni] = useState<AdminUniversity | null>(null);
   const [confirmStatusOpen, setConfirmStatusOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState<'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED'>('ACTIVE');
@@ -58,7 +59,37 @@ export const UniversitiesPage: React.FC = () => {
     const p = new URLSearchParams(searchParams); if (value) p.set(key, value); else p.delete(key); p.set('page', '1'); setSearchParams(p);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openAdd = () => { setEditingId(null); setFormData(initialForm); setCreateModalOpen(true); };
+
+  const openEdit = (uni: AdminUniversity) => {
+    const u = uni as any;
+    setEditingId(uni._id);
+    setFormData({
+      ...initialForm,
+      name: uni.name || '',
+      code: uni.code || '',
+      officialName: uni.officialName || uni.name || '',
+      abbreviation: u.abbreviation || uni.code || '',
+      email: uni.email || '',
+      phone: uni.phone || '',
+      website: uni.website || '',
+      country: u.country || 'Somalia',
+      city: uni.city || '',
+      state: u.state || '',
+      address: uni.address || '',
+      postalCode: u.postalCode || '',
+      accreditationNumber: uni.accreditationNumber || '',
+      accreditationStatus: uni.accreditationStatus || 'PENDING',
+      contactPersonName: u.contactPersonName || '',
+      contactPersonEmail: u.contactPersonEmail || uni.email || '',
+      contactPersonPhone: u.contactPersonPhone || uni.phone || '',
+      notes: u.notes || '',
+      capacity: uni.capacity || 100,
+    });
+    setCreateModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setActionLoading(true);
@@ -78,15 +109,19 @@ export const UniversitiesPage: React.FC = () => {
         contactPersonPhone: formData.contactPersonPhone,
         capacity: 100,
       };
-      if (formData.createInitialAdmin) {
+      if (!editingId && formData.createInitialAdmin) {
         payload.initialAdminEmail = formData.initialAdminEmail;
         payload.initialAdminPassword = formData.initialAdminPassword;
         payload.initialAdminFirstName = formData.initialAdminFirstName;
         payload.initialAdminLastName = formData.initialAdminLastName;
       }
-      await AdminApiService.createUniversity(payload);
-      setCreateModalOpen(false); setFormData(initialForm); fetchUniversities();
-    } catch (err: any) { alert(err.message || 'Failed to create university.'); }
+      if (editingId) {
+        await AdminApiService.updateUniversity(editingId, payload);
+      } else {
+        await AdminApiService.createUniversity(payload);
+      }
+      setCreateModalOpen(false); setEditingId(null); setFormData(initialForm); fetchUniversities();
+    } catch (err: any) { alert(err.message || 'Failed to save university.'); }
     finally { setActionLoading(false); }
   };
 
@@ -106,7 +141,7 @@ export const UniversitiesPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader title="University Management" description="Partner universities, academic institutions, and student enrollment capacity." action={canManage && (
-        <button onClick={() => setCreateModalOpen(true)} className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition shadow-xs flex items-center space-x-1.5"><Plus className="w-4 h-4" /><span>Register University</span></button>
+        <button onClick={openAdd} className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition shadow-xs flex items-center space-x-1.5"><Plus className="w-4 h-4" /><span>Register University</span></button>
       )} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -126,15 +161,15 @@ export const UniversitiesPage: React.FC = () => {
       {loading ? <LoadingState message="Loading university list..." /> : error ? <ErrorState message={error} onRetry={fetchUniversities} /> : universities.length === 0 ? <EmptyState title="No universities found" description="Create a new institution or adjust search filters." /> : (
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div className="hidden md:block overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50 border-b border-slate-200/80 text-slate-500 font-semibold uppercase text-[10px] tracking-wider"><tr><th className="p-3.5">Institution</th><th className="p-3.5">Code</th><th className="p-3.5">Location</th><th className="p-3.5">Status</th><th className="p-3.5 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-            {universities.map(uni => <tr key={uni._id} className="hover:bg-slate-50/70 transition"><td className="p-3.5"><Link to={`/admin/universities/${uni._id}`} className="font-bold text-slate-900 hover:text-teal-600">{uni.name}</Link><span className="text-[10px] text-slate-400 block mt-0.5">{uni.officialName || uni.name}</span></td><td className="p-3.5 font-mono text-teal-700 font-bold">{uni.code}</td><td className="p-3.5"><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" />{uni.city ? `${uni.city}, ` : ''}{(uni as any).country || 'Somalia'}</span></td><td className="p-3.5"><StatusBadge status={uni.status} /></td><td className="p-3.5"><div className="flex justify-end gap-1"><Link to={`/admin/universities/${uni._id}`} className="p-1.5 text-slate-500 hover:text-teal-600"><Eye className="w-4 h-4" /></Link>{canManage && <><button onClick={() => { setSelectedUni(uni); setTargetStatus('ACTIVE'); setConfirmStatusOpen(true); }} disabled={uni.status === 'ACTIVE'} className="p-1 text-emerald-600"><CheckCircle className="w-3.5 h-3.5" /></button><button onClick={() => { setSelectedUni(uni); setTargetStatus('SUSPENDED'); setConfirmStatusOpen(true); }} disabled={uni.status === 'SUSPENDED'} className="p-1 text-amber-600"><ShieldAlert className="w-3.5 h-3.5" /></button><button onClick={() => { setSelectedUni(uni); setTargetStatus('ARCHIVED'); setConfirmStatusOpen(true); }} disabled={uni.status === 'ARCHIVED'} className="p-1 text-rose-600"><XCircle className="w-3.5 h-3.5" /></button></>}</div></td></tr>)}
+            {universities.map(uni => <tr key={uni._id} className="hover:bg-slate-50/70 transition"><td className="p-3.5"><Link to={`/admin/universities/${uni._id}`} className="font-bold text-slate-900 hover:text-teal-600">{uni.name}</Link><span className="text-[10px] text-slate-400 block mt-0.5">{uni.officialName || uni.name}</span></td><td className="p-3.5 font-mono text-teal-700 font-bold">{uni.code}</td><td className="p-3.5"><span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" />{uni.city ? `${uni.city}, ` : ''}{(uni as any).country || 'Somalia'}</span></td><td className="p-3.5"><StatusBadge status={uni.status} /></td><td className="p-3.5"><div className="flex justify-end gap-1"><Link to={`/admin/universities/${uni._id}`} className="p-1.5 text-slate-500 hover:text-teal-600"><Eye className="w-4 h-4" /></Link>{canManage && <button onClick={() => openEdit(uni)} className="p-1.5 text-indigo-600 hover:text-indigo-800"><Pencil className="w-4 h-4" /></button>}{canManage && <><button onClick={() => { setSelectedUni(uni); setTargetStatus('ACTIVE'); setConfirmStatusOpen(true); }} disabled={uni.status === 'ACTIVE'} className="p-1 text-emerald-600"><CheckCircle className="w-3.5 h-3.5" /></button><button onClick={() => { setSelectedUni(uni); setTargetStatus('SUSPENDED'); setConfirmStatusOpen(true); }} disabled={uni.status === 'SUSPENDED'} className="p-1 text-amber-600"><ShieldAlert className="w-3.5 h-3.5" /></button><button onClick={() => { setSelectedUni(uni); setTargetStatus('ARCHIVED'); setConfirmStatusOpen(true); }} disabled={uni.status === 'ARCHIVED'} className="p-1 text-rose-600"><XCircle className="w-3.5 h-3.5" /></button></>}</div></td></tr>)}
           </tbody></table></div>
           <div className="md:hidden divide-y divide-slate-100">{universities.map(uni => <div key={uni._id} className="p-4 space-y-2"><div className="flex justify-between gap-2"><Link to={`/admin/universities/${uni._id}`} className="font-bold text-slate-900">{uni.name}</Link><StatusBadge status={uni.status} /></div><div className="text-[11px] text-slate-500 flex justify-between"><span>{uni.code}</span><span>{uni.city || 'Mogadishu'}, {(uni as any).country || 'Somalia'}</span></div></div>)}</div>
           <Pagination meta={pagination} onPageChange={(p) => updateQueryParam('page', p.toString())} />
         </div>
       )}
 
-      <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Register New University" maxWidth="lg">
-        <form onSubmit={handleCreate} className="space-y-5 text-xs max-h-[80vh] overflow-y-auto pr-1 sm:pr-2">
+      <Modal isOpen={createModalOpen} onClose={() => { setCreateModalOpen(false); setEditingId(null); }} title={editingId ? 'Edit University' : 'Register New University'} maxWidth="lg">
+        <form onSubmit={handleSubmit} className="space-y-5 text-xs max-h-[80vh] overflow-y-auto pr-1 sm:pr-2">
           <div className="overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-cyan-50 shadow-sm">
             <div className="px-4 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white flex items-center gap-2"><GraduationCap className="w-4 h-4" /><div><h3 className="font-bold">Institutional Information</h3><p className="text-[10px] text-teal-50">Core university identification</p></div></div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -155,12 +190,12 @@ export const UniversitiesPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm">
+          {!editingId && <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm">
             <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={formData.createInitialAdmin} onChange={(e) => setFormData({ ...formData, createInitialAdmin: e.target.checked })} className="mt-0.5 h-4 w-4 rounded border-amber-300 text-teal-600 focus:ring-teal-500" /><div><span className="font-bold text-slate-900 block">Provision Initial University Admin User Account</span><span className="text-[10px] text-slate-500">Create the university's first administrator during registration.</span></div></label>
             {formData.createInitialAdmin && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-amber-200"><input required placeholder="Admin First Name" value={formData.initialAdminFirstName} onChange={(e) => setFormData({ ...formData, initialAdminFirstName: e.target.value })} className={inputClass} /><input required placeholder="Admin Last Name" value={formData.initialAdminLastName} onChange={(e) => setFormData({ ...formData, initialAdminLastName: e.target.value })} className={inputClass} /><input required type="email" placeholder="Admin Email Address" value={formData.initialAdminEmail} onChange={(e) => setFormData({ ...formData, initialAdminEmail: e.target.value })} className={inputClass} /><input required type="password" placeholder="Admin Initial Password" value={formData.initialAdminPassword} onChange={(e) => setFormData({ ...formData, initialAdminPassword: e.target.value })} className={inputClass} /></div>}
-          </div>
+          </div>}
 
-          <div className="sticky bottom-0 bg-white/95 backdrop-blur flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-4 pb-1 border-t border-slate-100"><button type="button" onClick={() => setCreateModalOpen(false)} className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-600 font-semibold hover:bg-slate-50 transition">Cancel</button><button type="submit" disabled={actionLoading} className="px-5 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl hover:from-teal-700 hover:to-cyan-700 font-bold shadow-md disabled:opacity-60 transition">{actionLoading ? 'Saving...' : 'Register Institution'}</button></div>
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-4 pb-1 border-t border-slate-100"><button type="button" onClick={() => { setCreateModalOpen(false); setEditingId(null); }} className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-600 font-semibold hover:bg-slate-50 transition">Cancel</button><button type="submit" disabled={actionLoading} className="px-5 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl hover:from-teal-700 hover:to-cyan-700 font-bold shadow-md disabled:opacity-60 transition">{actionLoading ? 'Saving...' : editingId ? 'Save Changes' : 'Register Institution'}</button></div>
         </form>
       </Modal>
 
