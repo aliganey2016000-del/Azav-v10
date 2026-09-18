@@ -417,18 +417,6 @@ const UNIVERSITY_ADMIN_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         roles: [UserRole.UNIVERSITY_ADMIN],
       },
-      {
-        label: 'Students',
-        path: '/university/students',
-        icon: Users,
-        roles: [UserRole.UNIVERSITY_ADMIN],
-      },
-      {
-        label: 'Student Status',
-        path: '/university/student-status',
-        icon: FileCheck2,
-        roles: [UserRole.UNIVERSITY_ADMIN],
-      },
     ],
   },
   {
@@ -599,18 +587,6 @@ const UNIVERSITY_STAFF_NAVIGATION: NavigationSection[] = [
         label: 'Nominate Student',
         path: '/university/nominate-student',
         icon: UserCheck,
-        roles: [UserRole.UNIVERSITY_STAFF],
-      },
-      {
-        label: 'Students',
-        path: '/university/students',
-        icon: Users,
-        roles: [UserRole.UNIVERSITY_STAFF],
-      },
-      {
-        label: 'Student Status',
-        path: '/university/student-status',
-        icon: FileCheck2,
         roles: [UserRole.UNIVERSITY_STAFF],
       },
     ],
