@@ -1122,13 +1122,13 @@ const STUDENT_NAVIGATION: NavigationSection[] = [
     title: 'MY APPLICATION',
     items: [
       {
-        label: 'Applications',
+        label: 'Application',
         path: '/student/applications',
         icon: FileText,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
       {
-        label: 'Application Status',
+        label: 'Status',
         path: '/student/application-status',
         icon: FileCheck2,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
