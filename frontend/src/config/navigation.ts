@@ -1127,9 +1127,9 @@ const STUDENT_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
       {
-        label: 'Clinical Attachment',
-        path: '/student/clinical-attachment',
-        icon: Briefcase,
+        label: 'Placement',
+        path: '/student/placement',
+        icon: Building,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
       {
