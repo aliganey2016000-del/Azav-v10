@@ -372,20 +372,20 @@ export const UsersManagementPage: React.FC = () => {
       )}
 
       {/* Premium Hero */}
-      <section className="relative overflow-hidden rounded-[28px] border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-5 py-6 sm:px-7 sm:py-8 shadow-xl">
+      <section className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50 px-5 py-6 sm:px-7 sm:py-8 shadow-sm dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950 dark:shadow-xl">
         <div className="pointer-events-none absolute -right-16 -top-20 h-60 w-60 rounded-full bg-cyan-500/10 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 right-20 h-32 w-32 rounded-full bg-teal-400/10 blur-2xl" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
           <div className="max-w-2xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.14em] text-cyan-300">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.14em] text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
               <Users className="w-4 h-4" />
               People · Partnerships · Progress
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white">
               User Management
             </h1>
-            <p className="mt-2 max-w-2xl text-sm sm:text-base leading-6 text-slate-300">
+            <p className="mt-2 max-w-2xl text-sm sm:text-base leading-6 text-slate-600 dark:text-slate-300">
               Global directory of medical trainees, supervisors, institution directors, and platform staff across all registered universities and hospitals.
             </p>
           </div>
