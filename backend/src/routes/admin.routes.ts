@@ -122,6 +122,11 @@ adminRouter.post(
   JourneyController.addStageUpdate
 );
 adminRouter.post(
+  '/students/:id/journey/PLACEMENT/confirm',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  JourneyController.confirmPlacement
+);
+adminRouter.post(
   '/students/:id/journey/:stageKey/comment',
   requireRole(
     UserRole.SUPER_ADMIN,
