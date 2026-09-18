@@ -37,9 +37,8 @@ export class RotationController {
         }
       }
 
-      if (req.query.placementId) {
-        filter.placementId = String(req.query.placementId);
-      }
+      if (req.query.placementId) filter.placementId = String(req.query.placementId);
+      if (req.query.batchId) filter.batchId = String(req.query.batchId);
 
       const rotations = await RotationService.getRotations(filter);
       res.status(200).json({ success: true, data: { rotations } });
@@ -77,6 +76,36 @@ export class RotationController {
     }
   }
 
+  static async createBatchPlan(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const { placementIds, items, groupCount, replaceExisting, templateId } = req.body;
+      if (!Array.isArray(placementIds) || !Array.isArray(items)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'placementIds and items are required' },
+        });
+        return;
+      }
+
+      const result = await RotationService.createBatchPlan(req.user.userId, {
+        placementIds,
+        items,
+        groupCount,
+        replaceExisting: Boolean(replaceExisting),
+        templateId: templateId || null,
+      });
+
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async deletePlan(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) {
@@ -86,6 +115,58 @@ export class RotationController {
 
       const deletedCount = await RotationService.deletePlan(req.user.userId, req.params.placementId);
       res.status(200).json({ success: true, data: { deletedCount } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listTemplates(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const organizationId = req.query.organizationId ? String(req.query.organizationId) : undefined;
+      const templates = await RotationService.listTemplates(organizationId);
+      res.status(200).json({ success: true, data: { templates } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createTemplate(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const template = await RotationService.saveTemplate(req.user.userId, req.body);
+      res.status(201).json({ success: true, data: { template } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateTemplate(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const template = await RotationService.saveTemplate(req.user.userId, req.body, req.params.id);
+      res.status(200).json({ success: true, data: { template } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteTemplate(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      await RotationService.deleteTemplate(req.user.userId, req.params.id);
+      res.status(200).json({ success: true, data: { deleted: true } });
     } catch (error) {
       next(error);
     }
