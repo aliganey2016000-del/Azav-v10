@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2, MessageCircle, Send, Upload } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2, MessageCircle, Upload } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
+import { AdminStudentJourney, AdminJourneyStage, JourneyChatData } from '../../types/admin.types';
 import { LoadingState, ErrorState } from '../../components/admin/States';
 import { StatusBadge } from '../../components/admin/Badge';
 import { useAuth } from '../../context/AuthContext';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, actOnMockStage, addMockStageDocument, addMockStageComment, markCommentsSeen, buildDisplayStages, isDocumentChatStage } from '../../utils/journeyStages';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, buildDisplayStages, isDocumentChatStage } from '../../utils/journeyStages';
 import { documentTypeLabel } from '../../utils/documentTypes';
 
 type ActionType = 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT';
@@ -22,7 +22,6 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const canAct = Boolean(user?.roles?.some((r) => r === 'AZAAM_STAFF' || r === 'SUPER_ADMIN'));
-  const authorName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
 
   const [data, setData] = useState<AdminStudentJourney | null>(null);
   const [azaamStages, setAzaamStages] = useState<AdminJourneyStage[]>([]);
@@ -33,33 +32,21 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const [formState, setFormState] = useState<Record<string, { action: ActionType; reason: string; files: File[] }>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
+  const [chatData, setChatData] = useState<JourneyChatData | null>(null);
   const [stageUpdateFiles, setStageUpdateFiles] = useState<Record<string, File[]>>({});
   const [stageUpdateNote, setStageUpdateNote] = useState<Record<string, string>>({});
 
   const emptyDraft = { action: 'APPROVE' as ActionType, reason: '', files: [] as File[] };
 
-  const applyMockJourney = (studentId: string) => {
-    const { stages, documents: docs } = loadMockJourney(studentId);
-    setAzaamStages(stages);
-    setDocuments(docs);
-  };
-
   const loadJourney = async (studentId: string) => {
-    if (isMockId(studentId)) {
-      applyMockJourney(studentId);
-      return;
-    }
-    const stages = await AdminApiService.getStudentAzaamJourney(studentId).catch(() => []);
+    const [stages, docs, chat] = await Promise.all([
+      AdminApiService.getStudentAzaamJourney(studentId),
+      AdminApiService.getStudentDocuments(studentId),
+      AdminApiService.getJourneyChat(studentId),
+    ]);
     setAzaamStages(stages);
-
-    try {
-      const docs = await AdminApiService.getStudentDocuments(studentId);
-      setDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
-    } catch (e: any) {
-      setDocuments([]);
-      setActionError(e?.response?.data?.error?.message || e.message || 'Student documents could not be loaded.');
-    }
+    setDocuments(docs.map((d: any) => ({ id: d._id, name: d.originalName, type: d.type })));
+    setChatData(chat);
   };
 
   useEffect(() => {
@@ -71,7 +58,6 @@ export const StudentJourneyAdminPage: React.FC = () => {
       })
       .catch((e: any) => setError(e.message || 'Failed to load student journey.'))
       .finally(() => setLoading(false));
-    markCommentsSeen('AZAAM');
   }, [id]);
 
   const stages = useMemo<DisplayStage[]>(
@@ -89,51 +75,16 @@ export const StudentJourneyAdminPage: React.FC = () => {
     setActionError(null);
     setSubmitting(stageKey);
     try {
-      if (isMockId(id)) {
-        const docs = await Promise.all(
-          draft.files.map(async (file) => ({
-            id: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: file.name,
-            type: file.type || 'application/octet-stream',
-            dataUrl: await readFileAsDataUrl(file),
-            uploadedAt: new Date().toISOString(),
-          }))
-        );
-        const { stages } = actOnMockStage(id, stageKey, draft.action, draft.reason.trim() || undefined, {
-          documents: docs.length ? docs : undefined,
-        });
-        setAzaamStages(stages);
-      } else {
-        const updated = await AdminApiService.actOnJourneyStage(id, stageKey, draft.action, draft.reason.trim() || undefined);
-        setAzaamStages(updated);
-      }
+      const updated = await AdminApiService.actOnJourneyStage(
+        id,
+        stageKey,
+        draft.action,
+        draft.reason.trim() || undefined
+      );
+      setAzaamStages(updated);
       setFormState((prev) => ({ ...prev, [stageKey]: emptyDraft }));
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || e.message || 'Failed to update stage.');
-    } finally {
-      setSubmitting(null);
-    }
-  };
-
-  const handleSendComment = async (stageKey: string) => {
-    if (!id) return;
-    const message = (commentDraft[stageKey] || '').trim();
-    if (!message) return;
-
-    const submitKey = 'comment-' + stageKey;
-    setSubmitting(submitKey);
-    setActionError(null);
-    try {
-      if (isMockId(id)) {
-        const { stages } = addMockStageComment(id, stageKey, 'AZAAM', authorName, message);
-        setAzaamStages(stages);
-      } else {
-        const stages = await AdminApiService.addJourneyComment(id, stageKey, message);
-        setAzaamStages(stages);
-      }
-      setCommentDraft((prev) => ({ ...prev, [stageKey]: '' }));
-    } catch (e: any) {
-      setActionError(e?.response?.data?.error?.message || e.message || 'Failed to send comment.');
     } finally {
       setSubmitting(null);
     }
@@ -153,50 +104,31 @@ export const StudentJourneyAdminPage: React.FC = () => {
     setActionError(null);
 
     try {
-      if (isMockId(id)) {
-        const docs = await Promise.all(
-          files.map(async (file) => ({
-            id: `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: file.name,
+      const uploaded = await Promise.all(
+        files.map(async (file) => {
+          const base64Data = await readFileAsDataUrl(file);
+          return AdminApiService.uploadStudentDocument(id, {
+            originalName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            base64Data,
             type:
               stageKey === 'PERMIT'
                 ? 'HOST_ACCEPTANCE_LETTER'
                 : stageKey === 'VISA'
                   ? 'ENTRY_VISA'
                   : 'RESIDENCE_VISA',
-            dataUrl: await readFileAsDataUrl(file),
-            uploadedAt: new Date().toISOString(),
-          }))
-        );
-        let result = addMockStageDocument(id, stageKey, docs);
-        if (note) result = addMockStageComment(id, stageKey, 'AZAAM', authorName, note);
-        setAzaamStages(result.stages);
-      } else {
-        const uploaded = await Promise.all(
-          files.map(async (file) => {
-            const base64Data = await readFileAsDataUrl(file);
-            return AdminApiService.uploadStudentDocument(id, {
-              originalName: file.name,
-              mimeType: file.type || 'application/octet-stream',
-              base64Data,
-              type:
-                stageKey === 'PERMIT'
-                  ? 'HOST_ACCEPTANCE_LETTER'
-                  : stageKey === 'VISA'
-                    ? 'ENTRY_VISA'
-                    : 'RESIDENCE_VISA',
-            });
-          })
-        );
+          });
+        })
+      );
 
-        const stages = await AdminApiService.updateJourneyStage(
-          id,
-          stageKey,
-          uploaded.map((doc: any) => doc._id),
-          note || undefined
-        );
-        setAzaamStages(stages);
-      }
+      const stages = await AdminApiService.updateJourneyStage(
+        id,
+        stageKey,
+        uploaded.map((doc: any) => doc._id),
+        note || undefined
+      );
+      setAzaamStages(stages);
+      setChatData(await AdminApiService.getJourneyChat(id));
 
       setStageUpdateFiles((prev) => ({ ...prev, [stageKey]: [] }));
       setStageUpdateNote((prev) => ({ ...prev, [stageKey]: '' }));
@@ -209,15 +141,6 @@ export const StudentJourneyAdminPage: React.FC = () => {
 
   const handleDownload = async (doc: DisplayDocument) => {
     try {
-      if (doc.dataUrl) {
-        const link = window.document.createElement('a');
-        link.href = doc.dataUrl;
-        link.setAttribute('download', doc.name);
-        window.document.body.appendChild(link);
-        link.click();
-        link.remove();
-        return;
-      }
       await AdminApiService.downloadDocument(doc.id, doc.name);
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || 'Failed to download document.');
@@ -232,6 +155,14 @@ export const StudentJourneyAdminPage: React.FC = () => {
   const completedCount = stages.filter((x) => x.uiStatus === 'COMPLETED').length;
   const current = stages.find((x) => x.uiStatus !== 'COMPLETED');
   const icons = [FileText, FileText, ShieldCheck, FileText, Plane, Home, Car, Building2, Stethoscope, Award];
+  const chatUnread = chatData?.unreadCount || 0;
+  const stageUnread = (stageKey: string) =>
+    (chatData?.messages || []).filter(
+      (message) =>
+        message.stageKey === stageKey &&
+        message.author !== 'AZAAM' &&
+        !(message.readBy || []).includes('AZAAM')
+    ).length;
 
   return (
     <div className="space-y-5 pb-10">
@@ -255,10 +186,24 @@ export const StudentJourneyAdminPage: React.FC = () => {
                 <p className="mt-2 text-sm font-semibold text-cyan-200">Current stage: {current?.title || 'Journey completed'}</p>
               </div>
             </div>
-            <div className="min-w-56 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
-              <div className="flex justify-between text-xs font-bold"><span>Journey Progress</span><span>{completedCount}/10</span></div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${completedCount * 10}%` }} /></div>
-              <p className="mt-2 text-[11px] text-slate-300">University view follows every AZAAM-controlled milestone.</p>
+            <div className="flex min-w-56 flex-col gap-3">
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                <div className="flex justify-between text-xs font-bold"><span>Journey Progress</span><span>{completedCount}/10</span></div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${completedCount * 10}%` }} /></div>
+                <p className="mt-2 text-[11px] text-slate-300">University view follows every AZAAM-controlled milestone.</p>
+              </div>
+              <Link
+                to={`/admin/students/${id}/chat`}
+                className="relative inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#00a884] px-4 text-sm font-extrabold text-white shadow-lg transition hover:bg-[#029978]"
+              >
+                <MessageCircle className="h-5 w-5" />
+                Open Chat
+                {chatUnread > 0 && (
+                  <span className="absolute -right-2 -top-2 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white ring-2 ring-slate-950">
+                    {chatUnread > 99 ? '99+' : chatUnread}
+                  </span>
+                )}
+              </Link>
             </div>
           </div>
         </div>
@@ -438,68 +383,22 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             Submit
                           </button>
                         </div>
-
-                        {id && isMockId(id) && (
-                          <label className="flex cursor-pointer items-center gap-2 text-xs">
-                            <Upload className="h-3.5 w-3.5 text-blue-600" />
-                            <span className="font-bold text-slate-700">Attach document (optional):</span>
-                            <input
-                              type="file"
-                              multiple
-                              onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, files: Array.from(e.target.files || []) } }))}
-                              className="text-[11px]"
-                            />
-                            {draft.files.length > 0 && <span className="font-semibold text-blue-700">{draft.files.length} file(s) selected</span>}
-                          </label>
-                        )}
                       </div>
                     )}
 
                     {isDocumentChatStage(stage.key) && stage.uiStatus !== 'PENDING' && (
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/50">
-                        <p className="mb-2 flex items-center gap-1.5 text-[11px] font-extrabold text-slate-600 dark:text-slate-300">
-                          <MessageCircle className="h-3.5 w-3.5" /> AZAAM ↔ University Updates
-                        </p>
-                        {stage.comments && stage.comments.length > 0 ? (
-                          <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
-                            {stage.comments.map((c) => (
-                              <div
-                                key={c.id}
-                                className={
-                                  'max-w-[92%] rounded-xl p-2.5 text-[11px] ' +
-                                  (c.author === 'AZAAM'
-                                    ? 'ml-auto bg-teal-100 text-teal-950 dark:bg-teal-500/15 dark:text-teal-100'
-                                    : 'mr-auto border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200')
-                                }
-                              >
-                                <div className="mb-1 flex items-center justify-between gap-2">
-                                  <span className="font-extrabold">{c.authorName || (c.author === 'AZAAM' ? 'AZAAM' : 'University')}</span>
-                                  <span className="text-[9px] opacity-60">{new Date(c.createdAt).toLocaleString()}</span>
-                                </div>
-                                <p className="whitespace-pre-wrap break-words">{c.message}</p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="mb-3 text-[10px] text-slate-400">No updates yet. Start the conversation below.</p>
+                      <Link
+                        to={`/admin/students/${id}/chat?stage=${stage.key}`}
+                        className="relative mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-xs font-extrabold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Chat with University
+                        {stageUnread(stage.key) > 0 && (
+                          <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
+                            {stageUnread(stage.key) > 99 ? '99+' : stageUnread(stage.key)}
+                          </span>
                         )}
-                        <div className="flex items-end gap-2">
-                          <textarea
-                            value={commentDraft[stage.key] || ''}
-                            onChange={(e) => setCommentDraft((prev) => ({ ...prev, [stage.key]: e.target.value }))}
-                            placeholder="Write an update for the university..."
-                            className="min-h-10 flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSendComment(stage.key)}
-                            disabled={submitting === 'comment-' + stage.key}
-                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-white disabled:opacity-50 dark:bg-teal-600"
-                          >
-                            {submitting === 'comment-' + stage.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                          </button>
-                        </div>
-                      </div>
+                      </Link>
                     )}
                   </div>
                 </div>
