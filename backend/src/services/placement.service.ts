@@ -389,28 +389,46 @@ export class PlacementService {
       const createdBy = audit.actorUserId || audit.actorId;
       if (!application || !createdBy) continue;
 
-      const placement = await Placement.create({
-        applicationId: application._id,
-        studentId: milestone.studentId,
-        organizationId,
-        departmentId: after.departmentId || null,
-        supervisorId: after.supervisorId || null,
-        startDate,
-        endDate,
-        status: PlacementStatus.CONFIRMED,
-        createdBy,
-      });
+      let placement: any;
+      try {
+        placement = await Placement.create({
+          ...(after.placementId ? { _id: after.placementId } : {}),
+          applicationId: application._id,
+          studentId: milestone.studentId,
+          organizationId,
+          departmentId: after.departmentId || null,
+          supervisorId: after.supervisorId || null,
+          startDate,
+          endDate,
+          status: PlacementStatus.CONFIRMED,
+          createdBy,
+        });
+      } catch (error: any) {
+        if (error?.code === 11000 && after.placementId) {
+          placement = await Placement.findById(after.placementId);
+        } else {
+          throw error;
+        }
+      }
 
-      await ClinicalAttachment.create({
-        placementId: placement._id,
-        studentId: milestone.studentId,
-        organizationId,
-        departmentId: after.departmentId || null,
-        supervisorId: after.supervisorId || null,
-        startDate,
-        endDate,
-        status: ClinicalAttachmentStatus.NOT_STARTED,
-      });
+      if (!placement) continue;
+
+      await ClinicalAttachment.findOneAndUpdate(
+        { placementId: placement._id },
+        {
+          $setOnInsert: {
+            placementId: placement._id,
+            studentId: milestone.studentId,
+            organizationId,
+            departmentId: after.departmentId || null,
+            supervisorId: after.supervisorId || null,
+            startDate,
+            endDate,
+            status: ClinicalAttachmentStatus.NOT_STARTED,
+          },
+        },
+        { upsert: true, new: true, runValidators: true }
+      );
 
       await AuditLog.create({
         actorUserId: createdBy,
