@@ -20,6 +20,7 @@ import { UniversityNominateStudentPage } from '../pages/university/UniversityNom
 import { UniversityStudentStatusPage } from '../pages/university/UniversityStudentStatusPage';
 import { UniversityStudentJourneyPage } from '../pages/university/UniversityStudentJourneyPage';
 import { UniversityPlacementsPage } from '../pages/university/UniversityPlacementsPage';
+import { UniversityRotationsPage } from '../pages/university/UniversityRotationsPage';
 
 import { OrganizationDepartmentsPage } from '../pages/organization/OrganizationDepartmentsPage';
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
@@ -35,8 +36,10 @@ import { StudentJourneyAdminPage } from '../pages/admin/StudentJourneyAdminPage'
 import { JourneyChatPage } from '../pages/shared/JourneyChatPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 import { AdminPlacementsPage } from '../pages/admin/AdminPlacementsPage';
+import { AdminRotationsPage } from '../pages/admin/AdminRotationsPage';
 import { StudentApplicationPage } from '../pages/student/StudentApplicationPage';
 import { StudentPlacementPage } from '../pages/student/StudentPlacementPage';
+import { StudentRotationsPage } from '../pages/student/StudentRotationsPage';
 
 const PortalRedirect: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -73,6 +76,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/supervisors/:id" element={<SupervisorDetailPage />} />
           <Route path="/admin/applications" element={<PortalResourcePage eyebrow="Platform Management" title="Applications" description="Review live student applications submitted to AZAAM." endpoint="/applications" />} />
           <Route path="/admin/placements" element={<AdminPlacementsPage />} />
+          <Route path="/admin/rotations" element={<AdminRotationsPage />} />
           <Route path="/admin/clinical-training" element={<Navigate to="/admin/placements" replace />} />
           <Route path="/admin/completion-certificates" element={<Navigate to="/admin/placements" replace />} />
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
@@ -100,6 +104,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/university/financials" element={<PortalResourcePage eyebrow="University Admin" title="Financials" description="Review live finance records associated with this authenticated account." endpoint="/finance" />} />
           <Route path="/university/applications" element={<PortalResourcePage eyebrow="University Admin" title="Student Applications" description="Review live applications submitted by or associated with this university." endpoint="/applications" />} />
           <Route path="/university/placements" element={<UniversityPlacementsPage />} />
+          <Route path="/university/rotations" element={<UniversityRotationsPage />} />
           <Route path="/university/clinical-attachments" element={<Navigate to="/university/placements" replace />} />
           <Route path="/university/attendance" element={<PortalResourcePage eyebrow="University Admin" title="Student Attendance" description="Review live attendance records returned for university clinical attachments." endpoint="/attendance" />} />
           <Route path="/university/logbook" element={<PortalResourcePage eyebrow="University Admin" title="Student Logbooks" description="Review live clinical logbook records for university students." endpoint="/logbooks" />} />
@@ -172,6 +177,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/student/applications" element={<StudentApplicationPage />} />
           <Route path="/student/application-status" element={<PortalResourcePage eyebrow="Student" title="Application Status" description="Track the live status of your database-backed applications." endpoint="/applications" />} />
           <Route path="/student/placement" element={<StudentPlacementPage />} />
+          <Route path="/student/rotations" element={<StudentRotationsPage />} />
           <Route path="/student/clinical-attachment" element={<Navigate to="/student/placement" replace />} />
           <Route path="/student/attendance" element={<PortalResourcePage eyebrow="Student" title="Attendance" description="Review your attendance records stored in the database." endpoint="/attendance" />} />
           <Route path="/student/logbook" element={<PortalResourcePage eyebrow="Student" title="Logbook" description="Review your clinical logbook records stored in the database." endpoint="/logbooks" />} />
