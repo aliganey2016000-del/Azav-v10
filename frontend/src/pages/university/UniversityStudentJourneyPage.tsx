@@ -30,7 +30,7 @@ import {
 import { RealDataStore, RealTrainee } from '../../services/realDataStore';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage } from '../../types/admin.types';
-import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, addMockStageComment, markCommentsSeen, buildDisplayStages } from '../../utils/journeyStages';
+import { DisplayStage, DisplayDocument, STATUS_LABEL, STATUS_STYLE, BADGE_STYLE, isMockId, loadMockJourney, addMockStageComment, markCommentsSeen, buildDisplayStages, isDocumentChatStage } from '../../utils/journeyStages';
 import { useAuth } from '../../context/AuthContext';
 import { documentTypeLabel } from '../../utils/documentTypes';
 
@@ -86,13 +86,36 @@ export const UniversityStudentJourneyPage: React.FC = () => {
     markCommentsSeen('UNIVERSITY');
   }, [id]);
 
-  const handleSendComment = (stageKey: string) => {
-    if (!id || !isMockId(id)) return;
+  const handleSendComment = async (stageKey: string) => {
+    if (!id) return;
     const message = (commentDraft[stageKey] || '').trim();
     if (!message) return;
-    const { stages } = addMockStageComment(id, stageKey, 'UNIVERSITY', authorName, message);
-    setAzaamStages(stages);
-    setCommentDraft((prev) => ({ ...prev, [stageKey]: '' }));
+
+    try {
+      if (isMockId(id)) {
+        const { stages } = addMockStageComment(id, stageKey, 'UNIVERSITY', authorName, message);
+        setAzaamStages(stages);
+      } else {
+        const stages = await AdminApiService.addJourneyComment(id, stageKey, message);
+        setAzaamStages(stages);
+      }
+      setCommentDraft((prev) => ({ ...prev, [stageKey]: '' }));
+    } catch (e: any) {
+      window.alert(e?.response?.data?.error?.message || e.message || 'Failed to send update.');
+    }
+  };
+
+  const handleStageDocumentDownload = async (doc: DisplayDocument) => {
+    if (doc.dataUrl) {
+      const link = window.document.createElement('a');
+      link.href = doc.dataUrl;
+      link.setAttribute('download', doc.name);
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return;
+    }
+    await AdminApiService.downloadDocument(doc.id, doc.name);
   };
 
   const realStages = buildDisplayStages(journeyDocuments, azaamStages, false);
@@ -271,38 +294,77 @@ export const UniversityStudentJourneyPage: React.FC = () => {
                         </p>
                       )}
                       {stage.documents && stage.documents.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="mt-3 space-y-2">
                           {stage.documents.map((doc) => (
-                            <span key={doc.id} className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-2.5 py-1 text-[11px] font-bold text-blue-800">
-                              <FileText className="h-3.5 w-3.5" />
-                              {doc.dataUrl ? <a href={doc.dataUrl} target="_blank" rel="noreferrer" className="hover:underline">{doc.name}</a> : doc.name}
-                            </span>
+                            <div key={doc.id} className="flex flex-col gap-2 rounded-xl border border-blue-200 bg-blue-50/70 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-blue-500/20 dark:bg-blue-500/10">
+                              <div className="flex min-w-0 items-start gap-2">
+                                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
+                                <div className="min-w-0">
+                                  <p className="break-words text-xs font-extrabold text-slate-800 dark:text-slate-100">{doc.name}</p>
+                                  <p className="mt-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">{doc.type.replaceAll('_', ' ')}</p>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 sm:flex">
+                                <button
+                                  type="button"
+                                  onClick={() => (doc.dataUrl ? window.open(doc.dataUrl, '_blank') : handleStageDocumentDownload(doc))}
+                                  className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-white px-3 text-[11px] font-bold text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300"
+                                >
+                                  <ExternalLink className="h-3 w-3" /> View
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStageDocumentDownload(doc)}
+                                  className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-slate-100 px-3 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                >
+                                  <Download className="h-3 w-3" /> Download
+                                </button>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
 
-                      {id && isMockId(id) && stage.uiStatus !== 'PENDING' && (
-                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
-                          <p className="mb-2 text-[11px] font-black text-slate-600">Comments</p>
-                          {stage.comments && stage.comments.length > 0 && (
-                            <div className="mb-2 space-y-2">
+                      {isDocumentChatStage(stage.key) && stage.uiStatus !== 'PENDING' && (
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                          <p className="mb-2 text-[11px] font-extrabold text-slate-600 dark:text-slate-300">University ↔ AZAAM Updates</p>
+                          {stage.comments && stage.comments.length > 0 ? (
+                            <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
                               {stage.comments.map((c) => (
-                                <div key={c.id} className={`rounded-lg p-2 text-[11px] ${c.author === 'UNIVERSITY' ? 'bg-sky-50 text-sky-900' : 'bg-white border border-slate-200 text-slate-700'}`}>
-                                  <span className="font-black">{c.authorName || (c.author === 'AZAAM' ? 'AZAAM' : 'University')}:</span> {c.message}
+                                <div
+                                  key={c.id}
+                                  className={
+                                    'max-w-[92%] rounded-xl p-2.5 text-[11px] ' +
+                                    (c.author === 'UNIVERSITY'
+                                      ? 'ml-auto bg-sky-100 text-sky-950 dark:bg-sky-500/15 dark:text-sky-100'
+                                      : 'mr-auto border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200')
+                                  }
+                                >
+                                  <div className="mb-1 flex items-center justify-between gap-2">
+                                    <span className="font-extrabold">{c.authorName || (c.author === 'AZAAM' ? 'AZAAM' : 'University')}</span>
+                                    <span className="text-[9px] opacity-60">{new Date(c.createdAt).toLocaleString()}</span>
+                                  </div>
+                                  <p className="whitespace-pre-wrap break-words">{c.message}</p>
                                 </div>
                               ))}
                             </div>
+                          ) : (
+                            <p className="mb-3 text-[10px] text-slate-400">No updates yet.</p>
                           )}
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
+                          <div className="flex items-end gap-2">
+                            <textarea
                               value={commentDraft[stage.key] || ''}
                               onChange={(e) => setCommentDraft((prev) => ({ ...prev, [stage.key]: e.target.value }))}
-                              onKeyDown={(e) => e.key === 'Enter' && handleSendComment(stage.key)}
-                              placeholder="Write a comment for AZAAM…"
-                              className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs"
+                              placeholder="Write an update for AZAAM..."
+                              className="min-h-10 flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                             />
-                            <button onClick={() => handleSendComment(stage.key)} className="rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-black text-white hover:bg-sky-700">Send</button>
+                            <button
+                              type="button"
+                              onClick={() => handleSendComment(stage.key)}
+                              className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 px-3 text-xs font-extrabold text-white hover:bg-sky-700"
+                            >
+                              Send
+                            </button>
                           </div>
                         </div>
                       )}
