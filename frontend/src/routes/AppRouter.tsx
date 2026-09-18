@@ -5,6 +5,7 @@ import { PortalLayout } from '../layouts/PortalLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { getPortalRoot } from '../config/navigation';
 import { UserRole } from '../types/frontend';
+import { useAuth } from '../context/AuthContext';
 
 import { LandingPage } from '../pages/LandingPage';
 import { VerifyCertificatePage } from '../pages/VerifyCertificatePage';
@@ -48,18 +49,11 @@ import { JourneyChatPage } from '../pages/shared/JourneyChatPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 
 const PortalRedirect: React.FC = () => {
-  const userRaw = localStorage.getItem('azaam_user');
-  const userRole = localStorage.getItem('azaam_user_role') as UserRole | null;
-  if (userRole) return <Navigate to={`${getPortalRoot(userRole)}/dashboard`} replace />;
-  if (userRaw) {
-    try {
-      const user = JSON.parse(userRaw);
-      const role = user.roles?.[0] as UserRole;
-      if (role) return <Navigate to={`${getPortalRoot(role)}/dashboard`} replace />;
-    } catch {}
-  }
-  return <Navigate to="/student/dashboard" replace />;
-};
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  const role = user?.roles?.[0] as UserRole | undefined;
+  return <Navigate to={role ? `${getPortalRoot(role)}/dashboard` : '/login'} replace />;
+}
 
 export const AppRouter: React.FC = () => (
   <BrowserRouter>
