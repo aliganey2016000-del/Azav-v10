@@ -102,12 +102,6 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         roles: [UserRole.SUPER_ADMIN],
       },
-      {
-        label: 'Applications',
-        path: '/admin/applications',
-        icon: FileText,
-        roles: [UserRole.SUPER_ADMIN],
-      },
     ],
   },
   {
