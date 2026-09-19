@@ -366,9 +366,14 @@ export class AdminApiService {
     id: string,
     stageKey: string,
     action: 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT',
-    reason?: string
+    reason?: string,
+    batchId?: string
   ): Promise<AdminJourneyStage[]> {
-    const res = await api.post(`/admin/students/${id}/journey/${stageKey}/action`, { action, reason });
+    const res = await api.post(`/admin/students/${id}/journey/${stageKey}/action`, {
+      action,
+      reason,
+      batchId,
+    });
     return res.data.data.stages;
   }
 
