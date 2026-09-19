@@ -4,12 +4,9 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
-  GraduationCap,
   Loader2,
   MapPin,
   RefreshCw,
-  Stethoscope,
-  UserRound,
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -33,11 +30,6 @@ const formatDate = (value?: string) => {
   }).format(date);
 };
 
-const fullName = (user: any) => {
-  if (!user) return 'Not assigned';
-  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Not assigned';
-};
-
 const statusMeta = (status?: string) => {
   switch (status) {
     case 'ACTIVE':
@@ -53,12 +45,6 @@ const statusMeta = (status?: string) => {
   }
 };
 
-const programmeName = (placement: PlacementRecord) =>
-  placement.applicationId?.programmeId?.name ||
-  placement.applicationId?.programmeText ||
-  placement.studentId?.programmeId?.name ||
-  '—';
-
 const hospitalName = (placement: PlacementRecord) =>
   placement.organizationId?.name || 'Hospital not assigned';
 
@@ -66,12 +52,6 @@ const hospitalLocation = (placement: PlacementRecord) => {
   const organization = placement.organizationId;
   return [organization?.city, organization?.country].filter(Boolean).join(', ') || '—';
 };
-
-const departmentName = (placement: PlacementRecord) =>
-  placement.departmentId?.name || 'Not assigned';
-
-const supervisorName = (placement: PlacementRecord) =>
-  fullName(placement.supervisorId?.userId);
 
 const durationText = (placement: PlacementRecord) => {
   if (!placement.startDate || !placement.endDate) return '—';
@@ -209,22 +189,7 @@ export const StudentPlacementPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <DetailCard
-                icon={<Stethoscope className="h-4 w-4" />}
-                label="Department"
-                value={departmentName(currentPlacement)}
-              />
-              <DetailCard
-                icon={<UserRound className="h-4 w-4" />}
-                label="Supervisor"
-                value={supervisorName(currentPlacement)}
-              />
-              <DetailCard
-                icon={<GraduationCap className="h-4 w-4" />}
-                label="Programme"
-                value={programmeName(currentPlacement)}
-              />
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <DetailCard
                 icon={<CalendarDays className="h-4 w-4" />}
                 label="Start Date"
