@@ -6,6 +6,7 @@ import { LogbookController } from '../controllers/logbook.controller.js';
 import { EvaluationController } from '../controllers/evaluation.controller.js';
 import { CertificateController } from '../controllers/certificate.controller.js';
 import { UniversityController, OrganizationController } from '../controllers/university.controller.js';
+import { DepartmentController } from '../controllers/department.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { validatePlacementAccess, validateAttachmentAccess, validateLogbookEntryAccess } from '../middleware/idor.js';
@@ -117,5 +118,15 @@ universityRouter.post('/', authenticate, requireRole(UserRole.SUPER_ADMIN, UserR
 export const organizationRouter = Router();
 organizationRouter.get('/', OrganizationController.list);
 organizationRouter.post('/', authenticate, requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), OrganizationController.create);
-organizationRouter.get('/:organizationId/departments', OrganizationController.listDepartments);
+organizationRouter.get(
+  '/:organizationId/departments',
+  authenticate,
+  DepartmentController.list
+);
+organizationRouter.post(
+  '/:organizationId/departments',
+  authenticate,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
+  DepartmentController.create
+);
 organizationRouter.get('/:organizationId/supervisors', OrganizationController.listSupervisors);
