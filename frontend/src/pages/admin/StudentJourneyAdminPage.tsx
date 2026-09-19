@@ -60,6 +60,16 @@ export const StudentJourneyAdminPage: React.FC = () => {
     address: '',
     capacity: 20,
   });
+  const [trainingBatches, setTrainingBatches] = useState<any[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState('');
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [showNewBatch, setShowNewBatch] = useState(false);
+  const [creatingBatch, setCreatingBatch] = useState(false);
+  const [newBatch, setNewBatch] = useState({
+    batchNumber: '',
+    name: '',
+    intakeDate: '',
+  });
 
   const emptyDraft = { action: 'APPROVE' as ActionType, reason: '', files: [] as File[] };
 
@@ -97,6 +107,31 @@ export const StudentJourneyAdminPage: React.FC = () => {
     }, 5000);
     return () => window.clearInterval(timer);
   }, [id]);
+
+  useEffect(() => {
+    const universityId = data?.student?.university?._id;
+    if (!canAct || !universityId) {
+      setTrainingBatches([]);
+      setSelectedBatchId('');
+      return;
+    }
+
+    setBatchLoading(true);
+    AdminApiService.getTrainingBatches(universityId)
+      .then((items) => {
+        setTrainingBatches(items);
+        setSelectedBatchId(data?.student?.batch?._id || '');
+      })
+      .catch((e: any) => {
+        setTrainingBatches([]);
+        setActionError(
+          e?.response?.data?.error?.message ||
+            e.message ||
+            'Failed to load university batches.'
+        );
+      })
+      .finally(() => setBatchLoading(false));
+  }, [canAct, data?.student?.university?._id, data?.student?.batch?._id]);
 
   useEffect(() => {
     if (!canAct) return;
@@ -146,6 +181,46 @@ export const StudentJourneyAdminPage: React.FC = () => {
     [documents, azaamStages, canAct]
   );
 
+  const handleCreateBatch = async () => {
+    const universityId = data?.student?.university?._id;
+    if (!universityId) {
+      setActionError('This student is not linked to a university.');
+      return;
+    }
+
+    setCreatingBatch(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const created = await AdminApiService.createTrainingBatch({
+        universityId,
+        batchNumber: newBatch.batchNumber.trim() || undefined,
+        name: newBatch.name.trim() || undefined,
+        intakeDate: newBatch.intakeDate || undefined,
+      });
+
+      setTrainingBatches((current) => [
+        created,
+        ...current.filter((batch) => batch._id !== created._id),
+      ]);
+      setSelectedBatchId(created._id);
+      setShowNewBatch(false);
+      setNewBatch({ batchNumber: '', name: '', intakeDate: '' });
+      setActionSuccess(
+        `Batch ${created.batchNumber} created and selected for this approval.`
+      );
+    } catch (e: any) {
+      setActionError(
+        e?.response?.data?.error?.message ||
+          e.message ||
+          'Failed to create batch.'
+      );
+    } finally {
+      setCreatingBatch(false);
+    }
+  };
+
   const handleAction = async (stageKey: string) => {
     if (!id) return;
     const draft = formState[stageKey] || emptyDraft;
@@ -153,6 +228,19 @@ export const StudentJourneyAdminPage: React.FC = () => {
       setActionError('A reason/comment is required for Request Correction or Reject.');
       return;
     }
+
+    if (
+      stageKey === 'AZAAM_REVIEW' &&
+      draft.action === 'APPROVE' &&
+      data?.student?.university?._id &&
+      !selectedBatchId
+    ) {
+      setActionError(
+        'Select an existing Batch No or create a new batch before approving this student.'
+      );
+      return;
+    }
+
     setActionError(null);
     setSubmitting(stageKey);
     try {
@@ -160,9 +248,38 @@ export const StudentJourneyAdminPage: React.FC = () => {
         id,
         stageKey,
         draft.action,
-        draft.reason.trim() || undefined
+        draft.reason.trim() || undefined,
+        stageKey === 'AZAAM_REVIEW' && draft.action === 'APPROVE'
+          ? selectedBatchId || undefined
+          : undefined
       );
       setAzaamStages(updated);
+      if (stageKey === 'AZAAM_REVIEW' && draft.action === 'APPROVE' && selectedBatchId) {
+        const selectedBatch =
+          trainingBatches.find((batch) => batch._id === selectedBatchId) || null;
+        setData((current) =>
+          current && selectedBatch
+            ? {
+                ...current,
+                student: {
+                  ...current.student,
+                  batch: {
+                    _id: selectedBatch._id,
+                    batchNumber: selectedBatch.batchNumber,
+                    name: selectedBatch.name,
+                    intakeDate: selectedBatch.intakeDate,
+                    status: selectedBatch.status,
+                  },
+                },
+              }
+            : current
+        );
+        if (selectedBatch) {
+          setActionSuccess(
+            `Student approved and assigned to Batch ${selectedBatch.batchNumber}.`
+          );
+        }
+      }
       setFormState((prev) => ({ ...prev, [stageKey]: emptyDraft }));
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || e.message || 'Failed to update stage.');
@@ -959,6 +1076,154 @@ export const StudentJourneyAdminPage: React.FC = () => {
                       </div>
                     )}
 
+                    {stage.key === 'AZAAM_REVIEW' && data?.student?.batch && !stage.actionable && (
+                      <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
+                          Approved Batch
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-black text-emerald-950">
+                              {data.student.batch.batchNumber}
+                            </p>
+                            <p className="text-[11px] font-semibold text-emerald-800">
+                              {data.student.batch.name}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-700">
+                            {data.student.batch.status || 'OPEN'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {stage.key === 'AZAAM_REVIEW' &&
+                      stage.actionable &&
+                      draft.action === 'APPROVE' &&
+                      Boolean(data?.student?.university?._id) && (
+                        <div className="mt-3 overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
+                          <div className="border-b border-violet-100 bg-violet-50/70 p-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">
+                              Batch Assignment on Approval
+                            </p>
+                            <h4 className="mt-1 text-sm font-black text-slate-950">
+                              AZAAM assigns the student to a batch
+                            </h4>
+                            <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-600">
+                              The university only nominates the student and uploads documents. When AZAAM approves, select the batch for students arriving together, or create the batch here.
+                            </p>
+                          </div>
+
+                          <div className="p-4">
+                            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                              <label>
+                                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                  Batch No *
+                                </span>
+                                <select
+                                  value={selectedBatchId}
+                                  disabled={batchLoading}
+                                  onChange={(e) => setSelectedBatchId(e.target.value)}
+                                  className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 outline-none focus:border-violet-500 disabled:bg-slate-100"
+                                >
+                                  <option value="">
+                                    {batchLoading ? 'Loading batches...' : 'Select existing batch'}
+                                  </option>
+                                  {trainingBatches
+                                    .filter((batch) => batch.status === 'OPEN')
+                                    .map((batch) => (
+                                      <option key={batch._id} value={batch._id}>
+                                        {batch.batchNumber} · {batch.name} · {batch.studentsCount || 0} student(s)
+                                      </option>
+                                    ))}
+                                </select>
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() => setShowNewBatch((current) => !current)}
+                                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 text-xs font-black text-violet-700 hover:bg-violet-100"
+                              >
+                                <Plus className="h-4 w-4" />
+                                {showNewBatch ? 'Cancel' : 'Create New Batch'}
+                              </button>
+                            </div>
+
+                            {showNewBatch && (
+                              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                  <label>
+                                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                      Batch No
+                                    </span>
+                                    <input
+                                      value={newBatch.batchNumber}
+                                      onChange={(e) =>
+                                        setNewBatch((current) => ({
+                                          ...current,
+                                          batchNumber: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="Auto if blank"
+                                      className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 outline-none focus:border-violet-500"
+                                    />
+                                  </label>
+
+                                  <label>
+                                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                      Batch Name
+                                    </span>
+                                    <input
+                                      value={newBatch.name}
+                                      onChange={(e) =>
+                                        setNewBatch((current) => ({
+                                          ...current,
+                                          name: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="e.g. Sept Intake A"
+                                      className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 outline-none focus:border-violet-500"
+                                    />
+                                  </label>
+
+                                  <label>
+                                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                      Intake Date
+                                    </span>
+                                    <input
+                                      type="date"
+                                      value={newBatch.intakeDate}
+                                      onChange={(e) =>
+                                        setNewBatch((current) => ({
+                                          ...current,
+                                          intakeDate: e.target.value,
+                                        }))
+                                      }
+                                      className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 outline-none focus:border-violet-500"
+                                    />
+                                  </label>
+                                </div>
+
+                                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <p className="text-[10px] font-semibold leading-4 text-slate-500">
+                                    Leave Batch No blank and the system will generate one automatically using the university code and year.
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleCreateBatch()}
+                                    disabled={creatingBatch}
+                                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 text-xs font-black text-white disabled:opacity-50"
+                                  >
+                                    {creatingBatch && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                    Create & Select Batch
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                     {stage.actionable && (
                       <div className="mt-3 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -982,7 +1247,15 @@ export const StudentJourneyAdminPage: React.FC = () => {
                           )}
                           <button
                             onClick={() => handleAction(stage.key)}
-                            disabled={submitting === stage.key}
+                            disabled={
+                              submitting === stage.key ||
+                              (
+                                stage.key === 'AZAAM_REVIEW' &&
+                                draft.action === 'APPROVE' &&
+                                Boolean(data?.student?.university?._id) &&
+                                !selectedBatchId
+                              )
+                            }
                             className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700 disabled:opacity-50"
                           >
                             {submitting === stage.key && <Loader2 className="h-3 w-3 animate-spin" />}
