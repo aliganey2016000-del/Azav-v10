@@ -1,15 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
-  Building2,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
-  Clock3,
   Download,
   Eye,
   GraduationCap,
-  Hospital,
   Loader2,
   Search,
   Stethoscope,
@@ -71,19 +68,6 @@ const statusStyle = (status: string) => {
       return 'bg-rose-100 text-rose-700';
     default:
       return 'bg-blue-100 text-blue-700';
-  }
-};
-
-const statusDot = (status: string) => {
-  switch (status) {
-    case 'ACTIVE':
-      return 'bg-emerald-500';
-    case 'COMPLETED':
-      return 'bg-slate-400';
-    case 'CANCELLED':
-      return 'bg-rose-500';
-    default:
-      return 'bg-blue-500';
   }
 };
 
@@ -184,20 +168,6 @@ export const UniversityRotationsPage: React.FC = () => {
   const completedRotations = rotations.filter((rotation) => rotation.status === 'COMPLETED').length;
   const rotationPlans = studentGroups.length;
 
-  const summaryGroup = useMemo(() => {
-    if (!studentGroups.length) return null;
-    return studentGroups.find((items) => items.some((rotation) => rotation.status === 'ACTIVE')) || studentGroups[0];
-  }, [studentGroups]);
-
-  const summaryFirst = summaryGroup?.[0];
-  const summaryCompleted = summaryGroup?.filter((rotation) => rotation.status === 'COMPLETED').length || 0;
-  const summaryActive = summaryGroup?.filter((rotation) => rotation.status === 'ACTIVE').length || 0;
-  const summaryUpcoming = summaryGroup?.filter((rotation) => rotation.status === 'UPCOMING').length || 0;
-  const summaryCancelled = summaryGroup?.filter((rotation) => rotation.status === 'CANCELLED').length || 0;
-  const summaryProgress = summaryGroup?.length
-    ? Math.round((summaryCompleted / summaryGroup.length) * 100)
-    : 0;
-
   const exportCsv = () => {
     const headers = [
       'Student',
@@ -275,8 +245,7 @@ export const UniversityRotationsPage: React.FC = () => {
         <StatCard icon={<CheckCircle2 className="h-5 w-5" />} label="Completed" value={loading ? '—' : String(completedRotations)} tone="amber" />
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+      <div className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_180px_160px_auto]">
               <div className="relative">
@@ -466,103 +435,7 @@ export const UniversityRotationsPage: React.FC = () => {
           </section>
         </div>
 
-        <aside className="space-y-4">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
-                <CalendarDays className="h-4 w-4" />
-              </div>
-              <h2 className="text-sm font-black text-slate-950">Rotation Summary</h2>
-            </div>
 
-            {summaryGroup && summaryFirst ? (
-              <>
-                <div className="mt-5">
-                  <p className="text-sm font-black text-slate-950">{summaryFirst.studentId?.programmeId?.name || 'Clinical Programme'}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{summaryFirst.organizationId?.name || 'Hospital'}</p>
-                </div>
-
-                <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-600">
-                  <CalendarDays className="h-4 w-4 text-cyan-600" />
-                  <span>{formatDate(summaryGroup[0]?.startDate)} — {formatDate(summaryGroup[summaryGroup.length - 1]?.endDate)}</span>
-                </div>
-
-                <div className="mt-5">
-                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wide text-slate-400">
-                    <span>Progress</span>
-                    <span>{summaryProgress}%</span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-teal-500 to-cyan-500"
-                      style={{ width: String(summaryProgress) + '%' }}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
-                  <SummaryRow label="Total Rotations" value={String(summaryGroup.length)} dot="bg-violet-500" />
-                  <SummaryRow label="Completed" value={String(summaryCompleted)} dot="bg-slate-400" />
-                  <SummaryRow label="In Progress" value={String(summaryActive)} dot="bg-emerald-500" />
-                  <SummaryRow label="Upcoming" value={String(summaryUpcoming)} dot="bg-blue-500" />
-                  <SummaryRow label="Cancelled" value={String(summaryCancelled)} dot="bg-rose-500" />
-                </div>
-              </>
-            ) : (
-              <div className="py-8 text-center text-xs font-semibold text-slate-500">
-                Rotation summary will appear when schedules are available.
-              </div>
-            )}
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
-                <Building2 className="h-4 w-4" />
-              </div>
-              <h2 className="text-sm font-black text-slate-950">Training Overview</h2>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <OverviewBox label="Hospitals" value={String(hospitalOptions.length)} icon={<Hospital className="h-4 w-4" />} />
-              <OverviewBox label="Departments" value={String(departmentOptions.length)} icon={<Stethoscope className="h-4 w-4" />} />
-              <OverviewBox label="Students" value={String(totalStudents)} icon={<Users className="h-4 w-4" />} />
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black text-slate-950">Recent Rotation Activity</h2>
-              <Clock3 className="h-4 w-4 text-slate-400" />
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {[...rotations]
-                .sort(
-                  (a, b) =>
-                    new Date(b.updatedAt || b.createdAt || 0).getTime() -
-                    new Date(a.updatedAt || a.createdAt || 0).getTime()
-                )
-                .slice(0, 4)
-                .map((rotation) => (
-                  <div key={String(rotation._id)} className="flex gap-3">
-                    <span className={'mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ' + statusDot(rotation.status)} />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-black text-slate-800">{fullName(rotation)}</p>
-                      <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-slate-500">
-                        {rotation.title || rotation.departmentId?.name || 'Rotation'} · {rotation.status || 'UPCOMING'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-              {!rotations.length && (
-                <p className="py-4 text-center text-xs font-semibold text-slate-500">No recent activity.</p>
-              )}
-            </div>
-          </section>
-        </aside>
-      </div>
 
       {viewing && (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
@@ -664,26 +537,3 @@ const DetailBox: React.FC<{ label: string; value: string }> = ({ label, value })
   </div>
 );
 
-const SummaryRow: React.FC<{ label: string; value: string; dot: string }> = ({ label, value, dot }) => (
-  <div className="flex items-center justify-between gap-3">
-    <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-      <span className={'h-2.5 w-2.5 rounded-full ' + dot} />
-      {label}
-    </div>
-    <span className="text-xs font-black text-slate-900">{value}</span>
-  </div>
-);
-
-const OverviewBox: React.FC<{
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}> = ({ label, value, icon }) => (
-  <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-3">
-    <div className="flex items-center gap-2 text-xs font-black text-slate-700">
-      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-cyan-700 shadow-sm">{icon}</span>
-      {label}
-    </div>
-    <span className="text-sm font-black text-slate-950">{value}</span>
-  </div>
-);
