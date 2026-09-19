@@ -92,6 +92,14 @@ const programmeName = (placement: RecordObject) =>
   applicationFor(placement)?.programmeText ||
   '-';
 
+const batchInfo = (placement: RecordObject) => {
+  const batch = applicationFor(placement)?.batchId;
+  return {
+    number: batch?.batchNumber || 'Legacy / No Batch',
+    name: batch?.name || '',
+  };
+};
+
 export const UniversityPlacementsPage: React.FC = () => {
   const navigate = useNavigate();
   const [placements, setPlacements] = useState<RecordObject[]>([]);
@@ -163,6 +171,8 @@ export const UniversityPlacementsPage: React.FC = () => {
           user?.email,
           hospitalName(placement),
           programmeName(placement),
+          batchInfo(placement).number,
+          batchInfo(placement).name,
         ]
           .filter(Boolean)
           .join(' ')
@@ -459,10 +469,11 @@ export const UniversityPlacementsPage: React.FC = () => {
         ) : (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="min-w-[760px] w-full text-left text-xs">
+              <table className="min-w-[900px] w-full text-left text-xs">
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-black">Student</th>
+                    <th className="px-4 py-3 font-black">Batch</th>
                     <th className="px-4 py-3 font-black">Programme</th>
                     <th className="px-4 py-3 font-black">Hospital</th>
                     <th className="px-4 py-3 font-black">Dates</th>
@@ -488,6 +499,14 @@ export const UniversityPlacementsPage: React.FC = () => {
                               </div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-extrabold text-violet-700">{batchInfo(placement).number}</div>
+                          {batchInfo(placement).name && (
+                            <div className="mt-0.5 max-w-[150px] truncate text-[10px] font-semibold text-slate-400">
+                              {batchInfo(placement).name}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 font-semibold text-slate-600">{programmeName(placement)}</td>
                         <td className="px-4 py-3 font-semibold text-slate-600">{hospitalName(placement)}</td>
@@ -606,6 +625,18 @@ export const UniversityPlacementsPage: React.FC = () => {
                         <div className="min-w-0">
                           <div className="text-[10px] font-bold text-blue-500">Programme</div>
                           <div className="mt-0.5 truncate text-xs font-black text-slate-800">{programmeName(placement)}</div>
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 flex min-w-0 items-center gap-2.5 border-b border-blue-100 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+                          <Users className="h-4.5 w-4.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-violet-500">Batch No</div>
+                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">
+                            {batchInfo(placement).number}
+                          </div>
                         </div>
                       </div>
 
