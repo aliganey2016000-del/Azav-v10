@@ -365,9 +365,61 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       const params: Record<string, string> = { payer: payerType };
       if (universityId) params.universityId = universityId;
       const response = await api.get('/finance/pricing/resolved', { params });
+      let resolvedRules = asArray(response);
+
+      // Defensive fallback for university billing: the invoice screen must use
+      // the same active rules visible in Service Pricing even if a legacy
+      // effective-date record is stored differently. Keep the exact selected
+      // university scope and apply university overrides over global defaults.
+      if (resolvedRules.length === 0 && universityId) {
+        const fallbackResponse = await api.get('/finance/pricing', {
+          params: {
+            payer: payerType,
+            status: 'ACTIVE',
+            universityId,
+          },
+        });
+
+        const now = new Date();
+        const startOfToday = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        );
+
+        const eligible = asArray(fallbackResponse).filter((rule) => {
+          if (rule.status !== 'ACTIVE' || rule.defaultPayer !== payerType) return false;
+
+          if (rule.scope === 'UNIVERSITY' && asId(rule.universityId) !== universityId) {
+            return false;
+          }
+
+          const effectiveFrom = rule.effectiveFrom ? new Date(rule.effectiveFrom) : null;
+          const effectiveTo = rule.effectiveTo ? new Date(rule.effectiveTo) : null;
+
+          if (effectiveFrom && !Number.isNaN(effectiveFrom.getTime()) && effectiveFrom > now) {
+            return false;
+          }
+          if (effectiveTo && !Number.isNaN(effectiveTo.getTime()) && effectiveTo < startOfToday) {
+            return false;
+          }
+
+          return true;
+        });
+
+        const byServiceCode = new Map<string, RecordObject>();
+        eligible
+          .filter((rule) => rule.scope === 'GLOBAL')
+          .forEach((rule) => byServiceCode.set(String(rule.serviceCode), rule));
+        eligible
+          .filter((rule) => rule.scope === 'UNIVERSITY')
+          .forEach((rule) => byServiceCode.set(String(rule.serviceCode), rule));
+
+        resolvedRules = Array.from(byServiceCode.values()).sort((a, b) =>
+          String(a.serviceName || '').localeCompare(String(b.serviceName || ''))
+        );
+      }
 
       if (requestId === feeRuleRequestRef.current) {
-        setFeeRules(asArray(response));
+        setFeeRules(resolvedRules);
       }
     } catch (requestError: any) {
       if (requestId === feeRuleRequestRef.current) {
