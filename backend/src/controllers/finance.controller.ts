@@ -390,13 +390,31 @@ export class FinanceController {
         return;
       }
 
-      const amount = Number(req.body?.amount ?? original.amount);
-      if (!Number.isFinite(amount) || amount <= 0 || amount > original.amount) {
+      if (original.type !== 'PAYMENT' || !original.userId) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_REFUND_SOURCE',
+            message: 'Refunds must be created from an original user payment record',
+          },
+        });
+        return;
+      }
+
+      const existingRefunds = await Payment.aggregate([
+        { $match: { originalPaymentId: original._id, type: 'REFUND' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]);
+      const refundedSoFar = Number(existingRefunds[0]?.total || 0);
+      const refundableBalance = Math.max(0, original.amount - refundedSoFar);
+
+      const amount = Number(req.body?.amount ?? refundableBalance);
+      if (!Number.isFinite(amount) || amount <= 0 || amount > refundableBalance) {
         res.status(400).json({
           success: false,
           error: {
             code: 'INVALID_REFUND_AMOUNT',
-            message: 'Refund amount must be greater than zero and cannot exceed the original amount',
+            message: 'Refund amount must be greater than zero and cannot exceed the remaining refundable balance',
           },
         });
         return;
@@ -419,7 +437,7 @@ export class FinanceController {
         createdBy: req.user.userId,
       });
 
-      if (amount >= original.amount) {
+      if (refundedSoFar + amount >= original.amount) {
         original.status = 'REFUNDED';
         await original.save();
       }
