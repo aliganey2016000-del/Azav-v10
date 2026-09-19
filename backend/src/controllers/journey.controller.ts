@@ -29,7 +29,7 @@ export class JourneyController {
       }
 
       const stageKey = req.params.stageKey as JourneyStageKey;
-      const { action, reason } = req.body;
+      const { action, reason, batchId } = req.body;
 
       if (!action || !Object.values(JourneyStageAction).includes(action)) {
         res.status(400).json({
@@ -39,7 +39,14 @@ export class JourneyController {
         return;
       }
 
-      const data = await JourneyService.actOnStage(req.params.id, stageKey, action, reason, req.user);
+      const data = await JourneyService.actOnStage(
+        req.params.id,
+        stageKey,
+        action,
+        reason,
+        batchId,
+        req.user
+      );
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(error.statusCode || 500).json({
