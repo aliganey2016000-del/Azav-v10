@@ -112,8 +112,16 @@ const STUDENT_NOMINATION_ROLES = [
   UserRole.UNIVERSITY_STAFF,
 ];
 
-adminRouter.get('/training-batches', requireRole(...STUDENT_NOMINATION_ROLES), TrainingBatchController.list);
-adminRouter.post('/training-batches', requireRole(...STUDENT_NOMINATION_ROLES), TrainingBatchController.create);
+adminRouter.get(
+  '/training-batches',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  TrainingBatchController.list
+);
+adminRouter.post(
+  '/training-batches',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  TrainingBatchController.create
+);
 
 adminRouter.get('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.list);
 adminRouter.post('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.nominate);
