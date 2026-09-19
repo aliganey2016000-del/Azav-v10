@@ -11,6 +11,7 @@ financeRouter.use(authenticate);
 
 financeRouter.get('/pricing', FinancePricingController.list);
 financeRouter.get('/pricing/resolved', FinancePricingController.resolved);
+financeRouter.get('/pricing/profile', FinancePricingController.profile);
 financeRouter.post(
   '/pricing',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
