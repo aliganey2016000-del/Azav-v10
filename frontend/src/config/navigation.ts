@@ -131,6 +131,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
     title: 'FINANCE',
     items: [
       {
+        label: 'Service Pricing',
+        path: '/admin/finance/pricing',
+        icon: Settings,
+        roles: [UserRole.SUPER_ADMIN],
+      },
+      {
         label: 'Fees & Invoices',
         path: '/admin/finance/fees',
         icon: DollarSign,
