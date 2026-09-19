@@ -29,8 +29,6 @@ type RecordObject = Record<string, any>;
 interface PlacementFormState {
   applicationId: string;
   organizationId: string;
-  departmentId: string;
-  supervisorId: string;
   startDate: string;
   endDate: string;
 }
@@ -38,8 +36,6 @@ interface PlacementFormState {
 const EMPTY_FORM: PlacementFormState = {
   applicationId: '',
   organizationId: '',
-  departmentId: '',
-  supervisorId: '',
   startDate: '',
   endDate: '',
 };
@@ -121,8 +117,6 @@ export const AdminPlacementsPage: React.FC = () => {
   const [placements, setPlacements] = useState<RecordObject[]>([]);
   const [applications, setApplications] = useState<RecordObject[]>([]);
   const [organizations, setOrganizations] = useState<RecordObject[]>([]);
-  const [departments, setDepartments] = useState<RecordObject[]>([]);
-  const [supervisors, setSupervisors] = useState<RecordObject[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -345,31 +339,9 @@ export const AdminPlacementsPage: React.FC = () => {
     filters.to,
   ].filter(Boolean).length;
 
-  const loadHospitalDependencies = async (organizationId: string) => {
-    setDepartments([]);
-    setSupervisors([]);
-    if (!organizationId) return;
-
-    try {
-      const [departmentResponse, supervisorResponse] = await Promise.all([
-        api.get(`/organizations/${organizationId}/departments`),
-        api.get(`/organizations/${organizationId}/supervisors`),
-      ]);
-      setDepartments(asArray(departmentResponse, 'departments'));
-      setSupervisors(asArray(supervisorResponse, 'supervisors'));
-    } catch (requestError: any) {
-      setFormError(
-        requestError?.response?.data?.error?.message ||
-          'Unable to load hospital departments and supervisors.'
-      );
-    }
-  };
-
   const openCreateForm = () => {
     setEditingPlacement(null);
     setForm(EMPTY_FORM);
-    setDepartments([]);
-    setSupervisors([]);
     setFormError('');
     setShowHospitalForm(false);
     setShowForm(true);
@@ -380,15 +352,12 @@ export const AdminPlacementsPage: React.FC = () => {
     setForm({
       applicationId: asId(placement.applicationId),
       organizationId: asId(placement.organizationId),
-      departmentId: asId(placement.departmentId),
-      supervisorId: asId(placement.supervisorId),
       startDate: toInputDate(placement.startDate),
       endDate: toInputDate(placement.endDate),
     });
     setFormError('');
     setShowHospitalForm(false);
     setShowForm(true);
-    void loadHospitalDependencies(asId(placement.organizationId));
   };
 
   const selectedApplication = applicationMap.get(form.applicationId);
@@ -417,8 +386,6 @@ export const AdminPlacementsPage: React.FC = () => {
       if (editingPlacement) {
         await api.patch(`/placements/${asId(editingPlacement)}`, {
           organizationId: form.organizationId,
-          departmentId: form.departmentId || null,
-          supervisorId: form.supervisorId || null,
           startDate: form.startDate,
           endDate: form.endDate,
         });
@@ -433,8 +400,6 @@ export const AdminPlacementsPage: React.FC = () => {
           applicationId: form.applicationId,
           studentId,
           organizationId: form.organizationId,
-          departmentId: form.departmentId || undefined,
-          supervisorId: form.supervisorId || undefined,
           startDate: form.startDate,
           endDate: form.endDate,
         });
@@ -482,8 +447,7 @@ export const AdminPlacementsPage: React.FC = () => {
 
       if (created?._id) {
         setOrganizations((current) => [...current, created]);
-        setForm((current) => ({ ...current, organizationId: asId(created), departmentId: '', supervisorId: '' }));
-        await loadHospitalDependencies(asId(created));
+        setForm((current) => ({ ...current, organizationId: asId(created) }));
       } else {
         await loadData();
       }
@@ -1245,7 +1209,7 @@ export const AdminPlacementsPage: React.FC = () => {
                   {editingPlacement ? 'Edit Placement' : 'New Placement'}
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
-                  Assign the student to a hospital, department and clinical supervisor.
+                  Assign the student to a hospital and placement dates. Department and supervisor are assigned in Rotation Planner.
                 </p>
               </div>
               <button
@@ -1310,7 +1274,7 @@ export const AdminPlacementsPage: React.FC = () => {
               )}
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-1.5">
+                <label className="block space-y-1.5 sm:col-span-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-extrabold text-slate-700">Hospital *</span>
                     {!editingPlacement && (
@@ -1326,57 +1290,15 @@ export const AdminPlacementsPage: React.FC = () => {
                   <select
                     required
                     value={form.organizationId}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setForm((current) => ({
-                        ...current,
-                        organizationId: value,
-                        departmentId: '',
-                        supervisorId: '',
-                      }));
-                      void loadHospitalDependencies(value);
-                    }}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, organizationId: event.target.value }))
+                    }
                     className="min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-teal-500"
                   >
                     <option value="">Select hospital</option>
                     {organizations.map((organization) => (
                       <option key={asId(organization)} value={asId(organization)}>
                         {organization.name} ({organization.capacity || 0} slots)
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-extrabold text-slate-700">Department / Clinical Unit</span>
-                  <select
-                    value={form.departmentId}
-                    disabled={!form.organizationId}
-                    onChange={(event) => setForm((current) => ({ ...current, departmentId: event.target.value }))}
-                    className="min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-teal-500"
-                  >
-                    <option value="">Not assigned</option>
-                    {departments.map((department) => (
-                      <option key={asId(department)} value={asId(department)}>
-                        {department.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block space-y-1.5 sm:col-span-2">
-                  <span className="text-xs font-extrabold text-slate-700">Hospital Supervisor</span>
-                  <select
-                    value={form.supervisorId}
-                    disabled={!form.organizationId}
-                    onChange={(event) => setForm((current) => ({ ...current, supervisorId: event.target.value }))}
-                    className="min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-teal-500"
-                  >
-                    <option value="">Not assigned yet</option>
-                    {supervisors.map((supervisor) => (
-                      <option key={asId(supervisor)} value={asId(supervisor)}>
-                        {fullName(supervisor.userId)}
-                        {supervisor.departmentId?.name ? ` • ${supervisor.departmentId.name}` : ''}
                       </option>
                     ))}
                   </select>
@@ -1535,7 +1457,7 @@ export const AdminPlacementsPage: React.FC = () => {
                 className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-extrabold text-slate-700"
               >
                 <Pencil className="h-4 w-4" />
-                Edit / Reassign
+                Edit Placement
               </button>
               <button
                 type="button"
