@@ -104,12 +104,31 @@ export class FinancePricingController {
       }
 
       const now = new Date();
+      // Effective dates are business dates, not timestamps. A rule with
+      // effectiveTo=2026-09-19 must remain usable for the whole 19 Sep day.
+      // Older records may store date-only values at 00:00 UTC, so compare the
+      // end date against the start of today instead of the current timestamp.
+      const startOfTodayUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+      );
       const activeDateFilter = {
         status: 'ACTIVE',
         defaultPayer: payer,
         $and: [
-          { $or: [{ effectiveFrom: null }, { effectiveFrom: { $lte: now } }] },
-          { $or: [{ effectiveTo: null }, { effectiveTo: { $gte: now } }] },
+          {
+            $or: [
+              { effectiveFrom: null },
+              { effectiveFrom: { $exists: false } },
+              { effectiveFrom: { $lte: now } },
+            ],
+          },
+          {
+            $or: [
+              { effectiveTo: null },
+              { effectiveTo: { $exists: false } },
+              { effectiveTo: { $gte: startOfTodayUtc } },
+            ],
+          },
         ],
       };
 
