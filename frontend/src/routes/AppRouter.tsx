@@ -38,6 +38,7 @@ import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
 import { AdminPlacementsPage } from '../pages/admin/AdminPlacementsPage';
 import { AdminRotationsPage } from '../pages/admin/AdminRotationsPage';
 import { AdminRotationTemplatesPage } from '../pages/admin/AdminRotationTemplatesPage';
+import { AdminFinancePage } from '../pages/admin/AdminFinancePage';
 import { StudentApplicationPage } from '../pages/student/StudentApplicationPage';
 import { StudentPlacementPage } from '../pages/student/StudentPlacementPage';
 import { StudentRotationsPage } from '../pages/student/StudentRotationsPage';
@@ -79,6 +80,11 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/placements" element={<AdminPlacementsPage />} />
           <Route path="/admin/rotation-planner" element={<AdminRotationsPage />} />
           <Route path="/admin/rotation-templates" element={<AdminRotationTemplatesPage />} />
+          <Route path="/admin/finance/fees" element={<AdminFinancePage mode="fees" />} />
+          <Route path="/admin/finance/payments" element={<AdminFinancePage mode="payments" />} />
+          <Route path="/admin/finance/transactions" element={<AdminFinancePage mode="transactions" />} />
+          <Route path="/admin/finance/settlements" element={<AdminFinancePage mode="settlements" />} />
+          <Route path="/admin/finance/refunds" element={<AdminFinancePage mode="refunds" />} />
           <Route path="/admin/rotations" element={<Navigate to="/admin/rotation-planner" replace />} />
           <Route path="/admin/clinical-training" element={<Navigate to="/admin/placements" replace />} />
           <Route path="/admin/completion-certificates" element={<Navigate to="/admin/placements" replace />} />
