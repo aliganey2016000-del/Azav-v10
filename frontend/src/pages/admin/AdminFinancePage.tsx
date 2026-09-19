@@ -16,7 +16,6 @@ import {
   ReceiptText,
   RefreshCw,
   RotateCcw,
-  Trash2,
   Search,
   Users,
   WalletCards,
@@ -497,12 +496,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     return sum + Number(rule?.amount || 0) * Number(item.quantity || 0);
   }, 0);
 
-  const availableFeeRules = feeRules.filter((rule) => {
-    if (invoiceItems.some((item) => item.feeRuleId === asId(rule))) return false;
-    if (invoiceItems.length && rule.currency !== invoiceCurrency) return false;
-    return true;
-  });
-
   const selectedUniversity = universities.find((item) => asId(item) === form.universityId) || null;
   const selectedOrganization = organizations.find((item) => asId(item) === form.organizationId) || null;
   const selectedPayerName =
@@ -520,11 +513,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       : form.payerType === 'ORGANIZATION'
         ? Boolean(form.organizationId)
         : Boolean(form.userId);
-
-  const addInvoiceRule = (feeRuleId: string) => {
-    if (!feeRuleId) return;
-    setInvoiceItems((current) => [...current, { feeRuleId, quantity: 1 }]);
-  };
 
   const toggleInvoiceRule = (feeRuleId: string) => {
     if (!feeRuleId) return;
@@ -576,10 +564,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setInvoiceItems((current) =>
       current.map((item) => (item.feeRuleId === feeRuleId ? { ...item, quantity: next } : item))
     );
-  };
-
-  const removeInvoiceRule = (feeRuleId: string) => {
-    setInvoiceItems((current) => current.filter((item) => item.feeRuleId !== feeRuleId));
   };
 
   const saveRecord = async () => {
