@@ -1,8 +1,11 @@
 import mongoose from 'mongoose';
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.js';
-import { Payment, FinanceRecordStatus, FinanceRecordType } from '../models/Payment.js';
+import { Payment, FinanceRecordStatus, FinanceRecordType, FinancePayerType } from '../models/Payment.js';
+import { FeeRule } from '../models/FeeRule.js';
 import { User } from '../models/User.js';
+import { University } from '../models/University.js';
+import { Organization } from '../models/Organization.js';
 import { AuditLog } from '../models/Notification.js';
 import { UserRole } from '../types/index.js';
 import { deriveInvoiceStatus, isFinanceStatusAllowed } from '../services/financeRules.js';
@@ -43,12 +46,105 @@ const positiveAmount = (value: unknown) => {
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 };
 
+const PAYER_TYPES: FinancePayerType[] = ['UNIVERSITY', 'STUDENT', 'ORGANIZATION'];
+
+const normalizeInvoiceLineItems = async (
+  rawItems: any[],
+  payerType: FinancePayerType,
+  universityId?: string
+) => {
+  const items = Array.isArray(rawItems) ? rawItems : [];
+  if (!items.length) return [];
+
+  const normalized: any[] = [];
+  let currency = '';
+
+  for (const item of items) {
+    const feeRuleId = String(item?.feeRuleId || '');
+    const quantity = positiveAmount(item?.quantity ?? 1);
+
+    if (!mongoose.Types.ObjectId.isValid(feeRuleId) || !quantity) {
+      const err: any = new Error('Each invoice service requires a valid pricing rule and quantity');
+      err.statusCode = 400;
+      err.code = 'INVALID_INVOICE_LINE';
+      throw err;
+    }
+
+    const rule = await FeeRule.findOne({ _id: feeRuleId, status: 'ACTIVE' }).lean();
+    if (!rule) {
+      const err: any = new Error('One of the selected service pricing rules is unavailable');
+      err.statusCode = 400;
+      err.code = 'FEE_RULE_UNAVAILABLE';
+      throw err;
+    }
+
+    if (rule.defaultPayer !== payerType) {
+      const err: any = new Error('Selected service pricing rule does not apply to this payer');
+      err.statusCode = 400;
+      err.code = 'FEE_RULE_PAYER_MISMATCH';
+      throw err;
+    }
+
+    if (
+      rule.scope === 'UNIVERSITY' &&
+      (!universityId || String(rule.universityId || '') !== universityId)
+    ) {
+      const err: any = new Error('Selected university-specific pricing rule does not apply to this university');
+      err.statusCode = 400;
+      err.code = 'FEE_RULE_SCOPE_MISMATCH';
+      throw err;
+    }
+
+    if (rule.scope === 'GLOBAL' && universityId) {
+      const specific = await FeeRule.findOne({
+        serviceCode: rule.serviceCode,
+        scope: 'UNIVERSITY',
+        universityId: new mongoose.Types.ObjectId(universityId),
+        defaultPayer: payerType,
+        status: 'ACTIVE',
+      }).lean();
+
+      if (specific) {
+        const err: any = new Error(
+          'A university-specific price exists for ' + rule.serviceName + '. Use the university-specific rule.'
+        );
+        err.statusCode = 400;
+        err.code = 'UNIVERSITY_PRICE_OVERRIDE_REQUIRED';
+        throw err;
+      }
+    }
+
+    if (currency && currency !== rule.currency) {
+      const err: any = new Error('All services on one invoice must use the same currency');
+      err.statusCode = 400;
+      err.code = 'MIXED_INVOICE_CURRENCY';
+      throw err;
+    }
+    currency = rule.currency;
+
+    normalized.push({
+      feeRuleId: rule._id,
+      serviceCode: rule.serviceCode,
+      serviceName: rule.serviceName,
+      category: rule.category,
+      billingBasis: rule.billingBasis,
+      quantity,
+      unitPrice: rule.amount,
+      amount: Number((rule.amount * quantity).toFixed(2)),
+      notes: String(item?.notes || '').trim() || undefined,
+    });
+  }
+
+  return normalized;
+};
+
 const populateFinanceRecord = (id: mongoose.Types.ObjectId | string) =>
   Payment.findById(id)
     .populate('userId', 'firstName lastName email phone universityId organizationId')
+    .populate('universityId', 'name code city country email phone')
     .populate('applicationId', 'status programmeText specialtyText')
     .populate('organizationId', 'name code city country')
-    .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId')
+    .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId universityId payerType')
     .populate('originalPaymentId', 'invoiceId invoiceNumber reference amount type status')
     .lean();
 
@@ -63,7 +159,12 @@ export class FinanceController {
     if (roles.includes(UserRole.UNIVERSITY_ADMIN) || roles.includes(UserRole.UNIVERSITY_STAFF)) {
       if (!req.user.universityId) return { _id: null };
       const users = await User.find({ universityId: req.user.universityId }).select('_id').lean();
-      return { userId: { $in: users.map((user) => user._id) } };
+      return {
+        $or: [
+          { universityId: req.user.universityId },
+          { userId: { $in: users.map((user) => user._id) } },
+        ],
+      };
     }
 
     if (roles.includes(UserRole.ORGANIZATION_ADMIN) || roles.includes(UserRole.ORGANIZATION_STAFF)) {
@@ -231,9 +332,10 @@ export class FinanceController {
 
       const records = await Payment.find(filter)
         .populate('userId', 'firstName lastName email phone universityId organizationId')
+        .populate('universityId', 'name code city country email phone')
         .populate('applicationId', 'status programmeText specialtyText')
         .populate('organizationId', 'name code city country')
-        .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId')
+        .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId universityId payerType')
         .populate('originalPaymentId', 'invoiceId invoiceNumber reference amount type status')
         .sort({ createdAt: -1 })
         .lean();
