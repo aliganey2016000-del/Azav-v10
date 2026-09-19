@@ -342,43 +342,13 @@ export class AdminApiService {
     return res.data.data.stages;
   }
 
-  static async getStudentAzaamJourneyOverview(id: string): Promise<{
-    stages: AdminJourneyStage[];
-    batch: { _id: string; batchNumber: string; name: string; status: string } | null;
-  }> {
-    const res = await api.get(`/admin/students/${id}/journey`);
-    return {
-      stages: res.data.data.stages || [],
-      batch: res.data.data.batch || null,
-    };
-  }
-
-  static async getTrainingBatches(universityId: string): Promise<any[]> {
-    const res = await api.get('/admin/training-batches', { params: { universityId } });
-    return Array.isArray(res.data?.data) ? res.data.data : [];
-  }
-
-  static async createTrainingBatch(input: {
-    universityId: string;
-    batchNumber?: string;
-    name?: string;
-  }): Promise<any> {
-    const res = await api.post('/admin/training-batches', input);
-    return res.data.data;
-  }
-
   static async actOnJourneyStage(
     id: string,
     stageKey: string,
     action: 'APPROVE' | 'REQUEST_CORRECTION' | 'REJECT',
-    reason?: string,
-    batchId?: string
+    reason?: string
   ): Promise<AdminJourneyStage[]> {
-    const res = await api.post(`/admin/students/${id}/journey/${stageKey}/action`, {
-      action,
-      reason,
-      batchId,
-    });
+    const res = await api.post(`/admin/students/${id}/journey/${stageKey}/action`, { action, reason });
     return res.data.data.stages;
   }
 

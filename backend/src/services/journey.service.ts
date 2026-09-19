@@ -1,7 +1,6 @@
 import { Student } from '../models/Student.js';
 import { User } from '../models/User.js';
 import { Application } from '../models/Application.js';
-import { TrainingBatch } from '../models/TrainingBatch.js';
 import { Organization } from '../models/Organization.js';
 import { Department } from '../models/Department.js';
 import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
@@ -244,22 +243,9 @@ export class JourneyService {
             : 'APPROVAL',
     }));
 
-    const latestApplication: any = await Application.findOne({ studentId })
-      .sort({ createdAt: -1 })
-      .populate('batchId', 'batchNumber name status universityId')
-      .lean();
-
     return {
       documentsSubmitted: docsCount > 0,
       documentsCount: docsCount,
-      batch: latestApplication?.batchId
-        ? {
-            _id: String(latestApplication.batchId._id),
-            batchNumber: latestApplication.batchId.batchNumber,
-            name: latestApplication.batchId.name,
-            status: latestApplication.batchId.status,
-          }
-        : null,
       stages,
     };
   }
@@ -269,7 +255,6 @@ export class JourneyService {
     stageKey: JourneyStageKey,
     action: JourneyStageAction,
     reason: string | undefined,
-    batchId: string | undefined,
     actor: AuthUser
   ) {
     if (!JOURNEY_STAGE_ORDER.includes(stageKey)) {
@@ -302,53 +287,6 @@ export class JourneyService {
     }
 
     await this.getJourney(studentId, actor);
-
-    if (stageKey === JourneyStageKey.AZAAM_REVIEW && action === JourneyStageAction.APPROVE) {
-      const student = await Student.findById(studentId).select('_id universityId applicantType').lean();
-      if (!student) {
-        const err: any = new Error('Student not found');
-        err.statusCode = 404;
-        throw err;
-      }
-
-      const application = await Application.findOne({ studentId }).sort({ createdAt: -1 });
-      if (!application) {
-        const err: any = new Error('Student application was not found');
-        err.statusCode = 404;
-        err.code = 'APPLICATION_NOT_FOUND';
-        throw err;
-      }
-
-      if (student.universityId) {
-        const selectedBatchId = String(batchId || application.batchId || '');
-        if (!selectedBatchId) {
-          const err: any = new Error(
-            'Assign a Batch No before approving this student. Select an existing batch or create a new batch in Step 3.'
-          );
-          err.statusCode = 400;
-          err.code = 'BATCH_REQUIRED';
-          throw err;
-        }
-
-        const batch = await TrainingBatch.findOne({
-          _id: selectedBatchId,
-          universityId: student.universityId,
-          status: 'OPEN',
-        }).lean();
-
-        if (!batch) {
-          const err: any = new Error(
-            'The selected batch is unavailable or belongs to a different university.'
-          );
-          err.statusCode = 400;
-          err.code = 'INVALID_BATCH';
-          throw err;
-        }
-
-        application.batchId = batch._id as any;
-        await application.save();
-      }
-    }
 
     const milestone = await JourneyMilestone.findOne({ studentId, stageKey });
     if (!milestone) {
