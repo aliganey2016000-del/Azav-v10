@@ -149,10 +149,19 @@ export class FinanceController {
         return;
       }
 
-      if (!mongoose.Types.ObjectId.isValid(userId)) {
+      if (type !== 'SETTLEMENT' && !mongoose.Types.ObjectId.isValid(userId)) {
         res.status(400).json({
           success: false,
           error: { code: 'INVALID_USER', message: 'A valid account is required' },
+        });
+        return;
+      }
+
+      const organizationId = String(req.body?.organizationId || '');
+      if (type === 'SETTLEMENT' && !mongoose.Types.ObjectId.isValid(organizationId)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_ORGANIZATION', message: 'A beneficiary organization is required for settlements' },
         });
         return;
       }
@@ -182,9 +191,9 @@ export class FinanceController {
       }
 
       const record = await Payment.create({
-        userId,
+        userId: type === 'SETTLEMENT' && !userId ? null : userId,
         applicationId: req.body?.applicationId || null,
-        organizationId: req.body?.organizationId || null,
+        organizationId: organizationId || null,
         originalPaymentId: req.body?.originalPaymentId || null,
         invoiceNumber:
           type === 'FEE'
