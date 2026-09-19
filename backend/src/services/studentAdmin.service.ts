@@ -5,6 +5,7 @@ import { Application, IApplication } from '../models/Application.js';
 import { University } from '../models/University.js';
 import { DocumentModel } from '../models/Document.js';
 import { Placement } from '../models/Placement.js';
+import { TrainingBatch } from '../models/TrainingBatch.js';
 import { ApplicantType, ApplicationStatus, AuthUser, UserRole } from '../types/index.js';
 
 export interface NominateStudentInput {
@@ -19,6 +20,7 @@ export interface NominateStudentInput {
   preferredStartDate?: string;
   preferredEndDate?: string;
   durationWeeks?: number;
+  batchId?: string;
 }
 
 const splitName = (fullName: string) => {
@@ -46,10 +48,38 @@ const resolveUniversityId = (actor: AuthUser, bodyUniversityId?: string): string
   return bodyUniversityId;
 };
 
+const resolveBatchForUniversity = async (universityId: string, batchId?: string) => {
+  if (!batchId) {
+    const err: any = new Error(
+      'Select a Batch No before creating the student. Students arriving together should share one batch.'
+    );
+    err.statusCode = 400;
+    err.code = 'BATCH_REQUIRED';
+    throw err;
+  }
+
+  const batch = await TrainingBatch.findOne({
+    _id: batchId,
+    universityId,
+    status: 'OPEN',
+  }).lean();
+
+  if (!batch) {
+    const err: any = new Error(
+      'The selected batch is unavailable, closed or belongs to a different university.'
+    );
+    err.statusCode = 400;
+    err.code = 'INVALID_BATCH';
+    throw err;
+  }
+
+  return batch;
+};
+
 const toAdminStudentShape = async (student: IStudent, application: IApplication | null) => {
   const user: any = await User.findById(student.userId).select('firstName lastName email phone');
   const university: any = student.universityId ? await University.findById(student.universityId).select('name code') : null;
-  const [documentsCount, placement]: [number, any] = await Promise.all([
+  const [documentsCount, placement, batch]: [number, any, any] = await Promise.all([
     DocumentModel.countDocuments({ studentId: student._id }),
     Placement.findOne({
       studentId: student._id,
@@ -58,6 +88,9 @@ const toAdminStudentShape = async (student: IStudent, application: IApplication 
       .sort({ createdAt: -1 })
       .populate('organizationId', 'name city country')
       .lean(),
+    application?.batchId
+      ? TrainingBatch.findById(application.batchId).select('batchNumber name intakeDate status').lean()
+      : Promise.resolve(null),
   ]);
 
   const applicationStatus = application?.status || ApplicationStatus.SUBMITTED;
@@ -84,6 +117,15 @@ const toAdminStudentShape = async (student: IStudent, application: IApplication 
     email: user?.email || '',
     phone: user?.phone || student.phone || '',
     university: university ? { _id: university._id.toString(), name: university.name, code: university.code } : { _id: '', name: 'University' },
+    batch: batch
+      ? {
+          _id: batch._id.toString(),
+          batchNumber: batch.batchNumber,
+          name: batch.name,
+          intakeDate: batch.intakeDate ? new Date(batch.intakeDate).toISOString() : '',
+          status: batch.status,
+        }
+      : null,
     studyYear: application?.programmeText || '',
     specialty: application?.specialtyText || '',
     status: statusMap[applicationStatus] || 'PENDING',
@@ -139,6 +181,7 @@ export class StudentAdminService {
     }
 
     const universityId = resolveUniversityId(actor, universityIdOverride);
+    const batch = await resolveBatchForUniversity(universityId, input.batchId);
     const email = input.email.trim().toLowerCase();
     const { firstName, lastName } = splitName(input.fullName);
 
@@ -219,6 +262,7 @@ export class StudentAdminService {
     if (application) {
       // Idempotent retry / nomination of an existing student user.
       application.universityId = universityId as any;
+      application.batchId = batch._id as any;
       application.applicantType = ApplicantType.UNIVERSITY;
       application.programmeText = input.academicLevel || input.program;
       application.specialtyText = input.specialty || input.program;
@@ -234,6 +278,7 @@ export class StudentAdminService {
       application = new Application({
         studentId: student._id,
         universityId,
+        batchId: batch._id,
         applicantType: ApplicantType.UNIVERSITY,
         programmeText: input.academicLevel || input.program,
         specialtyText: input.specialty || input.program,
@@ -291,6 +336,10 @@ export class StudentAdminService {
 
     const application = await Application.findOne({ studentId: student._id }).sort({ createdAt: -1 });
     if (application) {
+      if (input.batchId !== undefined) {
+        const batch = await resolveBatchForUniversity(String(student.universityId || ''), input.batchId);
+        application.batchId = batch._id as any;
+      }
       if (input.program !== undefined) application.programmeText = input.academicLevel || input.program;
       if (input.specialty !== undefined || input.program !== undefined) application.specialtyText = input.specialty || input.program;
       if (input.durationWeeks !== undefined) application.durationWeeks = input.durationWeeks;
