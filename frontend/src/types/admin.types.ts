@@ -159,6 +159,13 @@ export interface AdminStudent {
   nationality?: string;
   passportNumber?: string;
   university: { _id: string; name: string; code?: string };
+  batch?: {
+    _id: string;
+    batchNumber: string;
+    name: string;
+    intakeDate?: string;
+    status?: string;
+  } | null;
   studyYear: string;
   specialty: string;
   status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'INACTIVE';
