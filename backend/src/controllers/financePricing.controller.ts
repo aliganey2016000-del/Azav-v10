@@ -260,6 +260,212 @@ export class FinancePricingController {
     }
   }
 
+  static async bulkUniversity(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user || !hasFinanceAdminAccess(req)) {
+        res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Finance pricing access is required' },
+        });
+        return;
+      }
+
+      const universityId = String(req.body?.universityId || '');
+      if (!mongoose.Types.ObjectId.isValid(universityId)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'UNIVERSITY_REQUIRED', message: 'Select a university for service pricing' },
+        });
+        return;
+      }
+
+      const university = await University.findById(universityId).select('_id name code status');
+      if (!university) {
+        res.status(404).json({
+          success: false,
+          error: { code: 'UNIVERSITY_NOT_FOUND', message: 'University not found' },
+        });
+        return;
+      }
+
+      const rawServices = Array.isArray(req.body?.services) ? req.body.services : [];
+      if (!rawServices.length) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'SERVICES_REQUIRED', message: 'Add at least one service price' },
+        });
+        return;
+      }
+
+      const currency = String(req.body?.currency || 'USD').trim().toUpperCase().slice(0, 8) || 'USD';
+      const effectiveFrom = parseDate(req.body?.effectiveFrom);
+      const effectiveTo = parseDate(req.body?.effectiveTo);
+      if (effectiveFrom && effectiveTo && effectiveTo.getTime() < effectiveFrom.getTime()) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_EFFECTIVE_DATES', message: 'Effective To cannot be before Effective From' },
+        });
+        return;
+      }
+
+      const status =
+        String(req.body?.status || 'ACTIVE').toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      const notes = String(req.body?.notes || '').trim() || undefined;
+      const normalizedServices: Array<{
+        serviceCode: string;
+        serviceName: string;
+        category: FeeServiceCategory;
+        amount: number;
+        billingBasis: FeeBillingBasis;
+      }> = [];
+      const seenCodes = new Set<string>();
+
+      for (const raw of rawServices) {
+        const serviceName = String(raw?.serviceName || '').trim();
+        const serviceCode = normalizeCode(raw?.serviceCode || serviceName);
+        const category = String(raw?.category || '').toUpperCase() as FeeServiceCategory;
+        const billingBasis = String(raw?.billingBasis || '').toUpperCase() as FeeBillingBasis;
+        const amount = positiveAmount(raw?.amount);
+
+        if (!serviceName || !serviceCode) {
+          res.status(400).json({
+            success: false,
+            error: { code: 'SERVICE_REQUIRED', message: 'Every service needs a valid name and code' },
+          });
+          return;
+        }
+
+        if (!CATEGORIES.includes(category) || !BILLING_BASES.includes(billingBasis)) {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_RULE',
+              message: `Select a valid category and billing basis for ${serviceName}`,
+            },
+          });
+          return;
+        }
+
+        if (!amount) {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_AMOUNT',
+              message: `Enter an amount greater than zero for ${serviceName}`,
+            },
+          });
+          return;
+        }
+
+        if (seenCodes.has(serviceCode)) {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: 'DUPLICATE_SERVICE',
+              message: `Service ${serviceCode} appears more than once in this price list`,
+            },
+          });
+          return;
+        }
+
+        seenCodes.add(serviceCode);
+        normalizedServices.push({
+          serviceCode,
+          serviceName,
+          category,
+          amount,
+          billingBasis,
+        });
+      }
+
+      const objectUniversityId = new mongoose.Types.ObjectId(universityId);
+      const serviceCodes = normalizedServices.map((service) => service.serviceCode);
+      const beforeRules = await FeeRule.find({
+        scope: 'UNIVERSITY',
+        universityId: objectUniversityId,
+        defaultPayer: 'UNIVERSITY',
+        serviceCode: { $in: serviceCodes },
+      }).lean();
+
+      await FeeRule.bulkWrite(
+        normalizedServices.map((service) => ({
+          updateOne: {
+            filter: {
+              serviceCode: service.serviceCode,
+              scope: 'UNIVERSITY',
+              universityId: objectUniversityId,
+              defaultPayer: 'UNIVERSITY',
+            },
+            update: {
+              $set: {
+                serviceName: service.serviceName,
+                category: service.category,
+                amount: service.amount,
+                currency,
+                billingBasis: service.billingBasis,
+                defaultPayer: 'UNIVERSITY',
+                scope: 'UNIVERSITY',
+                universityId: objectUniversityId,
+                effectiveFrom,
+                effectiveTo,
+                status,
+                notes,
+                createdBy: req.user.userId,
+              },
+            },
+            upsert: true,
+          },
+        })),
+        { ordered: true }
+      );
+
+      const savedRules = await FeeRule.find({
+        scope: 'UNIVERSITY',
+        universityId: objectUniversityId,
+        defaultPayer: 'UNIVERSITY',
+        serviceCode: { $in: serviceCodes },
+      })
+        .populate('universityId', 'name code status')
+        .sort({ serviceName: 1 })
+        .lean();
+
+      await AuditLog.create({
+        actorUserId: req.user.userId,
+        action: 'finance.pricing.bulk_university',
+        entityType: 'University',
+        entityId: university._id,
+        metadata: {
+          universityName: university.name,
+          serviceCount: savedRules.length,
+          serviceCodes,
+        },
+        before: { rules: beforeRules },
+        after: { rules: savedRules },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          university,
+          count: savedRules.length,
+          rules: savedRules,
+        },
+      });
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        res.status(409).json({
+          success: false,
+          error: {
+            code: 'DUPLICATE_FEE_RULE',
+            message: 'One or more university service prices conflict with an existing rule',
+          },
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
   static async update(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user || !hasFinanceAdminAccess(req)) {
