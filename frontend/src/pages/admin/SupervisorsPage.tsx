@@ -54,7 +54,7 @@ const EMPTY_FORM = {
   departmentId: '',
   qualification: '',
   licenseNumber: '',
-  yearsOfExperience: 0,
+  yearsOfExperience: '',
   password: '',
   status: 'ACTIVE',
 };
@@ -227,6 +227,7 @@ export const SupervisorsPage: React.FC = () => {
         phone: form.phone.trim(),
         qualification: form.qualification.trim(),
         licenseNumber: form.licenseNumber.trim(),
+        yearsOfExperience: form.yearsOfExperience === '' ? 0 : Number(form.yearsOfExperience),
       });
 
       setCreateModalOpen(false);
@@ -804,8 +805,9 @@ export const SupervisorsPage: React.FC = () => {
                   max={70}
                   value={form.yearsOfExperience}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, yearsOfExperience: Number(event.target.value) || 0 }))
+                    setForm((current) => ({ ...current, yearsOfExperience: event.target.value }))
                   }
+                  placeholder="Enter years"
                   className="field-control"
                 />
               </Field>
