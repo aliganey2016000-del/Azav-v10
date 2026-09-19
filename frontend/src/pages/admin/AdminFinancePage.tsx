@@ -15,6 +15,7 @@ import {
   ReceiptText,
   RefreshCw,
   RotateCcw,
+  Trash2,
   Search,
   Users,
   WalletCards,
@@ -36,7 +37,9 @@ type FinancePageProps = {
 };
 
 type FinanceForm = {
+  payerType: string;
   userId: string;
+  universityId: string;
   organizationId: string;
   invoiceId: string;
   description: string;
@@ -96,7 +99,9 @@ const CONFIG: Record<FinanceMode, {
 };
 
 const EMPTY_FORM: FinanceForm = {
+  payerType: 'UNIVERSITY',
   userId: '',
+  universityId: '',
   organizationId: '',
   invoiceId: '',
   description: '',
@@ -142,14 +147,15 @@ const asId = (value: any) => {
 
 const accountName = (record: RecordObject) => {
   const user = record.userId;
-  if (!user) return record.organizationId?.name || 'Organization';
+  if (!user) return record.universityId?.name || record.organizationId?.name || 'Account';
   if (typeof user === 'string') return user;
   return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || record.organizationId?.name || 'Account';
 };
 
 const accountEmail = (record: RecordObject) => {
   const user = record.userId;
-  return typeof user === 'object' ? user?.email || '' : '';
+  if (typeof user === 'object' && user?.email) return user.email;
+  return record.universityId?.email || record.organizationId?.contactEmail || '';
 };
 
 const formatMoney = (amount: any, currency = 'USD') => {
@@ -232,8 +238,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
   const [records, setRecords] = useState<RecordObject[]>([]);
   const [users, setUsers] = useState<RecordObject[]>([]);
+  const [universities, setUniversities] = useState<RecordObject[]>([]);
   const [organizations, setOrganizations] = useState<RecordObject[]>([]);
   const [invoices, setInvoices] = useState<RecordObject[]>([]);
+  const [feeRules, setFeeRules] = useState<RecordObject[]>([]);
+  const [invoiceItems, setInvoiceItems] = useState<Array<{ feeRuleId: string; quantity: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -270,12 +279,14 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const loadReferences = async () => {
     setReferenceLoading(true);
     try {
-      const [nextUsers, nextOrganizations, invoiceResponse] = await Promise.all([
+      const [nextUsers, nextUniversities, nextOrganizations, invoiceResponse] = await Promise.all([
         loadAllAdminPages('/admin/users'),
+        loadAllAdminPages('/admin/universities'),
         loadAllAdminPages('/admin/organizations'),
         api.get('/finance', { params: { type: 'FEE' } }),
       ]);
       setUsers(nextUsers);
+      setUniversities(nextUniversities);
       setOrganizations(nextOrganizations);
       setInvoices(asArray(invoiceResponse));
     } catch (requestError: any) {
@@ -346,7 +357,19 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       paidAt: config.type && config.type !== 'FEE' ? toInputDate(new Date()) : '',
     });
     setEditing(null);
+    setInvoiceItems([]);
+    setFeeRules([]);
     setHeaderMenuOpen(false);
+    setInvoiceItems(
+      Array.isArray(record.lineItems)
+        ? record.lineItems
+            .filter((item: RecordObject) => asId(item.feeRuleId))
+            .map((item: RecordObject) => ({
+              feeRuleId: asId(item.feeRuleId),
+              quantity: Number(item.quantity || 1),
+            }))
+        : []
+    );
     setFormOpen(true);
     await loadReferences();
   };
@@ -355,7 +378,9 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setEditing(record);
     setRowMenuId(null);
     setForm({
+      payerType: record.payerType || (record.universityId ? 'UNIVERSITY' : record.organizationId && !record.userId ? 'ORGANIZATION' : 'STUDENT'),
       userId: asId(record.userId),
+      universityId: asId(record.universityId),
       organizationId: asId(record.organizationId),
       invoiceId: asId(record.invoiceId),
       description: record.description || '',
@@ -377,6 +402,8 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     if (saving) return;
     setFormOpen(false);
     setEditing(null);
+    setInvoiceItems([]);
+    setFeeRules([]);
     setForm(EMPTY_FORM);
   };
 
