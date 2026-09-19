@@ -4,26 +4,17 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
-  Clock3,
-  Layers3,
+  FileStack,
   Loader2,
-  RefreshCw,
+  MoreVertical,
   Search,
   Send,
-  Sparkles,
   Users,
+  X,
 } from 'lucide-react';
 import api from '../../services/api';
 
 type RecordObject = Record<string, any>;
-
-type PlannerRow = {
-  title: string;
-  departmentId: string;
-  supervisorId: string;
-  durationDays: number;
-  capacity: number | null;
-};
 
 const asArray = (response: any, key: string): RecordObject[] => {
   const data = response?.data?.data ?? response?.data ?? response;
@@ -37,9 +28,14 @@ const asId = (value: any) => {
   return String(value._id || value.id || '');
 };
 
-const fullName = (student: any) => {
+const studentName = (student: any) => {
   const user = student?.userId;
   return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Student';
+};
+
+const supervisorName = (supervisor: any) => {
+  const user = supervisor?.userId;
+  return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Not assigned';
 };
 
 const isoDay = (value?: string | Date) => {
@@ -53,7 +49,11 @@ const formatDate = (value?: string | Date) => {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
 };
 
 const placementDays = (placement: any) => {
@@ -68,36 +68,44 @@ const durationLabel = (days: number) => {
   return `${days} day${days === 1 ? '' : 's'}`;
 };
 
-const groupCode = (index: number) => {
-  let value = index;
-  let label = '';
-  do {
-    label = String.fromCharCode(65 + (value % 26)) + label;
-    value = Math.floor(value / 26) - 1;
-  } while (value >= 0);
-  return label;
+const rotationStatusClass = (status: string) => {
+  switch (status) {
+    case 'ACTIVE':
+      return 'bg-emerald-50 text-emerald-700';
+    case 'COMPLETED':
+      return 'bg-slate-100 text-slate-600';
+    case 'CANCELLED':
+      return 'bg-rose-50 text-rose-700';
+    default:
+      return 'bg-blue-50 text-blue-700';
+  }
 };
 
 export const AdminRotationsPage: React.FC = () => {
   const [placements, setPlacements] = useState<RecordObject[]>([]);
   const [rotations, setRotations] = useState<RecordObject[]>([]);
   const [templates, setTemplates] = useState<RecordObject[]>([]);
-  const [departments, setDepartments] = useState<RecordObject[]>([]);
-  const [supervisors, setSupervisors] = useState<RecordObject[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+
+  const [rotationSearch, setRotationSearch] = useState('');
+  const [rotationHospitalFilter, setRotationHospitalFilter] = useState('');
+  const [rotationStatusFilter, setRotationStatusFilter] = useState('');
+
   const [universityFilter, setUniversityFilter] = useState('');
   const [programmeFilter, setProgrammeFilter] = useState('');
   const [hospitalFilter, setHospitalFilter] = useState('');
-  const [search, setSearch] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
   const [cohortKey, setCohortKey] = useState('');
   const [selectedPlacementIds, setSelectedPlacementIds] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
-  const [rows, setRows] = useState<PlannerRow[]>([]);
   const [groupCount, setGroupCount] = useState(1);
 
   const loadBase = async () => {
@@ -111,7 +119,7 @@ export const AdminRotationsPage: React.FC = () => {
       setPlacements(asArray(placementResponse, 'placements'));
       setRotations(asArray(rotationResponse, 'rotations'));
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.error?.message || 'Unable to load rotation planning data.');
+      setError(requestError?.response?.data?.error?.message || 'Unable to load rotation data.');
     } finally {
       setLoading(false);
     }
@@ -149,57 +157,86 @@ export const AdminRotationsPage: React.FC = () => {
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [placements]);
 
-  const filteredPlacements = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  const eligiblePlacements = useMemo(() => {
+    const query = studentSearch.trim().toLowerCase();
+
     return placements.filter((placement) => {
+      if (['COMPLETED', 'CANCELLED'].includes(String(placement.status || '').toUpperCase())) return false;
+
       const universityId = asId(placement.studentId?.universityId || placement.applicationId?.universityId);
       const programmeId = asId(placement.studentId?.programmeId || placement.applicationId?.programmeId);
       const organizationId = asId(placement.organizationId);
+
       if (universityFilter && universityId !== universityFilter) return false;
       if (programmeFilter && programmeId !== programmeFilter) return false;
       if (hospitalFilter && organizationId !== hospitalFilter) return false;
+
       if (!query) return true;
 
       const haystack = [
-        fullName(placement.studentId),
+        studentName(placement.studentId),
         placement.studentId?.studentNumber,
         placement.organizationId?.name,
         placement.studentId?.universityId?.name,
         placement.studentId?.programmeId?.name,
-      ].filter(Boolean).join(' ').toLowerCase();
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
       return haystack.includes(query);
     });
-  }, [placements, universityFilter, programmeFilter, hospitalFilter, search]);
+  }, [placements, universityFilter, programmeFilter, hospitalFilter, studentSearch]);
 
   const cohorts = useMemo(() => {
     const map = new Map<string, RecordObject[]>();
-    filteredPlacements.forEach((placement) => {
-      const universityId = asId(placement.studentId?.universityId || placement.applicationId?.universityId) || 'independent';
-      const programmeId = asId(placement.studentId?.programmeId || placement.applicationId?.programmeId) || 'programme';
+
+    eligiblePlacements.forEach((placement) => {
+      const universityId =
+        asId(placement.studentId?.universityId || placement.applicationId?.universityId) || 'independent';
+      const programmeId =
+        asId(placement.studentId?.programmeId || placement.applicationId?.programmeId) || 'programme';
       const organizationId = asId(placement.organizationId);
-      const key = [organizationId, universityId, programmeId, isoDay(placement.startDate), isoDay(placement.endDate)].join('|');
+
+      const key = [
+        organizationId,
+        universityId,
+        programmeId,
+        isoDay(placement.startDate),
+        isoDay(placement.endDate),
+      ].join('|');
+
       const current = map.get(key) || [];
       current.push(placement);
       map.set(key, current);
     });
+
     return Array.from(map.entries())
       .map(([key, items]) => ({ key, items }))
       .sort((a, b) => new Date(b.items[0]?.startDate).getTime() - new Date(a.items[0]?.startDate).getTime());
-  }, [filteredPlacements]);
+  }, [eligiblePlacements]);
 
   const selectedCohort = useMemo(
     () => cohorts.find((cohort) => cohort.key === cohortKey) || null,
     [cohorts, cohortKey]
   );
 
-  const selectedPlacements = useMemo(
-    () => placements.filter((placement) => selectedPlacementIds.includes(asId(placement))),
-    [placements, selectedPlacementIds]
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => asId(template) === selectedTemplateId) || null,
+    [templates, selectedTemplateId]
+  );
+
+  const selectedTemplateDays = useMemo(
+    () =>
+      (selectedTemplate?.items || []).reduce(
+        (sum: number, item: RecordObject) => sum + Math.max(1, Number(item.durationDays) || 1),
+        0
+      ),
+    [selectedTemplate]
   );
 
   const availableDays = selectedCohort?.items?.[0] ? placementDays(selectedCohort.items[0]) : 0;
-  const totalPlanDays = rows.reduce((sum, row) => sum + Math.max(1, Number(row.durationDays) || 1), 0);
-  const planTooLong = availableDays > 0 && totalPlanDays > availableDays;
+  const planTooLong = Boolean(selectedTemplate && availableDays > 0 && selectedTemplateDays > availableDays);
 
   const existingPlanPlacements = useMemo(() => {
     const ids = new Set(selectedPlacementIds);
@@ -213,109 +250,50 @@ export const AdminRotationsPage: React.FC = () => {
   const selectCohort = async (key: string) => {
     setCohortKey(key);
     setSelectedTemplateId('');
-    setRows([]);
-    setSuccess('');
+    setTemplates([]);
     setError('');
+    setSuccess('');
 
     const cohort = cohorts.find((item) => item.key === key);
     if (!cohort) {
       setSelectedPlacementIds([]);
-      setDepartments([]);
-      setSupervisors([]);
-      setTemplates([]);
       return;
     }
 
     const ids = cohort.items.map((placement) => asId(placement));
     setSelectedPlacementIds(ids);
+    setGroupCount(Math.max(1, Math.min(ids.length, 1)));
 
     const organizationId = asId(cohort.items[0]?.organizationId);
     setReferenceLoading(true);
-    try {
-      const [departmentResponse, supervisorResponse, templateResponse] = await Promise.all([
-        api.get(`/organizations/${organizationId}/departments`),
-        api.get(`/organizations/${organizationId}/supervisors`),
-        api.get('/rotations/templates', { params: { organizationId } }),
-      ]);
-      const nextDepartments = asArray(departmentResponse, 'departments');
-      setDepartments(nextDepartments);
-      setSupervisors(asArray(supervisorResponse, 'supervisors'));
-      setTemplates(asArray(templateResponse, 'templates'));
 
-      const days = placementDays(cohort.items[0]);
-      const usableDepartments = nextDepartments.slice(0, Math.max(1, Math.min(nextDepartments.length, days || 1)));
-      if (usableDepartments.length) {
-        const base = Math.floor(days / usableDepartments.length);
-        let remainder = days % usableDepartments.length;
-        const autoRows = usableDepartments.map((department) => {
-          const durationDays = Math.max(1, base + (remainder-- > 0 ? 1 : 0));
-          return {
-            title: department.name || 'Clinical Rotation',
-            departmentId: asId(department),
-            supervisorId: '',
-            durationDays,
-            capacity: null,
-          };
-        });
-        setRows(autoRows);
-        setGroupCount(Math.max(1, Math.min(autoRows.length, ids.length)));
+    try {
+      const templateResponse = await api.get('/rotations/templates', {
+        params: { organizationId },
+      });
+      const nextTemplates = asArray(templateResponse, 'templates');
+      setTemplates(nextTemplates);
+
+      if (nextTemplates.length === 1) {
+        const onlyTemplate = nextTemplates[0];
+        setSelectedTemplateId(asId(onlyTemplate));
+        const rotationsCount = Math.max(1, Number(onlyTemplate.items?.length || 1));
+        setGroupCount(Math.max(1, Math.min(rotationsCount, ids.length || 1)));
       }
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.error?.message || 'Unable to load hospital departments and supervisors.');
+      setError(requestError?.response?.data?.error?.message || 'Unable to load hospital rotation templates.');
     } finally {
       setReferenceLoading(false);
     }
   };
 
-  const useTemplate = (templateId: string) => {
+  const chooseTemplate = (templateId: string) => {
     setSelectedTemplateId(templateId);
     const template = templates.find((item) => asId(item) === templateId);
-    if (!template) return;
-    const nextRows = (template.items || []).map((item: any) => ({
-      title: item.title || item.departmentId?.name || 'Rotation',
-      departmentId: asId(item.departmentId),
-      supervisorId: asId(item.supervisorId),
-      durationDays: Number(item.durationDays) || 1,
-      capacity: item.capacity == null ? null : Number(item.capacity),
-    }));
-    setRows(nextRows);
-    setGroupCount(Math.max(1, Math.min(nextRows.length, selectedPlacementIds.length || 1)));
-  };
-
-  const autoBuild = () => {
-    if (!selectedCohort || !departments.length) return;
-    const days = placementDays(selectedCohort.items[0]);
-    const usable = departments.slice(0, Math.max(1, Math.min(departments.length, days || 1)));
-    const base = Math.floor(days / usable.length);
-    let remainder = days % usable.length;
-    const nextRows = usable.map((department) => ({
-      title: department.name || 'Clinical Rotation',
-      departmentId: asId(department),
-      supervisorId: '',
-      durationDays: Math.max(1, base + (remainder-- > 0 ? 1 : 0)),
-      capacity: null,
-    }));
-    setSelectedTemplateId('');
-    setRows(nextRows);
-    setGroupCount(Math.max(1, Math.min(nextRows.length, selectedPlacementIds.length || 1)));
-  };
-
-  const updateRow = (index: number, patch: Partial<PlannerRow>) => {
-    setRows((current) => current.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
-  };
-
-  const addRow = () => {
-    const remaining = Math.max(1, availableDays - totalPlanDays);
-    setRows((current) => [
-      ...current,
-      { title: `Rotation ${current.length + 1}`, departmentId: '', supervisorId: '', durationDays: remaining, capacity: null },
-    ]);
-  };
-
-  const removeRow = (index: number) => {
-    const next = rows.filter((_, rowIndex) => rowIndex !== index);
-    setRows(next);
-    setGroupCount((current) => Math.max(1, Math.min(current, next.length || 1, selectedPlacementIds.length || 1)));
+    const rotationsCount = Math.max(1, Number(template?.items?.length || 1));
+    setGroupCount((current) =>
+      Math.max(1, Math.min(current, rotationsCount, selectedPlacementIds.length || 1))
+    );
   };
 
   const togglePlacement = (placementId: string) => {
@@ -323,290 +301,716 @@ export const AdminRotationsPage: React.FC = () => {
       const next = current.includes(placementId)
         ? current.filter((id) => id !== placementId)
         : [...current, placementId];
-      setGroupCount((groups) => Math.max(1, Math.min(groups, rows.length || 1, next.length || 1)));
+
+      const maxGroups = Math.max(
+        1,
+        Math.min(selectedTemplate?.items?.length || 1, next.length || 1)
+      );
+      setGroupCount((groups) => Math.max(1, Math.min(groups, maxGroups)));
+
       return next;
     });
   };
 
-  const previewGroups = useMemo(() => {
-    const count = Math.max(1, Math.min(groupCount, rows.length || 1, selectedPlacementIds.length || 1));
-    const sizes = Array.from({ length: count }, (_, index) =>
-      Math.floor(selectedPlacementIds.length / count) + (index < selectedPlacementIds.length % count ? 1 : 0)
-    );
-    return sizes.map((studentCount, index) => ({
-      code: groupCode(index),
-      studentCount,
-      items: rows.map((_, sequence) => rows[(sequence + index) % rows.length]).filter(Boolean),
-    }));
-  }, [groupCount, rows, selectedPlacementIds.length]);
+  const resetAssignFlow = () => {
+    setUniversityFilter('');
+    setProgrammeFilter('');
+    setHospitalFilter('');
+    setStudentSearch('');
+    setCohortKey('');
+    setSelectedPlacementIds([]);
+    setSelectedTemplateId('');
+    setTemplates([]);
+    setGroupCount(1);
+  };
 
-  const capacityProblem = useMemo(() => {
-    if (!previewGroups.length) return '';
-    const largest = Math.max(...previewGroups.map((group) => group.studentCount));
-    const limited = rows.find((row) => row.capacity != null && largest > Number(row.capacity));
-    return limited ? `Largest group has ${largest} students, but ${limited.title} capacity is ${limited.capacity}.` : '';
-  }, [previewGroups, rows]);
+  const openAssignModal = () => {
+    resetAssignFlow();
+    setError('');
+    setSuccess('');
+    setActionMenuOpen(false);
+    setAssignModalOpen(true);
+  };
+
+  const closeAssignModal = () => {
+    if (publishing) return;
+    setAssignModalOpen(false);
+    resetAssignFlow();
+  };
 
   const publish = async () => {
-    if (!selectedPlacementIds.length || !rows.length || planTooLong || capacityProblem) return;
+    if (!selectedTemplate || !selectedPlacementIds.length || planTooLong) return;
+
     setPublishing(true);
     setError('');
     setSuccess('');
+
     try {
       const response = await api.post('/rotations/batch', {
         placementIds: selectedPlacementIds,
-        items: rows.map((row) => ({
-          title: row.title,
-          departmentId: row.departmentId,
-          supervisorId: row.supervisorId || null,
-          durationDays: Number(row.durationDays),
-          capacity: row.capacity,
+        items: (selectedTemplate.items || []).map((item: any) => ({
+          title: item.title || item.departmentId?.name || 'Clinical Rotation',
+          departmentId: asId(item.departmentId),
+          supervisorId: asId(item.supervisorId) || null,
+          durationDays: Number(item.durationDays),
+          capacity: item.capacity == null ? null : Number(item.capacity),
         })),
         groupCount,
         replaceExisting: existingPlanPlacements > 0,
-        templateId: selectedTemplateId || null,
+        templateId: selectedTemplateId,
       });
+
       const data = response.data?.data;
-      setSuccess(`Published ${data?.studentCount || selectedPlacementIds.length} student schedules in ${data?.groupCount || groupCount} groups.`);
       await loadBase();
+      setAssignModalOpen(false);
+      resetAssignFlow();
+      setSuccess(
+        `Assigned ${data?.studentCount || selectedPlacementIds.length} student schedule(s) successfully.`
+      );
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.error?.message || 'Unable to publish the batch rotation plan.');
+      setError(requestError?.response?.data?.error?.message || 'Unable to assign the rotation template.');
     } finally {
       setPublishing(false);
     }
   };
 
+  const rotationHospitals = useMemo(() => {
+    const map = new Map<string, string>();
+    rotations.forEach((rotation) => {
+      if (rotation.organizationId?._id) {
+        map.set(asId(rotation.organizationId), rotation.organizationId.name || 'Hospital');
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rotations]);
+
+  const filteredRotations = useMemo(() => {
+    const query = rotationSearch.trim().toLowerCase();
+
+    return rotations.filter((rotation) => {
+      if (
+        rotationHospitalFilter &&
+        asId(rotation.organizationId) !== rotationHospitalFilter
+      ) {
+        return false;
+      }
+
+      if (rotationStatusFilter && rotation.status !== rotationStatusFilter) return false;
+
+      if (!query) return true;
+
+      const haystack = [
+        studentName(rotation.studentId),
+        rotation.studentId?.studentNumber,
+        rotation.organizationId?.name,
+        rotation.departmentId?.name,
+        supervisorName(rotation.supervisorId),
+        rotation.title,
+        rotation.templateId?.name,
+        rotation.groupCode,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [rotations, rotationSearch, rotationHospitalFilter, rotationStatusFilter]);
+
+  const rotationStudents = useMemo(
+    () => new Set(rotations.map((rotation) => asId(rotation.studentId)).filter(Boolean)).size,
+    [rotations]
+  );
+
+  const activeRotations = rotations.filter((rotation) => rotation.status === 'ACTIVE').length;
+
+  const assignedHospitals = useMemo(
+    () => new Set(rotations.map((rotation) => asId(rotation.organizationId)).filter(Boolean)).size,
+    [rotations]
+  );
+
   const first = selectedCohort?.items?.[0];
-  const universityName = first?.studentId?.universityId?.name || first?.applicationId?.universityId?.name || 'Independent';
-  const programmeName = first?.studentId?.programmeId?.name || first?.applicationId?.programmeId?.name || 'Programme';
+  const universityName =
+    first?.studentId?.universityId?.name ||
+    first?.applicationId?.universityId?.name ||
+    'Independent';
+  const programmeName =
+    first?.studentId?.programmeId?.name ||
+    first?.applicationId?.programmeId?.name ||
+    'Programme';
   const hospitalName = first?.organizationId?.name || 'Hospital';
+
+  const maxGroups = Math.max(
+    1,
+    Math.min(selectedTemplate?.items?.length || 1, selectedPlacementIds.length || 1)
+  );
 
   return (
     <div className="space-y-5 pb-10">
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-700">Clinical Training</p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Batch Rotation Planner</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-          Select one placement cohort, build the rotation once, and publish individualized schedules to every selected student.
-        </p>
+      <section className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="pr-14">
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-700">
+            Clinical Training
+          </p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+            Batch Rotation Planner
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+            Assign saved rotation templates to eligible student placement cohorts and review published schedules.
+          </p>
+        </div>
+
+        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <button
+            type="button"
+            aria-label="Rotation planner actions"
+            aria-expanded={actionMenuOpen}
+            onClick={() => setActionMenuOpen((current) => !current)}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+          >
+            <MoreVertical className="h-5 w-5" />
+          </button>
+
+          {actionMenuOpen && (
+            <div className="absolute right-0 top-12 z-30 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl">
+              <button
+                type="button"
+                onClick={openAssignModal}
+                className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-black text-blue-700 transition hover:bg-blue-50"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                  <Send className="h-4 w-4" />
+                </span>
+                Assign Rotation
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
-      {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</div>}
-      {success && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{success}</div>}
+      {error && !assignModalOpen && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+          {error}
+        </div>
+      )}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Search className="h-4 w-4" /></div>
-          <div>
-            <h2 className="text-sm font-black text-slate-950">1. Find Placement Cohort</h2>
-            <p className="text-xs text-slate-500">Filter once instead of selecting students one by one.</p>
+      {success && !assignModalOpen && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+          {success}
+        </div>
+      )}
+
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard icon={<FileStack className="h-5 w-5" />} label="Rotation Records" value={loading ? '—' : String(rotations.length)} />
+        <StatCard icon={<Users className="h-5 w-5" />} label="Students Assigned" value={loading ? '—' : String(rotationStudents)} />
+        <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Active Rotations" value={loading ? '—' : String(activeRotations)} />
+        <StatCard icon={<Building2 className="h-5 w-5" />} label="Hospitals" value={loading ? '—' : String(assignedHospitals)} />
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 p-4 sm:p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-sm font-black text-slate-950">Assigned Rotations</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Published student rotation schedules from the live database.
+              </p>
+            </div>
+
+            <div className="grid w-full gap-2 sm:grid-cols-3 lg:w-auto lg:min-w-[760px]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="search"
+                  value={rotationSearch}
+                  onChange={(event) => setRotationSearch(event.target.value)}
+                  placeholder="Search student, department..."
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white"
+                />
+              </div>
+
+              <FilterSelect
+                value={rotationHospitalFilter}
+                onChange={setRotationHospitalFilter}
+                placeholder="All Hospitals"
+                options={rotationHospitals}
+              />
+
+              <div className="relative">
+                <select
+                  value={rotationStatusFilter}
+                  onChange={(event) => setRotationStatusFilter(event.target.value)}
+                  className="min-h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-9 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white"
+                >
+                  <option value="">All Status</option>
+                  <option value="UPCOMING">Upcoming</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Select label="University" value={universityFilter} onChange={(value) => { setUniversityFilter(value); setCohortKey(''); }}>
-            <option value="">All universities</option>
-            {universityOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </Select>
-          <Select label="Programme" value={programmeFilter} onChange={(value) => { setProgrammeFilter(value); setCohortKey(''); }}>
-            <option value="">All programmes</option>
-            {programmeOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </Select>
-          <Select label="Hospital" value={hospitalFilter} onChange={(value) => { setHospitalFilter(value); setCohortKey(''); }}>
-            <option value="">All hospitals</option>
-            {hospitalOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </Select>
-          <label>
-            <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Search Student</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name or Student ID" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none focus:border-blue-500" />
-          </label>
-        </div>
-
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {loading ? (
-            <div className="col-span-full flex items-center justify-center gap-2 py-8 text-sm font-bold text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Loading placements...</div>
-          ) : cohorts.length === 0 ? (
-            <div className="col-span-full rounded-2xl bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">No matching placement cohort found.</div>
-          ) : cohorts.map((cohort) => {
-            const placement = cohort.items[0];
-            const selected = cohort.key === cohortKey;
-            return (
-              <button key={cohort.key} type="button" onClick={() => void selectCohort(cohort.key)} className={`rounded-2xl border p-4 text-left transition ${selected ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 hover:border-blue-200'}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-slate-950">{placement.organizationId?.name || 'Hospital'}</p>
-                    <p className="mt-1 truncate text-xs font-semibold text-slate-500">{placement.studentId?.universityId?.name || placement.applicationId?.universityId?.name || 'Independent'} · {placement.studentId?.programmeId?.name || placement.applicationId?.programmeId?.name || 'Programme'}</p>
-                  </div>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-blue-700">{cohort.items.length} students</span>
-                </div>
-                <div className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-500"><CalendarDays className="h-4 w-4 text-blue-500" />{formatDate(placement.startDate)} — {formatDate(placement.endDate)} · {placementDays(placement)} days</div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {selectedCohort && (
-        <>
-          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-black text-slate-950">2. Students in this Cohort</h2>
-                <p className="mt-1 text-xs text-slate-500">{universityName} · {programmeName} · {hospitalName}</p>
-              </div>
-              <button type="button" onClick={() => setSelectedPlacementIds(selectedCohort.items.map((item) => asId(item)))} className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">Select All</button>
-            </div>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {selectedCohort.items.map((placement) => {
-                const id = asId(placement);
-                const checked = selectedPlacementIds.includes(id);
-                return (
-                  <button key={id} type="button" onClick={() => togglePlacement(id)} className={`flex items-center gap-3 rounded-xl border p-3 text-left ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
-                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${checked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300'}`}>{checked && <Check className="h-4 w-4" />}</span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-black text-slate-900">{fullName(placement.studentId)}</span>
-                      <span className="block truncate text-[10px] font-semibold text-slate-500">{placement.studentId?.studentNumber || 'No Student ID'}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-black text-slate-950">3. Build One Rotation Plan</h2>
-                <p className="mt-1 text-xs text-slate-500">Placement period: {availableDays} days. The planner never defaults beyond this period.</p>
-              </div>
-              <button type="button" onClick={autoBuild} disabled={referenceLoading || !departments.length} className="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2 text-xs font-black text-violet-700 disabled:opacity-40"><Sparkles className="h-4 w-4" />Auto Build</button>
-            </div>
-
-            <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
-              <Select label="Use Rotation Template" value={selectedTemplateId} onChange={useTemplate}>
-                <option value="">Custom / Auto plan</option>
-                {templates.map((template) => <option key={asId(template)} value={asId(template)}>{template.name}</option>)}
-              </Select>
-              <button type="button" onClick={addRow} className="mt-5 min-h-11 rounded-xl border border-blue-200 bg-blue-50 px-4 text-xs font-black text-blue-700">+ Add Rotation</button>
-            </div>
-
-            {referenceLoading ? (
-              <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 p-4 text-xs font-bold text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Loading hospital departments...</div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {rows.map((row, index) => (
-                  <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white">{index + 1}</div>
-                      <button type="button" disabled={rows.length <= 1} onClick={() => removeRow(index)} className="text-xs font-black text-rose-500 disabled:opacity-30">Remove</button>
-                    </div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                      <label>
-                        <span className="text-[10px] font-black uppercase text-slate-500">Rotation</span>
-                        <input value={row.title} onChange={(event) => updateRow(index, { title: event.target.value })} className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none focus:border-blue-500" />
-                      </label>
-                      <Select label="Department" value={row.departmentId} onChange={(value) => {
-                        const department = departments.find((item) => asId(item) === value);
-                        updateRow(index, { departmentId: value, title: department?.name || row.title });
-                      }}>
-                        <option value="">Select department</option>
-                        {departments.map((department) => <option key={asId(department)} value={asId(department)}>{department.name}</option>)}
-                      </Select>
-                      <Select label="Supervisor" value={row.supervisorId} onChange={(value) => updateRow(index, { supervisorId: value })}>
-                        <option value="">Optional supervisor</option>
-                        {supervisors.map((supervisor) => {
-                          const user = supervisor.userId;
-                          const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Supervisor';
-                          return <option key={asId(supervisor)} value={asId(supervisor)}>{name}</option>;
-                        })}
-                      </Select>
-                      <label>
-                        <span className="text-[10px] font-black uppercase text-slate-500">Duration (days)</span>
-                        <input type="number" min={1} max={365} value={row.durationDays} onChange={(event) => updateRow(index, { durationDays: Math.max(1, Number(event.target.value) || 1) })} className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold outline-none focus:border-blue-500" />
-                      </label>
-                      <label>
-                        <span className="text-[10px] font-black uppercase text-slate-500">Capacity</span>
-                        <input type="number" min={1} placeholder="No limit" value={row.capacity ?? ''} onChange={(event) => updateRow(index, { capacity: event.target.value ? Math.max(1, Number(event.target.value)) : null })} className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold outline-none focus:border-blue-500" />
-                      </label>
-                    </div>
-                    <div className="mt-2 text-[11px] font-bold text-slate-500">{durationLabel(row.durationDays)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className={`mt-4 rounded-2xl border p-4 ${planTooLong ? 'border-amber-300 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
-              <div className="flex items-center justify-between gap-3 text-xs font-black">
-                <span className={planTooLong ? 'text-amber-800' : 'text-emerald-800'}>Plan length</span>
-                <span className={planTooLong ? 'text-amber-800' : 'text-emerald-800'}>{totalPlanDays} / {availableDays} days</span>
-              </div>
-              {planTooLong && <p className="mt-1 text-xs font-semibold text-amber-800">Reduce the rotation durations before publishing.</p>}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <div className="flex items-center gap-2">
-              <Layers3 className="h-5 w-5 text-blue-600" />
-              <div>
-                <h2 className="text-sm font-black text-slate-950">4. Auto Groups & Rotation Matrix</h2>
-                <p className="text-xs text-slate-500">Students are balanced automatically. Every group starts in a different department.</p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <Info label="Selected Students" value={String(selectedPlacementIds.length)} icon={<Users className="h-4 w-4" />} />
-              <label className="rounded-2xl border border-slate-200 p-3">
-                <span className="text-[10px] font-black uppercase text-slate-500">Number of Groups</span>
-                <input type="number" min={1} max={Math.max(1, Math.min(rows.length || 1, selectedPlacementIds.length || 1))} value={groupCount} onChange={(event) => setGroupCount(Math.max(1, Math.min(Number(event.target.value) || 1, rows.length || 1, selectedPlacementIds.length || 1)))} className="mt-1 w-full bg-transparent text-xl font-black text-slate-950 outline-none" />
-              </label>
-              <Info label="Largest Group" value={String(previewGroups.length ? Math.max(...previewGroups.map((group) => group.studentCount)) : 0)} icon={<Users className="h-4 w-4" />} />
-            </div>
-
-            {capacityProblem && <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">{capacityProblem}</div>}
-
-            <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-              <table className="min-w-[720px] w-full text-left text-xs">
-                <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-14 text-sm font-bold text-slate-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading rotations...
+          </div>
+        ) : filteredRotations.length === 0 ? (
+          <div className="px-5 py-14 text-center">
+            <CalendarDays className="mx-auto h-10 w-10 text-slate-300" />
+            <p className="mt-3 text-sm font-black text-slate-700">No assigned rotations found</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Use the three-dot menu above and choose Assign Rotation.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[1080px] text-left text-xs">
+                <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
                   <tr>
-                    <th className="px-3 py-3">Group</th>
-                    <th className="px-3 py-3">Students</th>
-                    {rows.map((_, index) => <th key={index} className="px-3 py-3">Period {index + 1}</th>)}
+                    <th className="px-4 py-3.5">Student</th>
+                    <th className="px-4 py-3.5">Hospital</th>
+                    <th className="px-4 py-3.5">Rotation</th>
+                    <th className="px-4 py-3.5">Department</th>
+                    <th className="px-4 py-3.5">Supervisor</th>
+                    <th className="px-4 py-3.5">Period</th>
+                    <th className="px-4 py-3.5">Group</th>
+                    <th className="px-4 py-3.5">Status</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {previewGroups.map((group) => (
-                    <tr key={group.code} className="border-t border-slate-100">
-                      <td className="px-3 py-3"><span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-black text-white">{group.code}</span></td>
-                      <td className="px-3 py-3 font-black text-slate-800">{group.studentCount}</td>
-                      {group.items.map((item, index) => <td key={index} className="px-3 py-3"><div className="font-black text-slate-800">{item.title}</div><div className="mt-0.5 text-[10px] font-semibold text-slate-500">{durationLabel(item.durationDays)}</div></td>)}
+                <tbody className="divide-y divide-slate-100">
+                  {filteredRotations.map((rotation) => (
+                    <tr key={asId(rotation)} className="transition hover:bg-blue-50/30">
+                      <td className="px-4 py-3.5">
+                        <div className="font-black text-slate-900">{studentName(rotation.studentId)}</div>
+                        <div className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                          {rotation.studentId?.studentNumber || rotation.studentId?.userId?.email || 'Student'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 font-bold text-slate-700">
+                        {rotation.organizationId?.name || 'Hospital'}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="font-black text-slate-900">{rotation.title}</div>
+                        <div className="mt-0.5 text-[10px] font-semibold text-violet-600">
+                          {rotation.templateId?.name || `Sequence ${rotation.sequence || '—'}`}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 font-bold text-slate-700">
+                        {rotation.departmentId?.name || 'Not assigned'}
+                      </td>
+                      <td className="px-4 py-3.5 font-semibold text-slate-600">
+                        {supervisorName(rotation.supervisorId)}
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap font-semibold text-slate-600">
+                        {formatDate(rotation.startDate)} — {formatDate(rotation.endDate)}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="inline-flex min-w-8 justify-center rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">
+                          {rotation.groupCode || '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${rotationStatusClass(rotation.status)}`}>
+                          {rotation.status || 'UPCOMING'}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid gap-3 p-3 md:hidden">
+              {filteredRotations.map((rotation) => (
+                <article key={asId(rotation)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-black text-slate-950">
+                        {studentName(rotation.studentId)}
+                      </h3>
+                      <p className="mt-1 truncate text-xs font-bold text-blue-700">
+                        {rotation.title}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${rotationStatusClass(rotation.status)}`}>
+                      {rotation.status || 'UPCOMING'}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <MobileInfo label="Hospital" value={rotation.organizationId?.name || 'Hospital'} />
+                    <MobileInfo label="Department" value={rotation.departmentId?.name || 'Not assigned'} />
+                    <MobileInfo label="Supervisor" value={supervisorName(rotation.supervisorId)} />
+                    <MobileInfo label="Group" value={rotation.groupCode || '—'} />
+                  </div>
+
+                  <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Period</div>
+                    <div className="mt-1 text-xs font-black text-slate-800">
+                      {formatDate(rotation.startDate)} — {formatDate(rotation.endDate)}
+                    </div>
+                  </div>
+
+                  {rotation.templateId?.name && (
+                    <p className="mt-3 truncate text-[10px] font-bold text-violet-700">
+                      Template: {rotation.templateId.name}
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {assignModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <button
+            type="button"
+            aria-label="Close assign rotation modal"
+            className="absolute inset-0 cursor-default"
+            onClick={closeAssignModal}
+          />
+
+          <div className="relative z-10 flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-6xl sm:rounded-3xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
               <div>
-                <h2 className="text-sm font-black text-slate-950">5. Publish to Students</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700">
+                  Rotation Assignment
+                </p>
+                <h2 className="mt-1 text-xl font-black text-slate-950">Assign Rotation</h2>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  {existingPlanPlacements > 0
-                    ? `${existingPlanPlacements} selected student(s) already have rotation plans; publishing will replace those plans.`
-                    : 'University and students will see the schedules immediately after publishing.'}
+                  Select a placement cohort, choose a saved template, select students and assign schedules.
                 </p>
               </div>
-              <button type="button" onClick={() => void publish()} disabled={publishing || !selectedPlacementIds.length || !rows.length || planTooLong || Boolean(capacityProblem) || rows.some((row) => !row.departmentId)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">
-                {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Publish {selectedPlacementIds.length} Schedules
+
+              <button
+                type="button"
+                disabled={publishing}
+                onClick={closeAssignModal}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </section>
-        </>
-      )}
 
-      <button type="button" onClick={() => void loadBase()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 shadow-sm"><RefreshCw className="h-4 w-4" />Refresh Data</button>
+            <div className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+              {error && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
+                  {error}
+                </div>
+              )}
+
+              <section className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-xs font-black text-blue-700">
+                    1
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">Select Placement Cohort</h3>
+                    <p className="text-xs text-slate-500">Choose students who share the same hospital and placement period.</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <Select
+                    label="University"
+                    value={universityFilter}
+                    onChange={(value) => {
+                      setUniversityFilter(value);
+                      setCohortKey('');
+                    }}
+                  >
+                    <option value="">All universities</option>
+                    {universityOptions.map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
+                    ))}
+                  </Select>
+
+                  <Select
+                    label="Programme"
+                    value={programmeFilter}
+                    onChange={(value) => {
+                      setProgrammeFilter(value);
+                      setCohortKey('');
+                    }}
+                  >
+                    <option value="">All programmes</option>
+                    {programmeOptions.map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
+                    ))}
+                  </Select>
+
+                  <Select
+                    label="Hospital"
+                    value={hospitalFilter}
+                    onChange={(value) => {
+                      setHospitalFilter(value);
+                      setCohortKey('');
+                    }}
+                  >
+                    <option value="">All hospitals</option>
+                    {hospitalOptions.map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
+                    ))}
+                  </Select>
+
+                  <label>
+                    <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Search Student</span>
+                    <input
+                      value={studentSearch}
+                      onChange={(event) => setStudentSearch(event.target.value)}
+                      placeholder="Name or Student ID"
+                      className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                  {cohorts.length === 0 ? (
+                    <div className="col-span-full rounded-xl bg-slate-50 p-5 text-center text-xs font-semibold text-slate-500">
+                      No matching placement cohort found.
+                    </div>
+                  ) : (
+                    cohorts.map((cohort) => {
+                      const placement = cohort.items[0];
+                      const selected = cohort.key === cohortKey;
+
+                      return (
+                        <button
+                          key={cohort.key}
+                          type="button"
+                          onClick={() => void selectCohort(cohort.key)}
+                          className={`rounded-2xl border p-4 text-left transition ${selected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-200'}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black text-slate-950">
+                                {placement.organizationId?.name || 'Hospital'}
+                              </p>
+                              <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+                                {placement.studentId?.universityId?.name || placement.applicationId?.universityId?.name || 'Independent'}
+                                {' · '}
+                                {placement.studentId?.programmeId?.name || placement.applicationId?.programmeId?.name || 'Programme'}
+                              </p>
+                            </div>
+
+                            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-blue-700">
+                              {cohort.items.length} students
+                            </span>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-500">
+                            <CalendarDays className="h-4 w-4 text-blue-500" />
+                            {formatDate(placement.startDate)} — {formatDate(placement.endDate)} · {placementDays(placement)} days
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+
+              {selectedCohort && (
+                <>
+                  <section className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 text-xs font-black text-violet-700">
+                        2
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">Choose Rotation Template</h3>
+                        <p className="text-xs text-slate-500">
+                          {hospitalName} · {universityName} · {programmeName}
+                        </p>
+                      </div>
+                    </div>
+
+                    {referenceLoading ? (
+                      <div className="mt-4 flex items-center gap-2 rounded-xl bg-slate-50 p-4 text-xs font-bold text-slate-500">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading rotation templates...
+                      </div>
+                    ) : templates.length === 0 ? (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-800">
+                        No saved rotation template exists for this hospital. Create one from Rotation Templates first.
+                      </div>
+                    ) : (
+                      <div className="mt-4">
+                        <Select label="Rotation Template *" value={selectedTemplateId} onChange={chooseTemplate}>
+                          <option value="">Select template</option>
+                          {templates.map((template) => (
+                            <option key={asId(template)} value={asId(template)}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </Select>
+
+                        {selectedTemplate && (
+                          <div className="mt-3 rounded-2xl bg-violet-50/60 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-black text-slate-900">{selectedTemplate.name}</p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {selectedTemplate.items?.length || 0} rotations · {selectedTemplateDays} total days
+                                </p>
+                              </div>
+                              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-violet-700">
+                                Placement: {availableDays} days
+                              </span>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {(selectedTemplate.items || []).map((item: any, index: number) => (
+                                <span
+                                  key={index}
+                                  className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-slate-600"
+                                >
+                                  {item.title || item.departmentId?.name} · {durationLabel(Number(item.durationDays) || 1)}
+                                </span>
+                              ))}
+                            </div>
+
+                            {planTooLong && (
+                              <p className="mt-3 text-xs font-bold text-rose-700">
+                                This template is longer than the selected placement period.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-xs font-black text-emerald-700">
+                          3
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900">Select Students</h3>
+                          <p className="text-xs text-slate-500">
+                            {selectedPlacementIds.length} of {selectedCohort.items.length} selected
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedPlacementIds(selectedCohort.items.map((item) => asId(item)))
+                        }
+                        className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700"
+                      >
+                        Select All
+                      </button>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {selectedCohort.items.map((placement) => {
+                        const id = asId(placement);
+                        const checked = selectedPlacementIds.includes(id);
+
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => togglePlacement(id)}
+                            className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${checked ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}
+                          >
+                            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${checked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300'}`}>
+                              {checked && <Check className="h-4 w-4" />}
+                            </span>
+
+                            <span className="min-w-0">
+                              <span className="block truncate text-xs font-black text-slate-900">
+                                {studentName(placement.studentId)}
+                              </span>
+                              <span className="block truncate text-[10px] font-semibold text-slate-500">
+                                {placement.studentId?.studentNumber || 'No Student ID'}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  <section className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-50 text-xs font-black text-cyan-700">
+                        4
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900">Confirm Assignment</h3>
+                        <p className="text-xs text-slate-500">Review the group setting before assigning schedules.</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <SummaryBox label="Selected Students" value={String(selectedPlacementIds.length)} />
+                      <SummaryBox label="Template" value={selectedTemplate?.name || 'Not selected'} />
+                      <label className="rounded-2xl border border-slate-200 p-3">
+                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Number of Groups</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxGroups}
+                          value={groupCount}
+                          onChange={(event) =>
+                            setGroupCount(Math.max(1, Math.min(Number(event.target.value) || 1, maxGroups)))
+                          }
+                          className="mt-1 w-full bg-transparent text-xl font-black text-slate-950 outline-none"
+                        />
+                      </label>
+                    </div>
+
+                    {existingPlanPlacements > 0 && (
+                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+                        {existingPlanPlacements} selected student(s) already have rotation plans. Assigning will replace those plans.
+                      </div>
+                    )}
+                  </section>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <button
+                type="button"
+                disabled={publishing}
+                onClick={closeAssignModal}
+                className="min-h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  publishing ||
+                  !selectedCohort ||
+                  !selectedTemplate ||
+                  !selectedPlacementIds.length ||
+                  planTooLong
+                }
+                onClick={() => void publish()}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 text-sm font-black text-white shadow-lg shadow-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {publishing ? 'Assigning...' : `Assign ${selectedPlacementIds.length} Student${selectedPlacementIds.length === 1 ? '' : 's'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -620,7 +1024,11 @@ const Select: React.FC<{
   <label>
     <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</span>
     <div className="relative mt-1">
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-9 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-9 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500"
+      >
         {children}
       </select>
       <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
@@ -628,9 +1036,53 @@ const Select: React.FC<{
   </label>
 );
 
-const Info: React.FC<{ label: string; value: string; icon: React.ReactNode }> = ({ label, value, icon }) => (
+const FilterSelect: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  options: [string, string][];
+}> = ({ value, onChange, placeholder, options }) => (
+  <div className="relative">
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="min-h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-9 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:bg-white"
+    >
+      <option value="">{placeholder}</option>
+      {options.map(([id, label]) => (
+        <option key={id} value={id}>{label}</option>
+      ))}
+    </select>
+    <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
+  </div>
+);
+
+const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({
+  icon,
+  label,
+  value,
+}) => (
+  <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+      {icon}
+    </div>
+    <p className="mt-4 text-2xl font-black text-slate-950 sm:text-3xl">{value}</p>
+    <p className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-400 sm:text-xs">
+      {label}
+    </p>
+  </article>
+);
+
+const MobileInfo: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="rounded-xl bg-slate-50 p-3">
+    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{label}</div>
+    <div className="mt-1 truncate text-xs font-black text-slate-800">{value}</div>
+  </div>
+);
+
+const SummaryBox: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="rounded-2xl border border-slate-200 p-3">
-    <div className="flex items-center gap-1.5 text-blue-600">{icon}<span className="text-[10px] font-black uppercase">{label}</span></div>
-    <div className="mt-1 text-xl font-black text-slate-950">{value}</div>
+    <div className="text-[10px] font-black uppercase tracking-wide text-slate-500">{label}</div>
+    <div className="mt-1 truncate text-sm font-black text-slate-950">{value}</div>
   </div>
 );
