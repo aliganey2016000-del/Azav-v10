@@ -32,6 +32,7 @@ export interface IInvoiceLineItem {
 export interface IPayment extends Document {
   userId?: mongoose.Types.ObjectId | null;
   universityId?: mongoose.Types.ObjectId | null;
+  batchId?: mongoose.Types.ObjectId | null;
   applicationId?: mongoose.Types.ObjectId | null;
   organizationId?: mongoose.Types.ObjectId | null;
   payerType?: FinancePayerType;
@@ -76,6 +77,7 @@ const PaymentSchema = new Schema<IPayment>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     universityId: { type: Schema.Types.ObjectId, ref: 'University', default: null, index: true },
+    batchId: { type: Schema.Types.ObjectId, ref: 'TrainingBatch', default: null, index: true },
     applicationId: { type: Schema.Types.ObjectId, ref: 'Application', default: null, index: true },
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', default: null, index: true },
     payerType: {
@@ -122,6 +124,7 @@ const PaymentSchema = new Schema<IPayment>(
 PaymentSchema.index({ type: 1, status: 1, createdAt: -1 });
 PaymentSchema.index({ userId: 1, createdAt: -1 });
 PaymentSchema.index({ universityId: 1, type: 1, createdAt: -1 });
+PaymentSchema.index({ batchId: 1, type: 1, createdAt: -1 });
 PaymentSchema.index({ invoiceId: 1, type: 1, status: 1 });
 
 export const Payment =
