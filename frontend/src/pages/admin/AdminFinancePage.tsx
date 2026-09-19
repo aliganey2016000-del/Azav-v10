@@ -25,6 +25,16 @@ import api from '../../services/api';
 type RecordObject = Record<string, any>;
 export type FinanceMode = 'fees' | 'payments' | 'transactions' | 'settlements' | 'refunds';
 
+type FinancePageProps = {
+  mode: FinanceMode;
+  readOnly?: boolean;
+  titleOverride?: string;
+  eyebrowOverride?: string;
+  descriptionOverride?: string;
+  registerTitleOverride?: string;
+  registerDescriptionOverride?: string;
+};
+
 type FinanceForm = {
   userId: string;
   organizationId: string;
@@ -203,8 +213,22 @@ const typeClass = (type: string) => {
   }
 };
 
-export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
-  const config = CONFIG[mode];
+export const AdminFinancePage: React.FC<FinancePageProps> = ({
+  mode,
+  readOnly = false,
+  titleOverride,
+  eyebrowOverride,
+  descriptionOverride,
+  registerTitleOverride,
+  registerDescriptionOverride,
+}) => {
+  const baseConfig = CONFIG[mode];
+  const config = {
+    ...baseConfig,
+    title: titleOverride || baseConfig.title,
+    eyebrow: eyebrowOverride || baseConfig.eyebrow,
+    description: descriptionOverride || baseConfig.description,
+  };
 
   const [records, setRecords] = useState<RecordObject[]>([]);
   const [users, setUsers] = useState<RecordObject[]>([]);
@@ -541,7 +565,7 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
 
           {headerMenuOpen && (
             <div className="absolute right-0 top-12 z-30 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl">
-              {config.action && (
+              {!readOnly && config.action && (
                 <button
                   type="button"
                   onClick={() => void openCreate()}
@@ -611,9 +635,14 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
         <div className="border-b border-slate-100 p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="text-sm font-black text-slate-950">{config.title} Register</h2>
+              <h2 className="text-sm font-black text-slate-950">
+                {registerTitleOverride || (readOnly ? config.title : config.title + ' Register')}
+              </h2>
               <p className="mt-1 text-xs text-slate-500">
-                Live finance records with filters, actions and responsive mobile cards.
+                {registerDescriptionOverride ||
+                  (readOnly
+                    ? 'Read-only live finance records for students associated with your university.'
+                    : 'Live finance records with filters, actions and responsive mobile cards.')}
               </p>
             </div>
 
@@ -674,7 +703,11 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
             <ReceiptText className="mx-auto h-10 w-10 text-slate-300" />
             <p className="mt-3 text-sm font-black text-slate-700">No finance records found</p>
             <p className="mt-1 text-xs text-slate-500">
-              {config.action ? 'Use the three-dot menu to create the first record.' : 'Transactions will appear as finance activity is recorded.'}
+              {readOnly
+                ? 'Records will appear automatically when AZAAM records finance activity for your students.'
+                : config.action
+                  ? 'Use the three-dot menu to create the first record.'
+                  : 'Transactions will appear as finance activity is recorded.'}
             </p>
           </div>
         ) : (
@@ -767,19 +800,21 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                                   setViewing(record);
                                 }}
                               />
-                              <ActionItem
-                                icon={<Pencil className="h-4 w-4" />}
-                                label="Edit Record"
-                                onClick={() => void openEdit(record)}
-                              />
-                              {record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
+                              {!readOnly && (
+                                <ActionItem
+                                  icon={<Pencil className="h-4 w-4" />}
+                                  label="Edit Record"
+                                  onClick={() => void openEdit(record)}
+                                />
+                              )}
+                              {!readOnly && record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
                                 <ActionItem
                                   icon={<RotateCcw className="h-4 w-4" />}
                                   label="Create Refund"
                                   onClick={() => void refundPayment(record)}
                                 />
                               )}
-                              {record.status !== 'CANCELLED' && (
+                              {!readOnly && record.status !== 'CANCELLED' && (
                                 <ActionItem
                                   danger
                                   icon={<Ban className="h-4 w-4" />}
@@ -827,19 +862,21 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                           setViewing(record);
                         }}
                       />
-                      <ActionItem
-                        icon={<Pencil className="h-4 w-4" />}
-                        label="Edit Record"
-                        onClick={() => void openEdit(record)}
-                      />
-                      {record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
+                      {!readOnly && (
+                        <ActionItem
+                          icon={<Pencil className="h-4 w-4" />}
+                          label="Edit Record"
+                          onClick={() => void openEdit(record)}
+                        />
+                      )}
+                      {!readOnly && record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
                         <ActionItem
                           icon={<RotateCcw className="h-4 w-4" />}
                           label="Create Refund"
                           onClick={() => void refundPayment(record)}
                         />
                       )}
-                      {record.status !== 'CANCELLED' && (
+                      {!readOnly && record.status !== 'CANCELLED' && (
                         <ActionItem
                           danger
                           icon={<Ban className="h-4 w-4" />}
@@ -873,6 +910,11 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
           eyebrow={viewing.type || 'Finance'}
           onClose={() => setViewing(null)}
         >
+          {readOnly && (
+            <div className="mb-4 rounded-2xl border border-cyan-200 bg-cyan-50 p-3 text-xs font-semibold leading-5 text-cyan-800">
+              This is a read-only university finance view. Financial changes are maintained by AZAAM administration.
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <DetailBox label="Account" value={accountName(viewing)} />
             <DetailBox label="Email" value={accountEmail(viewing) || '—'} />
@@ -899,7 +941,7 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
         </ModalShell>
       )}
 
-      {formOpen && (
+      {!readOnly && formOpen && (
         <ModalShell
           title={editing ? 'Edit Finance Record' : config.action}
           eyebrow={editing ? editing.type : config.type || 'Finance'}
