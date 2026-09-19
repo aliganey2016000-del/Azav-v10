@@ -460,6 +460,7 @@ export class PlacementService {
         populate: [
           { path: 'universityId', select: 'name code' },
           { path: 'programmeId', select: 'name code' },
+          { path: 'batchId', select: 'batchNumber name intakeDate status' },
         ],
       })
       .populate('organizationId')
