@@ -16,6 +16,11 @@ financeRouter.post(
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
   FinancePricingController.create
 );
+financeRouter.post(
+  '/pricing/university-bulk',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  FinancePricingController.bulkUniversity
+);
 financeRouter.patch(
   '/pricing/:id',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
