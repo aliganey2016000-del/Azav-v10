@@ -16,13 +16,13 @@ import {
   Stethoscope,
   UserCheck,
   Users,
-  X,
   XCircle,
 } from 'lucide-react';
 import api from '../../services/api';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminOrganization, AdminSupervisor, PaginationMeta } from '../../types/admin.types';
 import { Pagination } from '../../components/admin/Pagination';
+import { Modal } from '../../components/admin/Modal';
 import { ConfirmDialog } from '../../components/admin/ConfirmDialog';
 
 type DepartmentOption = {
@@ -89,7 +89,7 @@ export const SupervisorsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [selectedSupervisor, setSelectedSupervisor] = useState<AdminSupervisor | null>(null);
   const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
@@ -193,12 +193,12 @@ export const SupervisorsPage: React.FC = () => {
     setPage(1);
   };
 
-  const openCreateDrawer = () => {
+  const openCreateModal = () => {
     setError('');
     setSuccess('');
     setForm(EMPTY_FORM);
     setFormDepartments([]);
-    setDrawerOpen(true);
+    setCreateModalOpen(true);
   };
 
   const handleCreate = async (event: React.FormEvent) => {
@@ -229,7 +229,7 @@ export const SupervisorsPage: React.FC = () => {
         licenseNumber: form.licenseNumber.trim(),
       });
 
-      setDrawerOpen(false);
+      setCreateModalOpen(false);
       setForm(EMPTY_FORM);
       setFormDepartments([]);
       setSuccess('Clinical supervisor created successfully and login account is ready.');
@@ -316,7 +316,7 @@ export const SupervisorsPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={openCreateDrawer}
+            onClick={openCreateModal}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 text-sm font-black text-white shadow-lg shadow-cyan-200/60 transition hover:-translate-y-0.5 hover:shadow-xl"
           >
             <Plus className="h-5 w-5" />
@@ -443,7 +443,7 @@ export const SupervisorsPage: React.FC = () => {
           <p className="mt-1 text-xs text-slate-500">Adjust the filters or create the first clinical supervisor.</p>
           <button
             type="button"
-            onClick={openCreateDrawer}
+            onClick={openCreateModal}
             className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl bg-teal-600 px-4 text-xs font-black text-white"
           >
             <Plus className="h-4 w-4" />
@@ -664,224 +664,213 @@ export const SupervisorsPage: React.FC = () => {
         </>
       )}
 
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/50 backdrop-blur-sm">
-          <button
-            type="button"
-            aria-label="Close supervisor form"
-            onClick={() => !saving && setDrawerOpen(false)}
-            className="absolute inset-0 cursor-default"
-          />
-
-          <aside className="relative z-10 h-full w-full max-w-lg overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
-            <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-cyan-700">
-                    <Plus className="h-3 w-3" />
-                    New Account
-                  </div>
-                  <h2 className="mt-2 text-xl font-black text-slate-950">Add New Supervisor</h2>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Create the clinician profile and login account, then connect it to a hospital department.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => setDrawerOpen(false)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+      <Modal
+        isOpen={createModalOpen}
+        onClose={() => !saving && setCreateModalOpen(false)}
+        title="Add New Supervisor"
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleCreate} className="space-y-5 text-xs">
+          <div className="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-blue-50 p-4 sm:p-5 dark:border-cyan-900/60 dark:from-cyan-950/35 dark:to-blue-950/25">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-100 dark:bg-slate-900 dark:text-cyan-300 dark:ring-cyan-900/70">
+                <UserCheck className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-950 dark:text-white">Supervisor Identity</h3>
+                <p className="mt-0.5 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                  Create the clinician profile and primary contact information.
+                </p>
               </div>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-5 p-5 sm:p-6">
-              <div className="rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-blue-50 p-4">
-                <div className="flex items-center gap-2 text-cyan-800">
-                  <UserCheck className="h-5 w-5" />
-                  <p className="text-xs font-black">Supervisor Identity</p>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <Field label="First Name *">
-                    <input
-                      required
-                      value={form.firstName}
-                      onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
-                      placeholder="Abdirahman"
-                      className="field-control"
-                    />
-                  </Field>
-                  <Field label="Last Name *">
-                    <input
-                      required
-                      value={form.lastName}
-                      onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
-                      placeholder="Shire"
-                      className="field-control"
-                    />
-                  </Field>
-                </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="First Name *">
+                <input
+                  required
+                  value={form.firstName}
+                  onChange={(event) => setForm((current) => ({ ...current, firstName: event.target.value }))}
+                  placeholder="Abdirahman"
+                  className="field-control"
+                />
+              </Field>
+              <Field label="Last Name *">
+                <input
+                  required
+                  value={form.lastName}
+                  onChange={(event) => setForm((current) => ({ ...current, lastName: event.target.value }))}
+                  placeholder="Shire"
+                  className="field-control"
+                />
+              </Field>
+              <Field label="Email *">
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="doctor@hospital.so"
+                  className="field-control"
+                />
+              </Field>
+              <Field label="Phone">
+                <input
+                  value={form.phone}
+                  onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                  placeholder="+252 61 000 0000"
+                  className="field-control"
+                />
+              </Field>
+            </div>
+          </div>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Field label="Email *">
-                    <input
-                      type="email"
-                      required
-                      value={form.email}
-                      onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                      placeholder="doctor@hospital.so"
-                      className="field-control"
-                    />
-                  </Field>
-                  <Field label="Phone">
-                    <input
-                      value={form.phone}
-                      onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                      placeholder="+252 61 000 0000"
-                      className="field-control"
-                    />
-                  </Field>
-                </div>
+          <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-4 sm:p-5 dark:border-violet-900/60 dark:bg-violet-950/20">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-violet-700 shadow-sm ring-1 ring-violet-100 dark:bg-slate-900 dark:text-violet-300 dark:ring-violet-900/70">
+                <Building2 className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-950 dark:text-white">Clinical Assignment</h3>
+                <p className="mt-0.5 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                  Connect the supervisor to the correct hospital and department.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Hospital *">
+                <select
+                  required
+                  value={form.organizationId}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setForm((current) => ({ ...current, organizationId: value, departmentId: '' }));
+                    void loadFormDepartments(value);
+                  }}
+                  className="field-control"
+                >
+                  <option value="">Select hospital</option>
+                  {organizations.map((organization) => (
+                    <option key={organization._id} value={organization._id}>
+                      {organization.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Department *">
+                <select
+                  required
+                  disabled={!form.organizationId || referenceLoading}
+                  value={form.departmentId}
+                  onChange={(event) => setForm((current) => ({ ...current, departmentId: event.target.value }))}
+                  className="field-control disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">
+                    {referenceLoading ? 'Loading departments...' : 'Select department'}
+                  </option>
+                  {formDepartments.map((department) => (
+                    <option key={department._id} value={department._id}>
+                      {department.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <div className="sm:col-span-2">
+                <Field label="Qualification / Designation">
+                  <input
+                    value={form.qualification}
+                    onChange={(event) => setForm((current) => ({ ...current, qualification: event.target.value }))}
+                    placeholder="Consultant Physician"
+                    className="field-control"
+                  />
+                </Field>
               </div>
 
-              <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-4">
-                <div className="flex items-center gap-2 text-violet-800">
-                  <Building2 className="h-5 w-5" />
-                  <p className="text-xs font-black">Clinical Assignment</p>
-                </div>
+              <Field label="License Number">
+                <input
+                  value={form.licenseNumber}
+                  onChange={(event) => setForm((current) => ({ ...current, licenseNumber: event.target.value }))}
+                  placeholder="MOH-12345"
+                  className="field-control"
+                />
+              </Field>
 
-                <div className="mt-3 space-y-3">
-                  <Field label="Hospital *">
-                    <select
-                      required
-                      value={form.organizationId}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setForm((current) => ({ ...current, organizationId: value, departmentId: '' }));
-                        void loadFormDepartments(value);
-                      }}
-                      className="field-control"
-                    >
-                      <option value="">Select hospital</option>
-                      {organizations.map((organization) => (
-                        <option key={organization._id} value={organization._id}>
-                          {organization.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+              <Field label="Experience (Years)">
+                <input
+                  type="number"
+                  min={0}
+                  max={70}
+                  value={form.yearsOfExperience}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, yearsOfExperience: Number(event.target.value) || 0 }))
+                  }
+                  className="field-control"
+                />
+              </Field>
+            </div>
+          </div>
 
-                  <Field label="Department *">
-                    <select
-                      required
-                      disabled={!form.organizationId || referenceLoading}
-                      value={form.departmentId}
-                      onChange={(event) => setForm((current) => ({ ...current, departmentId: event.target.value }))}
-                      className="field-control disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">
-                        {referenceLoading ? 'Loading departments...' : 'Select department'}
-                      </option>
-                      {formDepartments.map((department) => (
-                        <option key={department._id} value={department._id}>
-                          {department.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Qualification / Designation">
-                    <input
-                      value={form.qualification}
-                      onChange={(event) => setForm((current) => ({ ...current, qualification: event.target.value }))}
-                      placeholder="Consultant Physician"
-                      className="field-control"
-                    />
-                  </Field>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="License Number">
-                      <input
-                        value={form.licenseNumber}
-                        onChange={(event) => setForm((current) => ({ ...current, licenseNumber: event.target.value }))}
-                        placeholder="MOH-12345"
-                        className="field-control"
-                      />
-                    </Field>
-                    <Field label="Experience (Years)">
-                      <input
-                        type="number"
-                        min={0}
-                        max={70}
-                        value={form.yearsOfExperience}
-                        onChange={(event) =>
-                          setForm((current) => ({ ...current, yearsOfExperience: Number(event.target.value) || 0 }))
-                        }
-                        className="field-control"
-                      />
-                    </Field>
-                  </div>
-                </div>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 sm:p-5 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100 dark:bg-slate-900 dark:text-emerald-300 dark:ring-emerald-900/70">
+                <ShieldCheck className="h-4.5 w-4.5" />
               </div>
-
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-                <div className="flex items-center gap-2 text-emerald-800">
-                  <ShieldCheck className="h-5 w-5" />
-                  <p className="text-xs font-black">Login & Status</p>
-                </div>
-
-                <div className="mt-3 space-y-3">
-                  <Field label="Initial Password *">
-                    <input
-                      type="password"
-                      minLength={12}
-                      required
-                      value={form.password}
-                      onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                      placeholder="Minimum 12 characters"
-                      className="field-control"
-                    />
-                  </Field>
-
-                  <Field label="Status *">
-                    <select
-                      value={form.status}
-                      onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-                      className="field-control"
-                    >
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Inactive</option>
-                    </select>
-                  </Field>
-                </div>
+              <div>
+                <h3 className="font-black text-slate-950 dark:text-white">Login & Status</h3>
+                <p className="mt-0.5 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                  Set the initial login password and supervisor account status.
+                </p>
               </div>
+            </div>
 
-              <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6">
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => setDrawerOpen(false)}
-                    className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 text-sm font-black text-white shadow-lg shadow-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    {saving ? 'Saving...' : 'Save Supervisor'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </aside>
-        </div>
-      )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Initial Password *">
+                <input
+                  type="password"
+                  minLength={12}
+                  required
+                  value={form.password}
+                  onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                  placeholder="Minimum 12 characters"
+                  className="field-control"
+                />
+              </Field>
+
+              <Field label="Status *">
+                <select
+                  value={form.status}
+                  onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+                  className="field-control"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          <div className="-mx-4 -mb-5 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white px-4 pt-4 sm:-mx-6 sm:flex-row sm:justify-end sm:px-6 dark:border-slate-800 dark:bg-[#0f1b2d]">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => setCreateModalOpen(false)}
+              className="min-h-11 w-full rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 text-sm font-black text-white shadow-lg shadow-cyan-100 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-50 sm:w-auto dark:shadow-none"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {saving ? 'Saving...' : 'Save Supervisor'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {selectedSupervisor && confirmToggleOpen && (
         <ConfirmDialog
@@ -916,6 +905,18 @@ export const SupervisorsPage: React.FC = () => {
           border-color: rgb(6 182 212);
           box-shadow: 0 0 0 3px rgb(207 250 254);
         }
+        .dark .field-control {
+          border-color: rgb(51 65 85);
+          background: rgb(15 23 42);
+          color: rgb(241 245 249);
+        }
+        .dark .field-control::placeholder {
+          color: rgb(100 116 139);
+        }
+        .dark .field-control:focus {
+          border-color: rgb(34 211 238);
+          box-shadow: 0 0 0 3px rgb(8 145 178 / 0.18);
+        }
       `}</style>
     </div>
   );
@@ -923,7 +924,7 @@ export const SupervisorsPage: React.FC = () => {
 
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <label className="block">
-    <span className="mb-1.5 block text-[11px] font-black text-slate-700">{label}</span>
+    <span className="mb-1.5 block text-[11px] font-black text-slate-700 dark:text-slate-300">{label}</span>
     {children}
   </label>
 );
