@@ -27,8 +27,8 @@ financeRouter.post(
   FinanceController.refund
 );
 
-financeRouter.delete(
-  '/:id',
-  requireRole(UserRole.SUPER_ADMIN),
-  FinanceController.remove
+financeRouter.post(
+  '/:id/void',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  FinanceController.voidRecord
 );
