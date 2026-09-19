@@ -296,6 +296,20 @@ export const StudentsManagementPage: React.FC = () => {
                     </div>
                   </div>
 
+                  <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/70 p-3 dark:border-violet-500/20 dark:bg-violet-500/10">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wide text-violet-500">
+                      Nomination Batch
+                    </div>
+                    <div className="mt-1 text-xs font-extrabold text-violet-800 dark:text-violet-200">
+                      {student.batch?.batchNumber || 'Legacy / No Batch'}
+                    </div>
+                    {student.batch?.name && (
+                      <div className="mt-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        {student.batch.name}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                       <FileText className="h-4 w-4 text-indigo-500" />
@@ -323,11 +337,12 @@ export const StudentsManagementPage: React.FC = () => {
 
           <section className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#0f1b2d] md:block">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left text-xs">
+              <table className="w-full min-w-[940px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3">Student & ID</th>
                     <th className="px-4 py-3">University</th>
+                    <th className="px-4 py-3">Batch</th>
                     <th className="px-4 py-3">Hospital & Specialty</th>
                     <th className="px-4 py-3">Documents</th>
                     <th className="px-4 py-3">Status</th>
