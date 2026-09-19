@@ -84,7 +84,7 @@ export class SupervisorManagementController {
       const summaryQuery = { ...query };
       delete (summaryQuery as any).status;
 
-      const [supervisors, total, activeCount, departmentIds] = await Promise.all([
+      const [supervisors, total, summaryTotal, activeCount, departmentIds, summarySupervisors] = await Promise.all([
         ClinicalSupervisor.find(query)
           .sort({ createdAt: -1 })
           .skip(skip)
@@ -94,8 +94,10 @@ export class SupervisorManagementController {
           .populate('departmentId', 'name code')
           .lean(),
         ClinicalSupervisor.countDocuments(query),
+        ClinicalSupervisor.countDocuments(summaryQuery),
         ClinicalSupervisor.countDocuments({ ...summaryQuery, status: 'ACTIVE' }),
         ClinicalSupervisor.distinct('departmentId', { ...summaryQuery, departmentId: { $ne: null } }),
+        ClinicalSupervisor.find(summaryQuery).select('_id').lean(),
       ]);
 
       const enriched = await Promise.all(
@@ -108,10 +110,10 @@ export class SupervisorManagementController {
         }))
       );
 
-      const assignedStudents = enriched.reduce(
-        (sum, supervisor: any) => sum + Number(supervisor.assignedTraineesCount || 0),
-        0
-      );
+      const assignedStudents = await Placement.countDocuments({
+        supervisorId: { $in: summarySupervisors.map((supervisor: any) => supervisor._id) },
+        status: { $in: [PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE] },
+      });
 
       res.status(200).json({
         success: true,
@@ -123,7 +125,7 @@ export class SupervisorManagementController {
           totalPages: Math.ceil(total / limit) || 1,
         },
         stats: {
-          total,
+          total: summaryTotal,
           active: activeCount,
           departments: departmentIds.filter(Boolean).length,
           assignedStudents,
