@@ -80,9 +80,9 @@ const CONFIG: Record<FinanceMode, {
   refunds: {
     title: 'Refunds',
     eyebrow: 'Finance · Reversals',
-    description: 'Track approved refunds and maintain a clear reversal audit trail.',
+    description: 'Review refunds created from original payment records and maintain a clear reversal audit trail.',
     type: 'REFUND',
-    action: 'Record Refund',
+    action: '',
   },
 };
 
@@ -116,9 +116,9 @@ const asId = (value: any) => {
 
 const accountName = (record: RecordObject) => {
   const user = record.userId;
-  if (!user) return 'Account';
+  if (!user) return record.organizationId?.name || 'Organization';
   if (typeof user === 'string') return user;
-  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Account';
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || record.organizationId?.name || 'Account';
 };
 
 const accountEmail = (record: RecordObject) => {
@@ -331,7 +331,15 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
 
   const saveRecord = async () => {
     const recordType = editing?.type || config.type;
-    if (!recordType || !form.userId || !form.description.trim() || form.amount === '') return;
+    const requiresAccount = recordType !== 'SETTLEMENT';
+    const requiresOrganization = recordType === 'SETTLEMENT';
+    if (
+      !recordType ||
+      (requiresAccount && !form.userId) ||
+      (requiresOrganization && !form.organizationId) ||
+      !form.description.trim() ||
+      form.amount === ''
+    ) return;
 
     setSaving(true);
     setError('');
@@ -819,7 +827,14 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
               </button>
               <button
                 type="button"
-                disabled={saving || referenceLoading || !form.userId || !form.description.trim() || form.amount === ''}
+                disabled={
+                  saving ||
+                  referenceLoading ||
+                  ((editing?.type || config.type) !== 'SETTLEMENT' && !form.userId) ||
+                  ((editing?.type || config.type) === 'SETTLEMENT' && !form.organizationId) ||
+                  !form.description.trim() ||
+                  form.amount === ''
+                }
                 onClick={() => void saveRecord()}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40"
               >
@@ -836,19 +851,36 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Select
-                label="Account / User *"
-                value={form.userId}
-                onChange={(value) => setForm((current) => ({ ...current, userId: value }))}
-                disabled={Boolean(editing)}
-              >
-                <option value="">Select account</option>
-                {users.map((item) => (
-                  <option key={asId(item)} value={asId(item)}>
-                    {[item.firstName, item.lastName].filter(Boolean).join(' ') || item.email} · {item.email}
-                  </option>
-                ))}
-              </Select>
+              {(editing?.type || config.type) !== 'SETTLEMENT' && (
+                <Select
+                  label="Account / User *"
+                  value={form.userId}
+                  onChange={(value) => setForm((current) => ({ ...current, userId: value }))}
+                  disabled={Boolean(editing)}
+                >
+                  <option value="">Select account</option>
+                  {users.map((item) => (
+                    <option key={asId(item)} value={asId(item)}>
+                      {[item.firstName, item.lastName].filter(Boolean).join(' ') || item.email} · {item.email}
+                    </option>
+                  ))}
+                </Select>
+              )}
+
+              {(editing?.type || config.type) === 'SETTLEMENT' && (
+                <Select
+                  label="Beneficiary Organization *"
+                  value={form.organizationId}
+                  onChange={(value) => setForm((current) => ({ ...current, organizationId: value }))}
+                >
+                  <option value="">Select organization</option>
+                  {organizations.map((organization) => (
+                    <option key={asId(organization)} value={asId(organization)}>
+                      {organization.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
 
               <label>
                 <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Amount *</span>
@@ -956,21 +988,6 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                     <option value="OTHER">Other</option>
                   </Select>
                 </>
-              )}
-
-              {(editing?.type === 'SETTLEMENT' || config.type === 'SETTLEMENT') && (
-                <Select
-                  label="Beneficiary Organization"
-                  value={form.organizationId}
-                  onChange={(value) => setForm((current) => ({ ...current, organizationId: value }))}
-                >
-                  <option value="">Select organization</option>
-                  {organizations.map((organization) => (
-                    <option key={asId(organization)} value={asId(organization)}>
-                      {organization.name}
-                    </option>
-                  ))}
-                </Select>
               )}
 
               <label className="sm:col-span-2">
