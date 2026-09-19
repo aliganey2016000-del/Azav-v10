@@ -1311,18 +1311,22 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               {formType === 'FEE' && (
                 <>
                   {!editing && (
-                    <div className="sm:col-span-2 grid gap-2 sm:grid-cols-3">
+                    <div className="sm:col-span-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-2xl border border-teal-200 bg-teal-50 p-3">
-                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-teal-700">1. Select Payer</div>
-                        <div className="mt-1 text-xs font-black text-slate-800">Choose who receives the invoice</div>
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-teal-700">1. Select University</div>
+                        <div className="mt-1 text-xs font-black text-slate-800">Choose the university to bill</div>
+                      </div>
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-3">
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-blue-700">2. Select Batch</div>
+                        <div className="mt-1 text-xs font-black text-slate-800">Choose the approved student batch</div>
                       </div>
                       <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
-                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">2. Select Services</div>
-                        <div className="mt-1 text-xs font-black text-slate-800">Pricing profile loads automatically</div>
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">3. Select Pricing Rule</div>
+                        <div className="mt-1 text-xs font-black text-slate-800">Choose service rule(s) to charge</div>
                       </div>
                       <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-3">
-                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-700">3. Review & Create</div>
-                        <div className="mt-1 text-xs font-black text-slate-800">Confirm total and due date</div>
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-700">4. Review & Create</div>
+                        <div className="mt-1 text-xs font-black text-slate-800">Confirm total and create invoice</div>
                       </div>
                     </div>
                   )}
@@ -1337,8 +1341,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         payerType: value,
                         userId: '',
                         universityId: '',
+                        batchId: '',
                         organizationId: '',
                       }));
+                      setTrainingBatches([]);
+                      setBatchLoading(false);
                       setInvoiceItems([]);
                       feeRuleRequestRef.current += 1;
                       setPricingProfile(null);
@@ -1352,28 +1359,86 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                   </Select>
 
                   {form.payerType === 'UNIVERSITY' && (
-                    <Select
-                      label="University *"
-                      value={form.universityId}
-                      disabled={Boolean(editing)}
-                      onChange={(value) => {
-                        setForm((current) => ({ ...current, universityId: value }));
-                        setInvoiceItems([]);
-                        if (value) void loadPricingProfile('UNIVERSITY', value);
-                        else {
+                    <>
+                      <Select
+                        label="University *"
+                        value={form.universityId}
+                        disabled={Boolean(editing)}
+                        onChange={(value) => {
+                          setForm((current) => ({
+                            ...current,
+                            universityId: value,
+                            batchId: '',
+                          }));
+                          setTrainingBatches([]);
+                          setInvoiceItems([]);
                           feeRuleRequestRef.current += 1;
+                          setPricingProfile(null);
                           setFeeRules([]);
                           setFeeRulesLoading(false);
-                        }
-                      }}
-                    >
-                      <option value="">Select university</option>
-                      {universities.map((university) => (
-                        <option key={asId(university)} value={asId(university)}>
-                          {university.name}{university.code ? ' · ' + university.code : ''}
+
+                          if (value) void loadTrainingBatches(value);
+                        }}
+                      >
+                        <option value="">Select university</option>
+                        {universities.map((university) => (
+                          <option key={asId(university)} value={asId(university)}>
+                            {university.name}{university.code ? ' · ' + university.code : ''}
+                          </option>
+                        ))}
+                      </Select>
+
+                      <Select
+                        label="Batch No *"
+                        value={form.batchId}
+                        disabled={Boolean(editing) || !form.universityId || batchLoading}
+                        onChange={(value) => {
+                          setForm((current) => ({ ...current, batchId: value }));
+                          setInvoiceItems([]);
+                          feeRuleRequestRef.current += 1;
+                          setPricingProfile(null);
+                          setFeeRules([]);
+                          setFeeRulesLoading(false);
+
+                          if (value && form.universityId) {
+                            void loadPricingProfile('UNIVERSITY', form.universityId);
+                          }
+                        }}
+                      >
+                        <option value="">
+                          {!form.universityId
+                            ? 'Select university first'
+                            : batchLoading
+                              ? 'Loading batches...'
+                              : 'Select approved batch'}
                         </option>
-                      ))}
-                    </Select>
+                        {trainingBatches.map((batch) => (
+                          <option key={asId(batch)} value={asId(batch)}>
+                            {batch.batchNumber} · {batch.name} · {Number(batch.studentsCount || 0)} student(s)
+                          </option>
+                        ))}
+                      </Select>
+
+                      {selectedBatch && (
+                        <div className="sm:col-span-2 grid gap-2 rounded-2xl border border-blue-200 bg-blue-50/70 p-3 sm:grid-cols-3">
+                          <div>
+                            <div className="text-[9px] font-black uppercase tracking-wide text-blue-500">Selected Batch</div>
+                            <div className="mt-1 text-sm font-black text-slate-900">{selectedBatch.batchNumber}</div>
+                            <div className="mt-0.5 text-[10px] font-semibold text-slate-500">{selectedBatch.name}</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] font-black uppercase tracking-wide text-blue-500">Students</div>
+                            <div className="mt-1 text-sm font-black text-slate-900">{batchStudentCount}</div>
+                            <div className="mt-0.5 text-[10px] font-semibold text-slate-500">Approved students in this batch</div>
+                          </div>
+                          <div>
+                            <div className="text-[9px] font-black uppercase tracking-wide text-blue-500">Intake Date</div>
+                            <div className="mt-1 text-sm font-black text-slate-900">{formatDate(selectedBatch.intakeDate)}</div>
+                            <div className="mt-0.5 text-[10px] font-semibold text-slate-500">Billing quantity is automatic for Per Student rules</div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {form.payerType === 'STUDENT' && (
@@ -1436,7 +1501,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                             Service Price List
                           </div>
                           <div className="mt-1 text-base font-black text-slate-950">
-                            {selectedPayerName || 'Select a payer to load services'}
+                            {form.payerType === 'UNIVERSITY'
+                              ? selectedBatch
+                                ? selectedPayerName + ' · ' + selectedBatch.batchNumber
+                                : selectedPayerName || 'Select university and batch'
+                              : selectedPayerName || 'Select a payer to load services'}
                           </div>
                           <p className="mt-1 text-[11px] font-semibold text-slate-600">
                             {pricingProfile?.serviceCount
@@ -1470,7 +1539,15 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                           <Building2 className="mx-auto h-8 w-8 text-cyan-500" />
                           <div className="mt-2 text-sm font-black text-slate-800">Choose the payer first</div>
                           <p className="mt-1 text-xs font-semibold text-slate-500">
-                            The correct service price list will load automatically.
+                            Select the university before billing its services.
+                          </p>
+                        </div>
+                      ) : form.payerType === 'UNIVERSITY' && !form.batchId ? (
+                        <div className="m-4 rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 p-6 text-center">
+                          <Users className="mx-auto h-8 w-8 text-blue-500" />
+                          <div className="mt-2 text-sm font-black text-slate-800">Select the Batch No</div>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            Pricing rules will load only after the batch is selected, so the invoice is linked to the correct group of students.
                           </p>
                         </div>
                       ) : feeRulesLoading ? (
@@ -1501,7 +1578,13 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                   const ruleId = asId(rule);
                                   const selected = isInvoiceRuleSelected(ruleId);
                                   const item = invoiceItems.find((entry) => entry.feeRuleId === ruleId);
-                                  const quantity = Number(item?.quantity || 1);
+                                  const automaticBatchQuantity =
+                                    form.payerType === 'UNIVERSITY' &&
+                                    rule.billingBasis === 'PER_STUDENT' &&
+                                    batchStudentCount > 0;
+                                  const quantity = Number(
+                                    item?.quantity || quantityForRule(rule)
+                                  );
                                   const lineTotal = Number(rule.amount || 0) * quantity;
 
                                   return (
@@ -1541,9 +1624,10 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                           type="number"
                                           min="0.01"
                                           step={rule.billingBasis === 'PER_MONTH' ? '1' : '1'}
-                                          disabled={!selected}
-                                          value={selected ? quantity : 1}
+                                          disabled={!selected || automaticBatchQuantity}
+                                          value={selected ? quantity : quantityForRule(rule)}
                                           onChange={(event) => updateInvoiceQuantity(ruleId, Number(event.target.value))}
+                                          title={automaticBatchQuantity ? 'Quantity comes from the selected batch student count' : undefined}
                                           className="min-h-9 w-20 rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-slate-800 outline-none focus:border-teal-500 disabled:bg-slate-100 disabled:text-slate-400"
                                         />
                                       </td>
@@ -1564,7 +1648,13 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                               const ruleId = asId(rule);
                               const selected = isInvoiceRuleSelected(ruleId);
                               const item = invoiceItems.find((entry) => entry.feeRuleId === ruleId);
-                              const quantity = Number(item?.quantity || 1);
+                              const automaticBatchQuantity =
+                                form.payerType === 'UNIVERSITY' &&
+                                rule.billingBasis === 'PER_STUDENT' &&
+                                batchStudentCount > 0;
+                              const quantity = Number(
+                                item?.quantity || quantityForRule(rule)
+                              );
 
                               return (
                                 <article
@@ -1598,14 +1688,17 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                   {selected && (
                                     <div className="mt-3 grid grid-cols-2 gap-2">
                                       <label>
-                                        <span className="text-[9px] font-black uppercase tracking-wide text-slate-400">Quantity</span>
+                                        <span className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                                          {automaticBatchQuantity ? 'Batch Students' : 'Quantity'}
+                                        </span>
                                         <input
                                           type="number"
                                           min="0.01"
                                           step="1"
                                           value={quantity}
+                                          disabled={automaticBatchQuantity}
                                           onChange={(event) => updateInvoiceQuantity(ruleId, Number(event.target.value))}
-                                          className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-800 outline-none focus:border-teal-500"
+                                          className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-800 outline-none focus:border-teal-500 disabled:bg-slate-100 disabled:text-slate-500"
                                         />
                                       </label>
                                       <div className="rounded-xl bg-white p-2">
@@ -1654,9 +1747,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
               {formType === 'FEE' && !editing && (
                 <div className="sm:col-span-2 rounded-2xl border border-violet-100 bg-violet-50/60 p-3">
-                  <div className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-700">3. Review & Create Invoice</div>
+                  <div className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-700">4. Review & Create Invoice</div>
                   <div className="mt-1 text-xs font-semibold text-slate-600">
-                    Confirm the total, invoice number, due date and notes. Service prices are copied into the invoice as a permanent snapshot.
+                    {form.payerType === 'UNIVERSITY' && selectedBatch
+                      ? `${selectedBatch.batchNumber} · ${batchStudentCount} student(s). Confirm the selected pricing rule(s), total and due date.`
+                      : 'Confirm the total, invoice number, due date and notes. Service prices are copied into the invoice as a permanent snapshot.'}
                   </div>
                 </div>
               )}
