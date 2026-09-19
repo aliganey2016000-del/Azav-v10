@@ -40,6 +40,8 @@ export const PortalLayout: React.FC = () => {
   const currentRole = user?.roles?.[0] || UserRole.STUDENT;
   const portalConfig = getPortalConfig(currentRole);
   const isAdminPortal = currentRole === UserRole.SUPER_ADMIN || currentRole === UserRole.AZAAM_STAFF;
+  const isUniversityPortal = currentRole === UserRole.UNIVERSITY_ADMIN;
+  const useConstrainedContent = isAdminPortal || isUniversityPortal;
   const darkMode = theme === 'dark';
   useEffect(() => {
     setMobileDrawerOpen(false);
@@ -333,7 +335,7 @@ export const PortalLayout: React.FC = () => {
         </header>
 
         <main className="w-full min-w-0 max-w-full flex-1 overflow-x-hidden bg-[#f5f8fb] transition-colors duration-200 dark:bg-[#08111f]">
-          {isAdminPortal ? (
+          {useConstrainedContent ? (
             <div className="mx-auto w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6 xl:px-7">
               <Outlet />
             </div>
