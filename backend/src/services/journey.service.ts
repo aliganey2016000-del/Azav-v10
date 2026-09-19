@@ -290,6 +290,32 @@ export class JourneyService {
 
     await this.getJourney(studentId, actor);
 
+    const milestone = await JourneyMilestone.findOne({ studentId, stageKey });
+    if (!milestone) {
+      const err: any = new Error('Journey stage not found for this student');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const completedReviewBatchAssignment =
+      stageKey === JourneyStageKey.AZAAM_REVIEW &&
+      action === JourneyStageAction.APPROVE &&
+      milestone.status === JourneyStageStatus.COMPLETED;
+
+    if (milestone.status === JourneyStageStatus.LOCKED) {
+      const err: any = new Error('This stage is not currently actionable.');
+      err.statusCode = 400;
+      err.code = 'STAGE_NOT_ACTIONABLE';
+      throw err;
+    }
+
+    if (milestone.status === JourneyStageStatus.COMPLETED && !completedReviewBatchAssignment) {
+      const err: any = new Error('This stage is not currently actionable.');
+      err.statusCode = 400;
+      err.code = 'STAGE_NOT_ACTIONABLE';
+      throw err;
+    }
+
     if (stageKey === JourneyStageKey.AZAAM_REVIEW && action === JourneyStageAction.APPROVE) {
       if (!isAzaamActor(actor)) {
         const err: any = new Error('Only AZAAM staff can assign a batch during approval.');
@@ -339,23 +365,36 @@ export class JourneyService {
           throw err;
         }
 
-        application.batchId = batch._id as any;
-        await application.save();
+        const previousBatchId = application.batchId ? String(application.batchId) : null;
+        if (previousBatchId !== String(batch._id)) {
+          application.batchId = batch._id as any;
+          await application.save();
+
+          await AuditLog.create({
+            actorUserId: actor.userId,
+            actorId: actor.userId,
+            actorEmail: actor.email,
+            action: completedReviewBatchAssignment
+              ? 'journey.batch.assign_after_approval'
+              : 'journey.batch.assign_on_approval',
+            entityType: 'Application',
+            entityId: application._id,
+            before: { batchId: previousBatchId },
+            after: {
+              batchId: batch._id,
+              batchNumber: batch.batchNumber,
+              studentId,
+            },
+          });
+        }
+
+        // Existing students may already have a completed AZAAM review from before
+        // batch tracking was introduced. In that case Save/Submit only backfills
+        // the batch; it must not try to approve the completed milestone again.
+        if (completedReviewBatchAssignment) {
+          return this.getJourney(studentId, actor);
+        }
       }
-    }
-
-    const milestone = await JourneyMilestone.findOne({ studentId, stageKey });
-    if (!milestone) {
-      const err: any = new Error('Journey stage not found for this student');
-      err.statusCode = 404;
-      throw err;
-    }
-
-    if (milestone.status === JourneyStageStatus.LOCKED || milestone.status === JourneyStageStatus.COMPLETED) {
-      const err: any = new Error('This stage is not currently actionable.');
-      err.statusCode = 400;
-      err.code = 'STAGE_NOT_ACTIONABLE';
-      throw err;
     }
 
     const fromStatus = milestone.status;
