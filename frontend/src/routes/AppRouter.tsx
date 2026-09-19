@@ -110,10 +110,47 @@ export const AppRouter: React.FC = () => (
           <Route path="/university/students/:id/chat" element={<JourneyChatPage portal="university" />} />
           <Route path="/university/student-status" element={<UniversityStudentStatusPage />} />
           <Route path="/university/mou" element={<PortalResourcePage eyebrow="University Admin" title="MoU & Agreement" description="View the university partnership agreement stored in the live database." endpoint="/universities/mou/current" />} />
-          <Route path="/university/financials" element={<PortalResourcePage eyebrow="University Admin" title="Financials" description="Review live finance records associated with this authenticated account." endpoint="/finance" />} />
-          <Route path="/university/finance/fees" element={<PortalResourcePage eyebrow="University Finance" title="Fees & Invoices" description="Review fee and invoice records for university-associated trainees." endpoint="/finance?type=FEE" />} />
-          <Route path="/university/finance/payments" element={<PortalResourcePage eyebrow="University Finance" title="Payments" description="Review payment records for university-associated trainees." endpoint="/finance?type=PAYMENT" />} />
-          <Route path="/university/finance/history" element={<PortalResourcePage eyebrow="University Finance" title="Payment History" description="Review the complete finance history available to this university." endpoint="/finance" />} />
+          <Route path="/university/financials" element={<Navigate to="/university/finance/history" replace />} />
+          <Route
+            path="/university/finance/fees"
+            element={
+              <AdminFinancePage
+                mode="fees"
+                readOnly
+                eyebrowOverride="University Finance · Billing"
+                descriptionOverride="Track student invoices, amounts paid, outstanding balances and due dates for your university."
+                registerTitleOverride="Student Invoices"
+                registerDescriptionOverride="Read-only invoice register for students associated with your university."
+              />
+            }
+          />
+          <Route
+            path="/university/finance/payments"
+            element={
+              <AdminFinancePage
+                mode="payments"
+                readOnly
+                eyebrowOverride="University Finance · Payments"
+                descriptionOverride="Review payments recorded against your students' clinical training invoices."
+                registerTitleOverride="Student Payments"
+                registerDescriptionOverride="Read-only payment records linked to university-associated student invoices."
+              />
+            }
+          />
+          <Route
+            path="/university/finance/history"
+            element={
+              <AdminFinancePage
+                mode="transactions"
+                readOnly
+                titleOverride="Payment History"
+                eyebrowOverride="University Finance · Ledger"
+                descriptionOverride="Review the complete finance history available to your university in one responsive ledger."
+                registerTitleOverride="University Finance Ledger"
+                registerDescriptionOverride="Invoices, payments and refunds for students associated with your university."
+              />
+            }
+          />
           <Route path="/university/applications" element={<PortalResourcePage eyebrow="University Admin" title="Student Applications" description="Review live applications submitted by or associated with this university." endpoint="/applications" />} />
           <Route path="/university/placements" element={<UniversityPlacementsPage />} />
           <Route path="/university/rotations" element={<UniversityRotationsPage />} />
