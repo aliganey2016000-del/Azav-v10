@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Banknote,
+  Ban,
   Building2,
   CalendarDays,
   ChevronDown,
@@ -15,14 +16,11 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
-  Trash2,
   Users,
   WalletCards,
   X,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../types/frontend';
 
 type RecordObject = Record<string, any>;
 export type FinanceMode = 'fees' | 'payments' | 'transactions' | 'settlements' | 'refunds';
@@ -30,6 +28,7 @@ export type FinanceMode = 'fees' | 'payments' | 'transactions' | 'settlements' |
 type FinanceForm = {
   userId: string;
   organizationId: string;
+  invoiceId: string;
   description: string;
   amount: string;
   currency: string;
@@ -89,6 +88,7 @@ const CONFIG: Record<FinanceMode, {
 const EMPTY_FORM: FinanceForm = {
   userId: '',
   organizationId: '',
+  invoiceId: '',
   description: '',
   amount: '',
   currency: 'USD',
@@ -106,6 +106,22 @@ const asArray = (response: any, key?: string): RecordObject[] => {
   if (Array.isArray(data)) return data;
   if (key && Array.isArray(data?.[key])) return data[key];
   return [];
+};
+
+const loadAllAdminPages = async (endpoint: string) => {
+  const collected: RecordObject[] = [];
+  let page = 1;
+
+  while (page <= 25) {
+    const response = await api.get(endpoint, { params: { page, limit: 100 } });
+    collected.push(...asArray(response));
+
+    const pagination = response?.data?.pagination;
+    if (!pagination?.totalPages || page >= Number(pagination.totalPages)) break;
+    page += 1;
+  }
+
+  return collected;
 };
 
 const asId = (value: any) => {
@@ -188,13 +204,12 @@ const typeClass = (type: string) => {
 };
 
 export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
-  const { user } = useAuth();
   const config = CONFIG[mode];
-  const canDelete = Boolean(user?.roles?.includes(UserRole.SUPER_ADMIN));
 
   const [records, setRecords] = useState<RecordObject[]>([]);
   const [users, setUsers] = useState<RecordObject[]>([]);
   const [organizations, setOrganizations] = useState<RecordObject[]>([]);
+  const [invoices, setInvoices] = useState<RecordObject[]>([]);
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -229,15 +244,16 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
   };
 
   const loadReferences = async () => {
-    if (users.length && organizations.length) return;
     setReferenceLoading(true);
     try {
-      const [userResponse, organizationResponse] = await Promise.all([
-        api.get('/admin/users', { params: { page: 1, limit: 500 } }),
-        api.get('/admin/organizations', { params: { page: 1, limit: 250 } }),
+      const [nextUsers, nextOrganizations, invoiceResponse] = await Promise.all([
+        loadAllAdminPages('/admin/users'),
+        loadAllAdminPages('/admin/organizations'),
+        api.get('/finance', { params: { type: 'FEE' } }),
       ]);
-      setUsers(asArray(userResponse));
-      setOrganizations(asArray(organizationResponse));
+      setUsers(nextUsers);
+      setOrganizations(nextOrganizations);
+      setInvoices(asArray(invoiceResponse));
     } catch (requestError: any) {
       setError(requestError?.response?.data?.error?.message || 'Unable to load finance reference data.');
     } finally {
@@ -317,6 +333,7 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
     setForm({
       userId: asId(record.userId),
       organizationId: asId(record.organizationId),
+      invoiceId: asId(record.invoiceId),
       description: record.description || '',
       amount: record.amount == null ? '' : String(record.amount),
       currency: record.currency || 'USD',
@@ -341,12 +358,15 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
 
   const saveRecord = async () => {
     const recordType = editing?.type || config.type;
-    const requiresAccount = recordType !== 'SETTLEMENT';
+    const requiresAccount = recordType === 'FEE';
     const requiresOrganization = recordType === 'SETTLEMENT';
+    const requiresInvoice = recordType === 'PAYMENT';
+
     if (
       !recordType ||
       (requiresAccount && !form.userId) ||
       (requiresOrganization && !form.organizationId) ||
+      (requiresInvoice && !form.invoiceId) ||
       !form.description.trim() ||
       form.amount === ''
     ) return;
@@ -355,32 +375,71 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
     setError('');
     setSuccess('');
 
-    const payload = {
-      type: recordType,
-      userId: form.userId,
-      organizationId: form.organizationId || null,
-      description: form.description.trim(),
-      amount: Number(form.amount),
-      currency: form.currency || 'USD',
-      status: form.status,
-      invoiceNumber: form.invoiceNumber.trim() || undefined,
-      reference: form.reference.trim() || undefined,
-      dueDate: form.dueDate || null,
-      paidAt: form.paidAt || null,
-      paymentMethod: form.paymentMethod || undefined,
-      notes: form.notes.trim() || undefined,
-    };
-
     try {
       if (editing) {
+        let payload: RecordObject;
+
+        if (recordType === 'FEE') {
+          payload = {
+            description: form.description.trim(),
+            amount: Number(form.amount),
+            currency: form.currency || 'USD',
+            invoiceNumber: form.invoiceNumber.trim() || undefined,
+            dueDate: form.dueDate || null,
+            notes: form.notes.trim() || undefined,
+          };
+        } else if (recordType === 'PAYMENT') {
+          payload = {
+            description: form.description.trim(),
+            reference: form.reference.trim() || undefined,
+            paidAt: form.paidAt || null,
+            paymentMethod: form.paymentMethod || undefined,
+            notes: form.notes.trim() || undefined,
+          };
+        } else if (recordType === 'REFUND') {
+          payload = {
+            description: form.description.trim(),
+            reference: form.reference.trim() || undefined,
+            notes: form.notes.trim() || undefined,
+          };
+        } else {
+          payload = {
+            organizationId: form.organizationId,
+            description: form.description.trim(),
+            amount: Number(form.amount),
+            currency: form.currency || 'USD',
+            status: form.status,
+            reference: form.reference.trim() || undefined,
+            paidAt: form.paidAt || null,
+            paymentMethod: form.paymentMethod || undefined,
+            notes: form.notes.trim() || undefined,
+          };
+        }
+
         await api.patch('/finance/' + asId(editing), payload);
       } else {
-        await api.post('/finance', payload);
+        await api.post('/finance', {
+          type: recordType,
+          userId: form.userId || undefined,
+          organizationId: form.organizationId || undefined,
+          invoiceId: form.invoiceId || undefined,
+          description: form.description.trim(),
+          amount: Number(form.amount),
+          currency: form.currency || 'USD',
+          status: recordType === 'SETTLEMENT' ? form.status : undefined,
+          invoiceNumber: form.invoiceNumber.trim() || undefined,
+          reference: form.reference.trim() || undefined,
+          dueDate: form.dueDate || null,
+          paidAt: form.paidAt || null,
+          paymentMethod: form.paymentMethod || undefined,
+          notes: form.notes.trim() || undefined,
+        });
       }
 
+      const wasEditing = Boolean(editing);
       closeForm();
       await loadRecords();
-      setSuccess(editing ? 'Finance record updated successfully.' : config.action + ' saved successfully.');
+      setSuccess(wasEditing ? 'Finance record updated successfully.' : config.action + ' saved successfully.');
     } catch (requestError: any) {
       setError(requestError?.response?.data?.error?.message || 'Unable to save finance record.');
     } finally {
@@ -420,20 +479,25 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
     }
   };
 
-  const deleteRecord = async (record: RecordObject) => {
+  const voidRecord = async (record: RecordObject) => {
     setRowMenuId(null);
-    if (!window.confirm('Permanently delete this finance record? This cannot be undone.')) return;
+    const reason = window.prompt('Reason for void / cancellation', '');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setError('A reason is required to void a finance record.');
+      return;
+    }
 
     setSaving(true);
     setError('');
     setSuccess('');
 
     try {
-      await api.delete('/finance/' + asId(record));
+      await api.post('/finance/' + asId(record) + '/void', { reason: reason.trim() });
       await loadRecords();
-      setSuccess('Finance record deleted successfully.');
+      setSuccess('Finance record voided successfully. The audit history has been preserved.');
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.error?.message || 'Unable to delete finance record.');
+      setError(requestError?.response?.data?.error?.message || 'Unable to void finance record.');
     } finally {
       setSaving(false);
     }
@@ -441,6 +505,13 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
 
   const referenceLabel = (record: RecordObject) =>
     record.invoiceNumber || record.reference || '—';
+
+  const formType = editing?.type || config.type;
+  const selectedInvoice = invoices.find((invoice) => asId(invoice) === form.invoiceId) || null;
+  const openInvoices = invoices.filter((invoice) => {
+    if (editing && asId(invoice) === form.invoiceId) return true;
+    return !['PAID', 'CANCELLED'].includes(invoice.status) && Number(invoice.balance ?? invoice.amount) > 0;
+  });
 
   return (
     <div className="space-y-5 pb-10">
@@ -654,8 +725,13 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                         )}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3.5 font-black text-slate-900">
-                        {formatMoney(record.amount, record.currency)}
+                      <td className="whitespace-nowrap px-4 py-3.5">
+                        <div className="font-black text-slate-900">{formatMoney(record.amount, record.currency)}</div>
+                        {record.type === 'FEE' && (
+                          <div className="mt-0.5 text-[9px] font-semibold text-slate-500">
+                            Paid {formatMoney(record.paidAmount || 0, record.currency)} · Balance {formatMoney(record.balance || 0, record.currency)}
+                          </div>
+                        )}
                       </td>
 
                       <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-slate-600">
@@ -703,12 +779,12 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                                   onClick={() => void refundPayment(record)}
                                 />
                               )}
-                              {canDelete && (
+                              {record.status !== 'CANCELLED' && (
                                 <ActionItem
                                   danger
-                                  icon={<Trash2 className="h-4 w-4" />}
-                                  label="Delete"
-                                  onClick={() => void deleteRecord(record)}
+                                  icon={<Ban className="h-4 w-4" />}
+                                  label="Void / Cancel"
+                                  onClick={() => void voidRecord(record)}
                                 />
                               )}
                             </div>
@@ -763,12 +839,12 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                           onClick={() => void refundPayment(record)}
                         />
                       )}
-                      {canDelete && (
+                      {record.status !== 'CANCELLED' && (
                         <ActionItem
                           danger
-                          icon={<Trash2 className="h-4 w-4" />}
-                          label="Delete"
-                          onClick={() => void deleteRecord(record)}
+                          icon={<Ban className="h-4 w-4" />}
+                          label="Void / Cancel"
+                          onClick={() => void voidRecord(record)}
                         />
                       )}
                     </div>
@@ -804,6 +880,9 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
             <DetailBox label="Status" value={viewing.status || '—'} />
             <DetailBox label="Amount" value={formatMoney(viewing.amount, viewing.currency)} />
             <DetailBox label="Reference" value={referenceLabel(viewing)} />
+            <DetailBox label="Linked Invoice" value={viewing.invoiceId?.invoiceNumber || (viewing.type === 'FEE' ? viewing.invoiceNumber : '—')} />
+            {viewing.type === 'FEE' && <DetailBox label="Paid Amount" value={formatMoney(viewing.paidAmount || 0, viewing.currency)} />}
+            {viewing.type === 'FEE' && <DetailBox label="Balance" value={formatMoney(viewing.balance || 0, viewing.currency)} />}
             <DetailBox label="Description" value={viewing.description || '—'} />
             <DetailBox label="Payment Method" value={(viewing.paymentMethod || '—').replace(/_/g, ' ')} />
             <DetailBox label="Due Date" value={formatDate(viewing.dueDate)} />
@@ -840,8 +919,9 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                 disabled={
                   saving ||
                   referenceLoading ||
-                  ((editing?.type || config.type) !== 'SETTLEMENT' && !form.userId) ||
-                  ((editing?.type || config.type) === 'SETTLEMENT' && !form.organizationId) ||
+                  (formType === 'FEE' && !form.userId) ||
+                  (formType === 'PAYMENT' && !form.invoiceId) ||
+                  (formType === 'SETTLEMENT' && !form.organizationId) ||
                   !form.description.trim() ||
                   form.amount === ''
                 }
@@ -861,7 +941,49 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {(editing?.type || config.type) !== 'SETTLEMENT' && (
+              {formType === 'PAYMENT' && (
+                <Select
+                  label="Invoice *"
+                  value={form.invoiceId}
+                  onChange={(value) => {
+                    const invoice = invoices.find((item) => asId(item) === value);
+                    setForm((current) => ({
+                      ...current,
+                      invoiceId: value,
+                      userId: asId(invoice?.userId),
+                      currency: invoice?.currency || current.currency,
+                      description: invoice
+                        ? 'Payment for ' + (invoice.invoiceNumber || invoice.description || 'invoice')
+                        : current.description,
+                      amount: invoice?.balance != null ? String(invoice.balance) : current.amount,
+                    }));
+                  }}
+                  disabled={Boolean(editing)}
+                >
+                  <option value="">Select invoice</option>
+                  {openInvoices.map((invoice) => (
+                    <option key={asId(invoice)} value={asId(invoice)}>
+                      {invoice.invoiceNumber || 'Invoice'} · {accountName(invoice)} · Balance {formatMoney(invoice.balance ?? invoice.amount, invoice.currency)}
+                    </option>
+                  ))}
+                </Select>
+              )}
+
+              {formType === 'PAYMENT' && (
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Invoice Account</div>
+                  <div className="mt-1 text-sm font-black text-slate-800">
+                    {selectedInvoice ? accountName(selectedInvoice) : 'Select an invoice'}
+                  </div>
+                  {selectedInvoice && (
+                    <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                      Remaining balance: {formatMoney(selectedInvoice.balance ?? selectedInvoice.amount, selectedInvoice.currency)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {formType === 'FEE' && (
                 <Select
                   label="Account / User *"
                   value={form.userId}
@@ -877,7 +999,7 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                 </Select>
               )}
 
-              {(editing?.type || config.type) === 'SETTLEMENT' && (
+              {formType === 'SETTLEMENT' && (
                 <Select
                   label="Beneficiary Organization *"
                   value={form.organizationId}
@@ -896,12 +1018,14 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                 <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Amount *</span>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
+                  max={formType === 'PAYMENT' && selectedInvoice ? Number(selectedInvoice.balance ?? selectedInvoice.amount) : undefined}
                   step="0.01"
                   value={form.amount}
+                  disabled={Boolean(editing && ['PAYMENT', 'REFUND'].includes(formType))}
                   onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
                   placeholder="0.00"
-                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-500"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                 />
               </label>
 
@@ -919,6 +1043,7 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                 label="Currency"
                 value={form.currency}
                 onChange={(value) => setForm((current) => ({ ...current, currency: value }))}
+                disabled={['PAYMENT', 'REFUND'].includes(formType)}
               >
                 <option value="USD">USD</option>
                 <option value="SOS">SOS</option>
@@ -926,20 +1051,30 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                 <option value="GBP">GBP</option>
               </Select>
 
-              <Select
-                label="Status"
-                value={form.status}
-                onChange={(value) => setForm((current) => ({ ...current, status: value }))}
-              >
-                <option value="PENDING">Pending</option>
-                <option value="PARTIAL">Partial</option>
-                <option value="OVERDUE">Overdue</option>
-                <option value="PAID">Paid</option>
-                <option value="REFUNDED">Refunded</option>
-                <option value="CANCELLED">Cancelled</option>
-              </Select>
+              {formType === 'SETTLEMENT' ? (
+                <Select
+                  label="Status"
+                  value={form.status}
+                  onChange={(value) => setForm((current) => ({ ...current, status: value }))}
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="PAID">Paid</option>
+                </Select>
+              ) : (
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Status</div>
+                  <div className="mt-1 text-sm font-black text-slate-800">
+                    {formType === 'FEE' ? 'Calculated automatically' : form.status}
+                  </div>
+                  {formType === 'FEE' && (
+                    <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                      Based on invoice balance and due date
+                    </div>
+                  )}
+                </div>
+              )}
 
-              {(editing?.type === 'FEE' || config.type === 'FEE') && (
+              {formType === 'FEE' && (
                 <>
                   <label>
                     <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Invoice Number</span>
@@ -963,7 +1098,7 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
                 </>
               )}
 
-              {(editing?.type !== 'FEE' && config.type !== 'FEE') && (
+              {formType !== 'FEE' && (
                 <>
                   <label>
                     <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Reference</span>
