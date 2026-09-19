@@ -4,11 +4,15 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  Eye,
   FileStack,
   Loader2,
   MoreVertical,
+  Pencil,
+  RefreshCw,
   Search,
   Send,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
@@ -56,6 +60,13 @@ const formatDate = (value?: string | Date) => {
   }).format(date);
 };
 
+const toInputDate = (value?: string | Date) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+};
+
 const placementDays = (placement: any) => {
   const start = new Date(placement?.startDate);
   const end = new Date(placement?.endDate);
@@ -94,6 +105,21 @@ export const AdminRotationsPage: React.FC = () => {
 
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [rowActionMenuId, setRowActionMenuId] = useState<string | null>(null);
+  const [viewingRotation, setViewingRotation] = useState<RecordObject | null>(null);
+  const [editingRotation, setEditingRotation] = useState<RecordObject | null>(null);
+  const [statusRotation, setStatusRotation] = useState<RecordObject | null>(null);
+  const [actionSaving, setActionSaving] = useState(false);
+  const [actionReferenceLoading, setActionReferenceLoading] = useState(false);
+  const [actionDepartments, setActionDepartments] = useState<RecordObject[]>([]);
+  const [actionSupervisors, setActionSupervisors] = useState<RecordObject[]>([]);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    departmentId: '',
+    supervisorId: '',
+    startDate: '',
+    endDate: '',
+  });
 
   const [rotationSearch, setRotationSearch] = useState('');
   const [rotationHospitalFilter, setRotationHospitalFilter] = useState('');
@@ -374,6 +400,118 @@ export const AdminRotationsPage: React.FC = () => {
     }
   };
 
+  const closeRowMenu = () => setRowActionMenuId(null);
+
+  const openRotationDetails = (rotation: RecordObject) => {
+    closeRowMenu();
+    setViewingRotation(rotation);
+  };
+
+  const loadActionReferences = async (rotation: RecordObject) => {
+    const organizationId = asId(rotation.organizationId);
+    setActionDepartments([]);
+    setActionSupervisors([]);
+    if (!organizationId) return;
+
+    setActionReferenceLoading(true);
+    try {
+      const [departmentResponse, supervisorResponse] = await Promise.all([
+        api.get(`/organizations/${organizationId}/departments`),
+        api.get(`/organizations/${organizationId}/supervisors`),
+      ]);
+      setActionDepartments(asArray(departmentResponse, 'departments'));
+      setActionSupervisors(asArray(supervisorResponse, 'supervisors'));
+    } catch (requestError: any) {
+      setError(
+        requestError?.response?.data?.error?.message ||
+          'Unable to load hospital departments and supervisors.'
+      );
+    } finally {
+      setActionReferenceLoading(false);
+    }
+  };
+
+  const openEditRotation = async (rotation: RecordObject) => {
+    closeRowMenu();
+    setEditingRotation(rotation);
+    setEditForm({
+      title: rotation.title || '',
+      departmentId: asId(rotation.departmentId),
+      supervisorId: asId(rotation.supervisorId),
+      startDate: toInputDate(rotation.startDate),
+      endDate: toInputDate(rotation.endDate),
+    });
+    await loadActionReferences(rotation);
+  };
+
+  const saveRotationEdit = async () => {
+    if (!editingRotation || !editForm.title.trim() || !editForm.startDate || !editForm.endDate) return;
+
+    setActionSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await api.patch(`/rotations/${asId(editingRotation)}`, {
+        title: editForm.title.trim(),
+        departmentId: editForm.departmentId || null,
+        supervisorId: editForm.supervisorId || null,
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+      });
+      setEditingRotation(null);
+      await loadBase();
+      setSuccess('Rotation updated successfully.');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.error?.message || 'Unable to update rotation.');
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const changeRotationStatus = async (mode: 'AUTO' | 'CANCELLED') => {
+    if (!statusRotation) return;
+
+    setActionSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await api.patch(`/rotations/${asId(statusRotation)}/status`, { status: mode });
+      setStatusRotation(null);
+      await loadBase();
+      setSuccess(
+        mode === 'CANCELLED'
+          ? 'Rotation cancelled successfully.'
+          : 'Rotation status restored to automatic date-based tracking.'
+      );
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.error?.message || 'Unable to change rotation status.');
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const deleteRotation = async (rotation: RecordObject) => {
+    closeRowMenu();
+    const label = `${studentName(rotation.studentId)} — ${rotation.title || 'Rotation'}`;
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+
+    setActionSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await api.delete(`/rotations/${asId(rotation)}`);
+      await loadBase();
+      setSuccess('Rotation deleted successfully.');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.error?.message || 'Unable to delete rotation.');
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
   const rotationHospitals = useMemo(() => {
     const map = new Map<string, string>();
     rotations.forEach((rotation) => {
@@ -570,7 +708,7 @@ export const AdminRotationsPage: React.FC = () => {
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1080px] text-left text-xs">
+              <table className="w-full min-w-[1180px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Student</th>
@@ -581,6 +719,7 @@ export const AdminRotationsPage: React.FC = () => {
                     <th className="px-4 py-3.5">Period</th>
                     <th className="px-4 py-3.5">Group</th>
                     <th className="px-4 py-3.5">Status</th>
+                    <th className="px-4 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -620,6 +759,32 @@ export const AdminRotationsPage: React.FC = () => {
                           {rotation.status || 'UPCOMING'}
                         </span>
                       </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="inline-flex flex-col items-end">
+                          <button
+                            type="button"
+                            aria-label="Rotation actions"
+                            aria-expanded={rowActionMenuId === asId(rotation)}
+                            onClick={() =>
+                              setRowActionMenuId((current) =>
+                                current === asId(rotation) ? null : asId(rotation)
+                              )
+                            }
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+
+                          {rowActionMenuId === asId(rotation) && (
+                            <div className="mt-1 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
+                              <ActionItem icon={<Eye className="h-4 w-4" />} label="View Details" onClick={() => openRotationDetails(rotation)} />
+                              <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit / Reassign" onClick={() => void openEditRotation(rotation)} />
+                              <ActionItem icon={<RefreshCw className="h-4 w-4" />} label="Change Status" onClick={() => { closeRowMenu(); setStatusRotation(rotation); }} />
+                              <ActionItem danger icon={<Trash2 className="h-4 w-4" />} label="Delete" onClick={() => void deleteRotation(rotation)} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -638,10 +803,34 @@ export const AdminRotationsPage: React.FC = () => {
                         {rotation.title}
                       </p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${rotationStatusClass(rotation.status)}`}>
-                      {rotation.status || 'UPCOMING'}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <span className={`rounded-full px-2 py-1 text-[9px] font-black ${rotationStatusClass(rotation.status)}`}>
+                        {rotation.status || 'UPCOMING'}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="Mobile rotation actions"
+                        aria-expanded={rowActionMenuId === asId(rotation)}
+                        onClick={() =>
+                          setRowActionMenuId((current) =>
+                            current === asId(rotation) ? null : asId(rotation)
+                          )
+                        }
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
+
+                  {rowActionMenuId === asId(rotation) && (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+                      <ActionItem icon={<Eye className="h-4 w-4" />} label="View Details" onClick={() => openRotationDetails(rotation)} />
+                      <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit / Reassign" onClick={() => void openEditRotation(rotation)} />
+                      <ActionItem icon={<RefreshCw className="h-4 w-4" />} label="Change Status" onClick={() => { closeRowMenu(); setStatusRotation(rotation); }} />
+                      <ActionItem danger icon={<Trash2 className="h-4 w-4" />} label="Delete" onClick={() => void deleteRotation(rotation)} />
+                    </div>
+                  )}
 
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                     <MobileInfo label="Hospital" value={rotation.organizationId?.name || 'Hospital'} />
@@ -668,6 +857,167 @@ export const AdminRotationsPage: React.FC = () => {
           </>
         )}
       </section>
+
+      {viewingRotation && (
+        <ModalShell
+          title="Rotation Details"
+          eyebrow="Assigned Rotation"
+          onClose={() => setViewingRotation(null)}
+        >
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <DetailBox label="Student" value={studentName(viewingRotation.studentId)} />
+            <DetailBox label="Student ID" value={viewingRotation.studentId?.studentNumber || '—'} />
+            <DetailBox label="Hospital" value={viewingRotation.organizationId?.name || 'Hospital'} />
+            <DetailBox label="Rotation" value={viewingRotation.title || '—'} />
+            <DetailBox label="Department" value={viewingRotation.departmentId?.name || 'Not assigned'} />
+            <DetailBox label="Supervisor" value={supervisorName(viewingRotation.supervisorId)} />
+            <DetailBox label="Start Date" value={formatDate(viewingRotation.startDate)} />
+            <DetailBox label="End Date" value={formatDate(viewingRotation.endDate)} />
+            <DetailBox label="Group" value={viewingRotation.groupCode || '—'} />
+            <DetailBox label="Status" value={viewingRotation.status || 'UPCOMING'} />
+          </div>
+        </ModalShell>
+      )}
+
+      {editingRotation && (
+        <ModalShell
+          title="Edit / Reassign Rotation"
+          eyebrow="Rotation Management"
+          onClose={() => !actionSaving && setEditingRotation(null)}
+          footer={
+            <>
+              <button
+                type="button"
+                disabled={actionSaving}
+                onClick={() => setEditingRotation(null)}
+                className="min-h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-slate-600 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  actionSaving ||
+                  actionReferenceLoading ||
+                  !editForm.title.trim() ||
+                  !editForm.startDate ||
+                  !editForm.endDate
+                }
+                onClick={() => void saveRotationEdit()}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-black text-white disabled:opacity-40"
+              >
+                {actionSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Save Changes
+              </button>
+            </>
+          }
+        >
+          {actionReferenceLoading ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm font-bold text-slate-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading hospital data...
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Rotation Title *</span>
+                <input
+                  value={editForm.title}
+                  onChange={(event) => setEditForm((current) => ({ ...current, title: event.target.value }))}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500"
+                />
+              </label>
+
+              <Select
+                label="Department"
+                value={editForm.departmentId}
+                onChange={(value) => setEditForm((current) => ({ ...current, departmentId: value }))}
+              >
+                <option value="">Not assigned</option>
+                {actionDepartments.map((department) => (
+                  <option key={asId(department)} value={asId(department)}>
+                    {department.name}
+                  </option>
+                ))}
+              </Select>
+
+              <Select
+                label="Supervisor"
+                value={editForm.supervisorId}
+                onChange={(value) => setEditForm((current) => ({ ...current, supervisorId: value }))}
+              >
+                <option value="">Not assigned</option>
+                {actionSupervisors.map((supervisor) => (
+                  <option key={asId(supervisor)} value={asId(supervisor)}>
+                    {supervisorName(supervisor)}
+                  </option>
+                ))}
+              </Select>
+
+              <label>
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Start Date *</span>
+                <input
+                  type="date"
+                  value={editForm.startDate}
+                  onChange={(event) => setEditForm((current) => ({ ...current, startDate: event.target.value }))}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500"
+                />
+              </label>
+
+              <label>
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">End Date *</span>
+                <input
+                  type="date"
+                  min={editForm.startDate || undefined}
+                  value={editForm.endDate}
+                  onChange={(event) => setEditForm((current) => ({ ...current, endDate: event.target.value }))}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-blue-500"
+                />
+              </label>
+            </div>
+          )}
+        </ModalShell>
+      )}
+
+      {statusRotation && (
+        <ModalShell
+          title="Change Rotation Status"
+          eyebrow="Status Management"
+          onClose={() => !actionSaving && setStatusRotation(null)}
+        >
+          <p className="text-sm leading-6 text-slate-600">
+            Rotation status normally follows its dates automatically. Cancel only when the rotation should no longer run.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={actionSaving}
+              onClick={() => void changeRotationStatus('AUTO')}
+              className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:bg-blue-100 disabled:opacity-50"
+            >
+              <RefreshCw className="h-5 w-5 text-blue-700" />
+              <div className="mt-3 text-sm font-black text-slate-900">Automatic Status</div>
+              <div className="mt-1 text-xs leading-5 text-slate-500">
+                Upcoming, Active and Completed are calculated from the rotation dates.
+              </div>
+            </button>
+
+            <button
+              type="button"
+              disabled={actionSaving}
+              onClick={() => void changeRotationStatus('CANCELLED')}
+              className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left transition hover:bg-rose-100 disabled:opacity-50"
+            >
+              <X className="h-5 w-5 text-rose-700" />
+              <div className="mt-3 text-sm font-black text-slate-900">Cancel Rotation</div>
+              <div className="mt-1 text-xs leading-5 text-slate-500">
+                Keeps the historical record but marks this rotation as cancelled.
+              </div>
+            </button>
+          </div>
+        </ModalShell>
+      )}
 
       {assignModalOpen && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
@@ -1014,6 +1364,67 @@ export const AdminRotationsPage: React.FC = () => {
     </div>
   );
 };
+
+const ActionItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}> = ({ icon, label, onClick, danger = false }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={
+      'flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-black transition ' +
+      (danger
+        ? 'text-rose-600 hover:bg-rose-50'
+        : 'text-slate-700 hover:bg-slate-100')
+    }
+  >
+    <span className={danger ? 'text-rose-500' : 'text-blue-600'}>{icon}</span>
+    {label}
+  </button>
+);
+
+const ModalShell: React.FC<{
+  eyebrow: string;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}> = ({ eyebrow, title, onClose, children, footer }) => (
+  <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+    <button type="button" aria-label="Close modal" className="absolute inset-0 cursor-default" onClick={onClose} />
+    <div className="relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-2xl sm:rounded-3xl">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700">{eyebrow}</p>
+          <h2 className="mt-1 text-xl font-black text-slate-950">{title}</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-5 sm:p-6">{children}</div>
+      {footer && (
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          {footer}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const DetailBox: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="rounded-2xl bg-slate-50 p-4">
+    <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">{label}</div>
+    <div className="mt-1 font-black text-slate-800">{value}</div>
+  </div>
+);
 
 const Select: React.FC<{
   label: string;
