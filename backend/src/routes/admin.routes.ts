@@ -3,6 +3,7 @@ import { AdminController } from '../controllers/admin.controller.js';
 import { JourneyController } from '../controllers/journey.controller.js';
 import { StudentAdminController } from '../controllers/studentAdmin.controller.js';
 import { updateOrganizationAdminAccount } from '../controllers/organizationAdminAccount.controller.js';
+import { SupervisorManagementController } from '../controllers/supervisorManagement.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { authorizeManagedUserTarget, validateManagedUserCreate } from '../middleware/adminUserGuard.js';
@@ -90,7 +91,12 @@ adminRouter.post('/organizations/:id/activate', requireRole(UserRole.SUPER_ADMIN
 adminRouter.post('/organizations/:id/suspend', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.suspendOrganization);
 adminRouter.post('/organizations/:id/archive', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.archiveOrganization);
 
-adminRouter.get('/supervisors', requireRole(...ADMIN_ROLES), AdminController.getSupervisors);
+adminRouter.get('/supervisors', requireRole(...ADMIN_ROLES), SupervisorManagementController.list);
+adminRouter.post(
+  '/supervisors',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
+  SupervisorManagementController.create
+);
 adminRouter.get('/supervisors/:id', requireRole(...ADMIN_ROLES), AdminController.getSupervisorById);
 adminRouter.patch(
   '/supervisors/:id/status',
