@@ -1054,7 +1054,7 @@ export const AdminRotationsPage: React.FC = () => {
                   </article>
                 );
               })}
-            </div>            </div>
+            </div>
           </>
         )}
       </section>
