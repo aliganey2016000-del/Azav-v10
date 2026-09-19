@@ -16,7 +16,7 @@ export type FinancePaymentMethod =
   | 'OTHER';
 
 export interface IPayment extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId | null;
   applicationId?: mongoose.Types.ObjectId | null;
   organizationId?: mongoose.Types.ObjectId | null;
   originalPaymentId?: mongoose.Types.ObjectId | null;
@@ -38,7 +38,7 @@ export interface IPayment extends Document {
 
 const PaymentSchema = new Schema<IPayment>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     applicationId: { type: Schema.Types.ObjectId, ref: 'Application', default: null, index: true },
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', default: null, index: true },
     originalPaymentId: { type: Schema.Types.ObjectId, ref: 'Payment', default: null, index: true },
