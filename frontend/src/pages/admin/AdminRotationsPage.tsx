@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronRight,
   Eye,
   FileStack,
   Loader2,
@@ -106,6 +107,7 @@ export const AdminRotationsPage: React.FC = () => {
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [rowActionMenuId, setRowActionMenuId] = useState<string | null>(null);
+  const [expandedStudentIds, setExpandedStudentIds] = useState<Set<string>>(new Set());
   const [viewingRotation, setViewingRotation] = useState<RecordObject | null>(null);
   const [editingRotation, setEditingRotation] = useState<RecordObject | null>(null);
   const [statusRotation, setStatusRotation] = useState<RecordObject | null>(null);
@@ -555,6 +557,56 @@ export const AdminRotationsPage: React.FC = () => {
     });
   }, [rotations, rotationSearch, rotationHospitalFilter, rotationStatusFilter]);
 
+  const filteredStudentGroups = useMemo(() => {
+    const map = new Map<string, RecordObject[]>();
+
+    filteredRotations.forEach((rotation) => {
+      const studentId = asId(rotation.studentId) || asId(rotation);
+      const current = map.get(studentId) || [];
+      current.push(rotation);
+      map.set(studentId, current);
+    });
+
+    return Array.from(map.entries())
+      .map(([studentId, items]) => ({
+        studentId,
+        rotations: [...items].sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0)),
+      }))
+      .sort((a, b) => studentName(a.rotations[0]?.studentId).localeCompare(studentName(b.rotations[0]?.studentId)));
+  }, [filteredRotations]);
+
+  const toggleStudentRotations = (studentId: string) => {
+    setExpandedStudentIds((current) => {
+      const next = new Set(current);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
+    closeRowMenu();
+  };
+
+  const studentOverallStatus = (items: RecordObject[]) => {
+    if (items.some((rotation) => rotation.status === 'ACTIVE')) return 'ACTIVE';
+    if (items.some((rotation) => rotation.status === 'UPCOMING')) return 'UPCOMING';
+    if (items.length > 0 && items.every((rotation) => rotation.status === 'COMPLETED')) return 'COMPLETED';
+    if (items.length > 0 && items.every((rotation) => rotation.status === 'CANCELLED')) return 'CANCELLED';
+    return items[0]?.status || 'UPCOMING';
+  };
+
+  const studentProgramme = (items: RecordObject[]) =>
+    items[0]?.studentId?.programmeId?.name ||
+    items[0]?.placementId?.studentId?.programmeId?.name ||
+    'Programme';
+
+  const studentHospitals = (items: RecordObject[]) => {
+    const names = Array.from(
+      new Set(items.map((rotation) => rotation.organizationId?.name).filter(Boolean))
+    );
+    if (!names.length) return 'Hospital';
+    if (names.length === 1) return names[0];
+    return names.join(', ');
+  };
+
   const rotationStudents = useMemo(
     () => new Set(rotations.map((rotation) => asId(rotation.studentId)).filter(Boolean)).size,
     [rotations]
@@ -708,152 +760,301 @@ export const AdminRotationsPage: React.FC = () => {
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1180px] text-left text-xs">
+              <table className="w-full min-w-[980px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Student</th>
+                    <th className="px-4 py-3.5">Programme</th>
                     <th className="px-4 py-3.5">Hospital</th>
-                    <th className="px-4 py-3.5">Rotation</th>
-                    <th className="px-4 py-3.5">Department</th>
-                    <th className="px-4 py-3.5">Supervisor</th>
-                    <th className="px-4 py-3.5">Period</th>
-                    <th className="px-4 py-3.5">Group</th>
-                    <th className="px-4 py-3.5">Status</th>
-                    <th className="px-4 py-3.5 text-right">Actions</th>
+                    <th className="px-4 py-3.5">Rotations</th>
+                    <th className="px-4 py-3.5">Overall Status</th>
+                    <th className="px-4 py-3.5 text-right">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredRotations.map((rotation) => (
-                    <tr key={asId(rotation)} className="transition hover:bg-blue-50/30">
-                      <td className="px-4 py-3.5">
-                        <div className="font-black text-slate-900">{studentName(rotation.studentId)}</div>
-                        <div className="mt-0.5 text-[10px] font-semibold text-slate-500">
-                          {rotation.studentId?.studentNumber || rotation.studentId?.userId?.email || 'Student'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 font-bold text-slate-700">
-                        {rotation.organizationId?.name || 'Hospital'}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-black text-slate-900">{rotation.title}</div>
-                        <div className="mt-0.5 text-[10px] font-semibold text-violet-600">
-                          {rotation.templateId?.name || `Sequence ${rotation.sequence || '—'}`}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 font-bold text-slate-700">
-                        {rotation.departmentId?.name || 'Not assigned'}
-                      </td>
-                      <td className="px-4 py-3.5 font-semibold text-slate-600">
-                        {supervisorName(rotation.supervisorId)}
-                      </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap font-semibold text-slate-600">
-                        {formatDate(rotation.startDate)} — {formatDate(rotation.endDate)}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="inline-flex min-w-8 justify-center rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">
-                          {rotation.groupCode || '—'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${rotationStatusClass(rotation.status)}`}>
-                          {rotation.status || 'UPCOMING'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="inline-flex flex-col items-end">
-                          <button
-                            type="button"
-                            aria-label="Rotation actions"
-                            aria-expanded={rowActionMenuId === asId(rotation)}
-                            onClick={() =>
-                              setRowActionMenuId((current) =>
-                                current === asId(rotation) ? null : asId(rotation)
-                              )
-                            }
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
 
-                          {rowActionMenuId === asId(rotation) && (
-                            <div className="mt-1 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
-                              <ActionItem icon={<Eye className="h-4 w-4" />} label="View Details" onClick={() => openRotationDetails(rotation)} />
-                              <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit / Reassign" onClick={() => void openEditRotation(rotation)} />
-                              <ActionItem icon={<RefreshCw className="h-4 w-4" />} label="Change Status" onClick={() => { closeRowMenu(); setStatusRotation(rotation); }} />
-                              <ActionItem danger icon={<Trash2 className="h-4 w-4" />} label="Delete" onClick={() => void deleteRotation(rotation)} />
+                {filteredStudentGroups.map(({ studentId, rotations: studentRotations }) => {
+                  const firstRotation = studentRotations[0];
+                  const expanded = expandedStudentIds.has(studentId);
+                  const overallStatus = studentOverallStatus(studentRotations);
+
+                  return (
+                    <tbody key={studentId} className="border-b border-slate-100 last:border-b-0">
+                      <tr
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expanded}
+                        onClick={() => toggleStudentRotations(studentId)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleStudentRotations(studentId);
+                          }
+                        }}
+                        className={
+                          'cursor-pointer transition ' +
+                          (expanded ? 'bg-blue-50/60' : 'hover:bg-blue-50/30')
+                        }
+                      >
+                        <td className="px-4 py-4">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-700 text-[11px] font-black text-white shadow-sm">
+                              {(studentName(firstRotation.studentId)
+                                .split(' ')
+                                .map((part) => part[0])
+                                .join('')
+                                .slice(0, 2) || 'ST')
+                                .toUpperCase()}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                            <div className="min-w-0">
+                              <div className="truncate font-black text-slate-950">
+                                {studentName(firstRotation.studentId)}
+                              </div>
+                              <div className="mt-0.5 truncate text-[10px] font-semibold text-slate-500">
+                                ID: {firstRotation.studentId?.studentNumber || firstRotation.studentId?.userId?.email || 'Student'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-4 font-bold text-slate-700">
+                          {studentProgramme(studentRotations)}
+                        </td>
+
+                        <td className="px-4 py-4 font-bold text-slate-700">
+                          {studentHospitals(studentRotations)}
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 text-[10px] font-black text-violet-700">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {studentRotations.length} rotation{studentRotations.length === 1 ? '' : 's'}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${rotationStatusClass(overallStatus)}`}>
+                            {overallStatus}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-4 text-right">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm">
+                            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </span>
+                        </td>
+                      </tr>
+
+                      {expanded && (
+                        <tr>
+                          <td colSpan={6} className="bg-slate-50/70 px-4 py-4">
+                            <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
+                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+                                <div>
+                                  <h3 className="text-xs font-black text-slate-900">Rotation Details</h3>
+                                  <p className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                                    Full clinical rotation schedule for {studentName(firstRotation.studentId)}
+                                  </p>
+                                </div>
+                                <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">
+                                  {studentRotations.length} total
+                                </span>
+                              </div>
+
+                              <div className="overflow-x-auto">
+                                <table className="w-full min-w-[1050px] text-left text-xs">
+                                  <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                    <tr>
+                                      <th className="px-4 py-3">#</th>
+                                      <th className="px-4 py-3">Department</th>
+                                      <th className="px-4 py-3">Rotation Period</th>
+                                      <th className="px-4 py-3">Supervisor</th>
+                                      <th className="px-4 py-3">Group</th>
+                                      <th className="px-4 py-3">Status</th>
+                                      <th className="px-4 py-3 text-right">Action</th>
+                                    </tr>
+                                  </thead>
+
+                                  <tbody className="divide-y divide-slate-100">
+                                    {studentRotations.map((rotation, index) => (
+                                      <tr key={asId(rotation)} className="transition hover:bg-slate-50/80">
+                                        <td className="px-4 py-3 font-black text-slate-400">
+                                          {String(index + 1).padStart(2, '0')}
+                                        </td>
+
+                                        <td className="px-4 py-3">
+                                          <div className="font-black text-slate-800">
+                                            {rotation.departmentId?.name || rotation.title || 'Not assigned'}
+                                          </div>
+                                          <div className="mt-0.5 text-[10px] font-semibold text-violet-600">
+                                            {rotation.title || rotation.templateId?.name || `Sequence ${rotation.sequence || '—'}`}
+                                          </div>
+                                        </td>
+
+                                        <td className="px-4 py-3 whitespace-nowrap font-semibold text-slate-600">
+                                          {formatDate(rotation.startDate)} — {formatDate(rotation.endDate)}
+                                        </td>
+
+                                        <td className="px-4 py-3 font-semibold text-slate-600">
+                                          {supervisorName(rotation.supervisorId)}
+                                        </td>
+
+                                        <td className="px-4 py-3">
+                                          <span className="inline-flex min-w-8 justify-center rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">
+                                            {rotation.groupCode || '—'}
+                                          </span>
+                                        </td>
+
+                                        <td className="px-4 py-3">
+                                          <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${rotationStatusClass(rotation.status)}`}>
+                                            {rotation.status || 'UPCOMING'}
+                                          </span>
+                                        </td>
+
+                                        <td className="px-4 py-3 text-right">
+                                          <div className="relative inline-flex">
+                                            <button
+                                              type="button"
+                                              aria-label="Rotation actions"
+                                              aria-expanded={rowActionMenuId === asId(rotation)}
+                                              onClick={() =>
+                                                setRowActionMenuId((current) =>
+                                                  current === asId(rotation) ? null : asId(rotation)
+                                                )
+                                              }
+                                              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                                            >
+                                              <MoreVertical className="h-4 w-4" />
+                                            </button>
+
+                                            {rowActionMenuId === asId(rotation) && (
+                                              <div className="absolute right-0 top-10 z-30 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
+                                                <ActionItem icon={<Eye className="h-4 w-4" />} label="View Details" onClick={() => openRotationDetails(rotation)} />
+                                                <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit / Reassign" onClick={() => void openEditRotation(rotation)} />
+                                                <ActionItem icon={<RefreshCw className="h-4 w-4" />} label="Change Status" onClick={() => { closeRowMenu(); setStatusRotation(rotation); }} />
+                                                <ActionItem danger icon={<Trash2 className="h-4 w-4" />} label="Delete" onClick={() => void deleteRotation(rotation)} />
+                                              </div>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  );
+                })}
               </table>
             </div>
 
             <div className="grid gap-3 p-3 md:hidden">
-              {filteredRotations.map((rotation) => (
-                <article key={asId(rotation)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black text-slate-950">
-                        {studentName(rotation.studentId)}
-                      </h3>
-                      <p className="mt-1 truncate text-xs font-bold text-blue-700">
-                        {rotation.title}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                      <span className={`rounded-full px-2 py-1 text-[9px] font-black ${rotationStatusClass(rotation.status)}`}>
-                        {rotation.status || 'UPCOMING'}
+              {filteredStudentGroups.map(({ studentId, rotations: studentRotations }) => {
+                const firstRotation = studentRotations[0];
+                const expanded = expandedStudentIds.has(studentId);
+                const overallStatus = studentOverallStatus(studentRotations);
+
+                return (
+                  <article key={studentId} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      onClick={() => toggleStudentRotations(studentId)}
+                      className="flex w-full items-start justify-between gap-3 p-4 text-left"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-700 text-xs font-black text-white">
+                          {(studentName(firstRotation.studentId)
+                            .split(' ')
+                            .map((part) => part[0])
+                            .join('')
+                            .slice(0, 2) || 'ST')
+                            .toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-black text-slate-950">
+                            {studentName(firstRotation.studentId)}
+                          </h3>
+                          <p className="mt-0.5 truncate text-[10px] font-semibold text-slate-500">
+                            ID: {firstRotation.studentId?.studentNumber || '—'} · {studentProgramme(studentRotations)}
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[9px] font-black text-violet-700">
+                              {studentRotations.length} rotations
+                            </span>
+                            <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${rotationStatusClass(overallStatus)}`}>
+                              {overallStatus}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </span>
-                      <button
-                        type="button"
-                        aria-label="Mobile rotation actions"
-                        aria-expanded={rowActionMenuId === asId(rotation)}
-                        onClick={() =>
-                          setRowActionMenuId((current) =>
-                            current === asId(rotation) ? null : asId(rotation)
-                          )
-                        }
-                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+                    </button>
 
-                  {rowActionMenuId === asId(rotation) && (
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-                      <ActionItem icon={<Eye className="h-4 w-4" />} label="View Details" onClick={() => openRotationDetails(rotation)} />
-                      <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit / Reassign" onClick={() => void openEditRotation(rotation)} />
-                      <ActionItem icon={<RefreshCw className="h-4 w-4" />} label="Change Status" onClick={() => { closeRowMenu(); setStatusRotation(rotation); }} />
-                      <ActionItem danger icon={<Trash2 className="h-4 w-4" />} label="Delete" onClick={() => void deleteRotation(rotation)} />
-                    </div>
-                  )}
+                    {expanded && (
+                      <div className="space-y-2 border-t border-slate-100 bg-slate-50/70 p-3">
+                        {studentRotations.map((rotation, index) => (
+                          <div key={asId(rotation)} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-black uppercase tracking-wide text-blue-600">
+                                  Rotation {index + 1}
+                                </p>
+                                <h4 className="mt-1 truncate text-xs font-black text-slate-900">
+                                  {rotation.departmentId?.name || rotation.title || 'Not assigned'}
+                                </h4>
+                                <p className="mt-1 text-[10px] font-semibold text-slate-500">
+                                  {formatDate(rotation.startDate)} — {formatDate(rotation.endDate)}
+                                </p>
+                              </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <MobileInfo label="Hospital" value={rotation.organizationId?.name || 'Hospital'} />
-                    <MobileInfo label="Department" value={rotation.departmentId?.name || 'Not assigned'} />
-                    <MobileInfo label="Supervisor" value={supervisorName(rotation.supervisorId)} />
-                    <MobileInfo label="Group" value={rotation.groupCode || '—'} />
-                  </div>
+                              <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black ${rotationStatusClass(rotation.status)}`}>
+                                {rotation.status || 'UPCOMING'}
+                              </span>
+                            </div>
 
-                  <div className="mt-3 rounded-xl bg-slate-50 p-3">
-                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Period</div>
-                    <div className="mt-1 text-xs font-black text-slate-800">
-                      {formatDate(rotation.startDate)} — {formatDate(rotation.endDate)}
-                    </div>
-                  </div>
+                            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                              <MobileInfo label="Hospital" value={rotation.organizationId?.name || 'Hospital'} />
+                              <MobileInfo label="Supervisor" value={supervisorName(rotation.supervisorId)} />
+                              <MobileInfo label="Group" value={rotation.groupCode || '—'} />
+                              <MobileInfo label="Template" value={rotation.templateId?.name || '—'} />
+                            </div>
 
-                  {rotation.templateId?.name && (
-                    <p className="mt-3 truncate text-[10px] font-bold text-violet-700">
-                      Template: {rotation.templateId.name}
-                    </p>
-                  )}
-                </article>
-              ))}
-            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRowActionMenuId((current) =>
+                                  current === asId(rotation) ? null : asId(rotation)
+                                )
+                              }
+                              className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 text-[10px] font-black text-slate-700"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                              Rotation Actions
+                            </button>
+
+                            {rowActionMenuId === asId(rotation) && (
+                              <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+                                <ActionItem icon={<Eye className="h-4 w-4" />} label="View Details" onClick={() => openRotationDetails(rotation)} />
+                                <ActionItem icon={<Pencil className="h-4 w-4" />} label="Edit / Reassign" onClick={() => void openEditRotation(rotation)} />
+                                <ActionItem icon={<RefreshCw className="h-4 w-4" />} label="Change Status" onClick={() => { closeRowMenu(); setStatusRotation(rotation); }} />
+                                <ActionItem danger icon={<Trash2 className="h-4 w-4" />} label="Delete" onClick={() => void deleteRotation(rotation)} />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>            </div>
           </>
         )}
       </section>
