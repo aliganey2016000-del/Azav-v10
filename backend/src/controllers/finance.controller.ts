@@ -380,7 +380,7 @@ export class FinanceController {
         return;
       }
 
-      if (!amount) {
+      if (type !== 'FEE' && !amount) {
         res.status(400).json({
           success: false,
           error: { code: 'INVALID_AMOUNT', message: 'Amount must be greater than zero' },
@@ -388,7 +388,7 @@ export class FinanceController {
         return;
       }
 
-      if (!description) {
+      if (type !== 'FEE' && !description) {
         res.status(400).json({
           success: false,
           error: { code: 'DESCRIPTION_REQUIRED', message: 'Description is required' },
@@ -397,27 +397,131 @@ export class FinanceController {
       }
 
       if (type === 'FEE') {
-        const userId = String(req.body?.userId || '');
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
+        const payerType = String(
+          req.body?.payerType ||
+            (req.body?.universityId ? 'UNIVERSITY' : req.body?.organizationId ? 'ORGANIZATION' : 'STUDENT')
+        ).toUpperCase() as FinancePayerType;
+
+        if (!PAYER_TYPES.includes(payerType)) {
           res.status(400).json({
             success: false,
-            error: { code: 'INVALID_USER', message: 'A valid account is required for an invoice' },
+            error: { code: 'INVALID_PAYER', message: 'Select a valid invoice payer' },
           });
           return;
         }
 
+        const userId = String(req.body?.userId || '');
+        const universityId = String(req.body?.universityId || '');
+        const organizationId = String(req.body?.organizationId || '');
+
+        if (payerType === 'STUDENT') {
+          if (!mongoose.Types.ObjectId.isValid(userId)) {
+            res.status(400).json({
+              success: false,
+              error: { code: 'INVALID_USER', message: 'Select a valid student/account for this invoice' },
+            });
+            return;
+          }
+
+          const account = await User.findById(userId).select('_id universityId').lean();
+          if (!account) {
+            res.status(404).json({
+              success: false,
+              error: { code: 'USER_NOT_FOUND', message: 'Invoice account not found' },
+            });
+            return;
+          }
+        }
+
+        if (payerType === 'UNIVERSITY') {
+          if (!mongoose.Types.ObjectId.isValid(universityId)) {
+            res.status(400).json({
+              success: false,
+              error: { code: 'INVALID_UNIVERSITY', message: 'Select a university to bill' },
+            });
+            return;
+          }
+
+          const university = await University.findById(universityId).select('_id status').lean();
+          if (!university) {
+            res.status(404).json({
+              success: false,
+              error: { code: 'UNIVERSITY_NOT_FOUND', message: 'University not found' },
+            });
+            return;
+          }
+        }
+
+        if (payerType === 'ORGANIZATION') {
+          if (!mongoose.Types.ObjectId.isValid(organizationId)) {
+            res.status(400).json({
+              success: false,
+              error: { code: 'INVALID_ORGANIZATION', message: 'Select an organization to bill' },
+            });
+            return;
+          }
+
+          const organization = await Organization.findById(organizationId).select('_id status').lean();
+          if (!organization) {
+            res.status(404).json({
+              success: false,
+              error: { code: 'ORGANIZATION_NOT_FOUND', message: 'Organization not found' },
+            });
+            return;
+          }
+        }
+
+        const lineItems = await normalizeInvoiceLineItems(
+          req.body?.lineItems,
+          payerType,
+          payerType === 'UNIVERSITY' ? universityId : undefined
+        );
+
+        const calculatedAmount = lineItems.length
+          ? Number(lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2))
+          : amount;
+
+        if (!calculatedAmount || calculatedAmount <= 0) {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: 'INVALID_INVOICE_AMOUNT',
+              message: 'Add at least one priced service or enter a valid invoice amount',
+            },
+          });
+          return;
+        }
+
+        const invoiceCurrency = lineItems.length
+          ? String(
+              (
+                await FeeRule.findById(lineItems[0].feeRuleId)
+                  .select('currency')
+                  .lean()
+              )?.currency || req.body?.currency || 'USD'
+            ).toUpperCase()
+          : String(req.body?.currency || 'USD').toUpperCase();
+
+        const invoiceDescription =
+          description ||
+          lineItems.map((item) => item.serviceName).join(', ') ||
+          'AZAAM services';
+
         const dueDate = parseDate(req.body?.dueDate);
-        const status = deriveInvoiceStatus({ amount, netPaid: 0, dueDate });
+        const status = deriveInvoiceStatus({ amount: calculatedAmount, netPaid: 0, dueDate });
 
         const record = await Payment.create({
-          userId,
+          userId: payerType === 'STUDENT' ? userId : null,
+          universityId: payerType === 'UNIVERSITY' ? universityId : null,
+          payerType,
           applicationId: req.body?.applicationId || null,
-          organizationId: req.body?.organizationId || null,
+          organizationId: payerType === 'ORGANIZATION' ? organizationId : req.body?.organizationId || null,
           invoiceNumber: String(req.body?.invoiceNumber || '').trim() || nextInvoiceNumber(),
           type,
-          description,
-          amount,
-          currency: String(req.body?.currency || 'USD').toUpperCase(),
+          description: invoiceDescription,
+          amount: calculatedAmount,
+          currency: invoiceCurrency,
+          lineItems,
           status,
           dueDate,
           notes: String(req.body?.notes || '').trim() || undefined,
@@ -429,7 +533,10 @@ export class FinanceController {
           action: 'finance.invoice.create',
           entityType: 'Payment',
           entityId: record._id,
-          after: record.toObject(),
+          after: {
+            ...record.toObject(),
+            pricingSource: lineItems.length ? 'FEE_RULES' : 'MANUAL',
+          },
         });
 
         res.status(201).json({ success: true, data: await populateFinanceRecord(record._id) });
