@@ -162,6 +162,109 @@ export class FinancePricingController {
     }
   }
 
+  static async profile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const payer = String(req.query.payer || '').toUpperCase() as FeePayerType;
+      const universityId = String(req.query.universityId || '');
+
+      if (!PAYERS.includes(payer)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_PAYER', message: 'A valid payer type is required' },
+        });
+        return;
+      }
+
+      if (universityId && !mongoose.Types.ObjectId.isValid(universityId)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_UNIVERSITY', message: 'Selected university is invalid' },
+        });
+        return;
+      }
+
+      const now = new Date();
+      const startOfTodayUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+      );
+
+      const activeDateFilter = {
+        status: 'ACTIVE',
+        defaultPayer: payer,
+        $and: [
+          {
+            $or: [
+              { effectiveFrom: null },
+              { effectiveFrom: { $exists: false } },
+              { effectiveFrom: { $lte: now } },
+            ],
+          },
+          {
+            $or: [
+              { effectiveTo: null },
+              { effectiveTo: { $exists: false } },
+              { effectiveTo: { $gte: startOfTodayUtc } },
+            ],
+          },
+        ],
+      };
+
+      const [globalRules, universityRules, university] = await Promise.all([
+        FeeRule.find({ ...activeDateFilter, scope: 'GLOBAL' }).lean(),
+        universityId
+          ? FeeRule.find({
+              ...activeDateFilter,
+              scope: 'UNIVERSITY',
+              universityId: new mongoose.Types.ObjectId(universityId),
+            })
+              .populate('universityId', 'name code status')
+              .lean()
+          : Promise.resolve([]),
+        universityId
+          ? University.findById(universityId).select('_id name code status').lean()
+          : Promise.resolve(null),
+      ]);
+
+      const byCode = new Map<string, any>();
+      globalRules.forEach((rule) => {
+        byCode.set(String(rule.serviceCode), { ...rule, pricingSource: 'GLOBAL' });
+      });
+      universityRules.forEach((rule) => {
+        byCode.set(String(rule.serviceCode), { ...rule, pricingSource: 'UNIVERSITY' });
+      });
+
+      const services = Array.from(byCode.values()).sort((a, b) =>
+        String(a.serviceName || '').localeCompare(String(b.serviceName || ''))
+      );
+
+      const currencies = Array.from(
+        new Set(services.map((rule) => String(rule.currency || 'USD').toUpperCase()))
+      );
+
+      res.json({
+        success: true,
+        data: {
+          payerType: payer,
+          university: university
+            ? {
+                _id: university._id,
+                name: university.name,
+                code: university.code,
+                status: university.status,
+              }
+            : null,
+          serviceCount: services.length,
+          currency: currencies.length === 1 ? currencies[0] : null,
+          currencies,
+          mixedCurrency: currencies.length > 1,
+          services,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async create(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user || !hasFinanceAdminAccess(req)) {
