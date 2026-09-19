@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Stethoscope,
   UserRound,
+  Users,
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -58,6 +59,14 @@ const programmeName = (placement: PlacementRecord) =>
   placement.applicationId?.programmeText ||
   placement.studentId?.programmeId?.name ||
   '—';
+
+const batchInfo = (placement: PlacementRecord) => {
+  const batch = placement.applicationId?.batchId;
+  return {
+    number: batch?.batchNumber || 'Legacy / No Batch',
+    name: batch?.name || '',
+  };
+};
 
 const hospitalName = (placement: PlacementRecord) =>
   placement.organizationId?.name || 'Hospital not assigned';
@@ -205,6 +214,9 @@ export const StudentPlacementPage: React.FC = () => {
                     <MapPin className="h-3.5 w-3.5" />
                     {hospitalLocation(currentPlacement)}
                   </p>
+                  <p className="mt-1 text-[11px] font-extrabold text-violet-700 dark:text-violet-300">
+                    Batch: {batchInfo(currentPlacement).number}
+                  </p>
                 </div>
               </div>
             </div>
@@ -224,6 +236,11 @@ export const StudentPlacementPage: React.FC = () => {
                 icon={<GraduationCap className="h-4 w-4" />}
                 label="Programme"
                 value={programmeName(currentPlacement)}
+              />
+              <DetailCard
+                icon={<Users className="h-4 w-4" />}
+                label="Batch No"
+                value={batchInfo(currentPlacement).number}
               />
               <DetailCard
                 icon={<CalendarDays className="h-4 w-4" />}
@@ -270,7 +287,7 @@ export const StudentPlacementPage: React.FC = () => {
                         {hospitalName(placement)}
                       </p>
                       <p className="mt-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                        {formatDate(placement.startDate)} — {formatDate(placement.endDate)}
+                        {batchInfo(placement).number} · {formatDate(placement.startDate)} — {formatDate(placement.endDate)}
                       </p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${itemMeta.badge}`}>
