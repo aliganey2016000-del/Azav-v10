@@ -347,6 +347,23 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     ['PAID', 'REFUNDED'].includes(record.status)
   ).length;
 
+  const loadResolvedFeeRules = async (payerType: string, universityId?: string) => {
+    if (!payerType) {
+      setFeeRules([]);
+      return;
+    }
+
+    try {
+      const params: Record<string, string> = { payer: payerType };
+      if (universityId) params.universityId = universityId;
+      const response = await api.get('/finance/pricing/resolved', { params });
+      setFeeRules(asArray(response));
+    } catch (requestError: any) {
+      setFeeRules([]);
+      setError(requestError?.response?.data?.error?.message || 'Unable to load service pricing.');
+    }
+  };
+
   const openCreate = async () => {
     const defaultStatus =
       config.type === 'FEE' ? 'PENDING' : config.type === 'REFUND' ? 'REFUNDED' : 'PAID';
@@ -360,27 +377,28 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setInvoiceItems([]);
     setFeeRules([]);
     setHeaderMenuOpen(false);
-    setInvoiceItems(
-      Array.isArray(record.lineItems)
-        ? record.lineItems
-            .filter((item: RecordObject) => asId(item.feeRuleId))
-            .map((item: RecordObject) => ({
-              feeRuleId: asId(item.feeRuleId),
-              quantity: Number(item.quantity || 1),
-            }))
-        : []
-    );
     setFormOpen(true);
     await loadReferences();
+
+    if (config.type === 'FEE') {
+      await loadResolvedFeeRules('UNIVERSITY');
+    }
   };
 
   const openEdit = async (record: RecordObject) => {
     setEditing(record);
     setRowMenuId(null);
+
+    const payerType =
+      record.payerType ||
+      (record.universityId ? 'UNIVERSITY' : record.organizationId && !record.userId ? 'ORGANIZATION' : 'STUDENT');
+
+    const universityId = asId(record.universityId);
+
     setForm({
-      payerType: record.payerType || (record.universityId ? 'UNIVERSITY' : record.organizationId && !record.userId ? 'ORGANIZATION' : 'STUDENT'),
+      payerType,
       userId: asId(record.userId),
-      universityId: asId(record.universityId),
+      universityId,
       organizationId: asId(record.organizationId),
       invoiceId: asId(record.invoiceId),
       description: record.description || '',
@@ -394,8 +412,28 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       paymentMethod: record.paymentMethod || '',
       notes: record.notes || '',
     });
+
+    setInvoiceItems(
+      Array.isArray(record.lineItems)
+        ? record.lineItems
+            .filter((item: RecordObject) => asId(item.feeRuleId))
+            .map((item: RecordObject) => ({
+              feeRuleId: asId(item.feeRuleId),
+              quantity: Number(item.quantity || 1),
+            }))
+        : []
+    );
+
     setFormOpen(true);
     await loadReferences();
+
+    if (record.type === 'FEE') {
+      const studentUniversityId =
+        payerType === 'STUDENT' && typeof record.userId === 'object'
+          ? asId(record.userId?.universityId)
+          : '';
+      await loadResolvedFeeRules(payerType, universityId || studentUniversityId);
+    }
   };
 
   const closeForm = () => {
