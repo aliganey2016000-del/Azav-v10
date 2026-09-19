@@ -40,6 +40,7 @@ type FinanceForm = {
   payerType: string;
   userId: string;
   universityId: string;
+  batchId: string;
   organizationId: string;
   invoiceId: string;
   description: string;
@@ -102,6 +103,7 @@ const EMPTY_FORM: FinanceForm = {
   payerType: 'UNIVERSITY',
   userId: '',
   universityId: '',
+  batchId: '',
   organizationId: '',
   invoiceId: '',
   description: '',
@@ -243,6 +245,8 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const [invoices, setInvoices] = useState<RecordObject[]>([]);
   const [feeRules, setFeeRules] = useState<RecordObject[]>([]);
   const [pricingProfile, setPricingProfile] = useState<RecordObject | null>(null);
+  const [trainingBatches, setTrainingBatches] = useState<RecordObject[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
   const [invoiceItems, setInvoiceItems] = useState<Array<{ feeRuleId: string; quantity: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(false);
@@ -350,6 +354,30 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     ['PAID', 'REFUNDED'].includes(record.status)
   ).length;
 
+  const loadTrainingBatches = async (universityId: string) => {
+    if (!universityId) {
+      setTrainingBatches([]);
+      return;
+    }
+
+    setBatchLoading(true);
+    setError('');
+    try {
+      const response = await api.get('/admin/training-batches', {
+        params: { universityId },
+      });
+      setTrainingBatches(asArray(response));
+    } catch (requestError: any) {
+      setTrainingBatches([]);
+      setError(
+        requestError?.response?.data?.error?.message ||
+          'Unable to load training batches for this university.'
+      );
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   const loadPricingProfile = async (payerType: string, universityId?: string) => {
     const requestId = ++feeRuleRequestRef.current;
 
@@ -402,6 +430,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     });
     setEditing(null);
     setInvoiceItems([]);
+    setTrainingBatches([]);
     setPricingProfile(null);
     setFeeRules([]);
     setHeaderMenuOpen(false);
@@ -424,6 +453,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       payerType,
       userId: asId(record.userId),
       universityId,
+      batchId: asId(record.batchId),
       organizationId: asId(record.organizationId),
       invoiceId: asId(record.invoiceId),
       description: record.description || '',
@@ -457,6 +487,9 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         payerType === 'STUDENT' && typeof record.userId === 'object'
           ? asId(record.userId?.universityId)
           : '';
+      if (payerType === 'UNIVERSITY' && universityId) {
+        await loadTrainingBatches(universityId);
+      }
       await loadPricingProfile(payerType, universityId || studentUniversityId);
     }
   };
@@ -466,6 +499,8 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setFormOpen(false);
     setEditing(null);
     setInvoiceItems([]);
+    setTrainingBatches([]);
+    setBatchLoading(false);
     feeRuleRequestRef.current += 1;
     setPricingProfile(null);
     setFeeRules([]);
@@ -497,6 +532,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   }, 0);
 
   const selectedUniversity = universities.find((item) => asId(item) === form.universityId) || null;
+  const selectedBatch = trainingBatches.find((item) => asId(item) === form.batchId) || null;
   const selectedOrganization = organizations.find((item) => asId(item) === form.organizationId) || null;
   const selectedPayerName =
     form.payerType === 'UNIVERSITY'
@@ -513,6 +549,19 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       : form.payerType === 'ORGANIZATION'
         ? Boolean(form.organizationId)
         : Boolean(form.userId);
+
+  const invoiceBillingContextValid =
+    invoicePayerValid &&
+    (form.payerType !== 'UNIVERSITY' || Boolean(form.batchId));
+
+  const batchStudentCount = Number(selectedBatch?.studentsCount || 0);
+
+  const quantityForRule = (rule: RecordObject) =>
+    form.payerType === 'UNIVERSITY' &&
+    rule.billingBasis === 'PER_STUDENT' &&
+    batchStudentCount > 0
+      ? batchStudentCount
+      : 1;
 
   const toggleInvoiceRule = (feeRuleId: string) => {
     if (!feeRuleId) return;
@@ -534,7 +583,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         return current;
       }
 
-      return [...current, { feeRuleId, quantity: 1 }];
+      return [...current, { feeRuleId, quantity: quantityForRule(rule) }];
     });
   };
 
@@ -549,7 +598,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setInvoiceItems(
       feeRules
         .filter((rule) => String(rule.currency || 'USD') === String(preferredCurrency))
-        .map((rule) => ({ feeRuleId: asId(rule), quantity: 1 }))
+        .map((rule) => ({ feeRuleId: asId(rule), quantity: quantityForRule(rule) }))
         .filter((item) => item.feeRuleId)
     );
   };
@@ -574,7 +623,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
     if (
       !recordType ||
-      (creatingRuleInvoice && (!invoicePayerValid || invoiceItems.length === 0 || invoiceTotal <= 0)) ||
+      (creatingRuleInvoice && (!invoiceBillingContextValid || invoiceItems.length === 0 || invoiceTotal <= 0)) ||
       (!creatingRuleInvoice && recordType === 'FEE' && !form.userId && !form.universityId && !form.organizationId) ||
       (requiresOrganization && !form.organizationId) ||
       (requiresInvoice && !form.invoiceId) ||
@@ -634,6 +683,10 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
           payerType: recordType === 'FEE' ? form.payerType : undefined,
           userId: form.userId || undefined,
           universityId: form.universityId || undefined,
+          batchId:
+            recordType === 'FEE' && form.payerType === 'UNIVERSITY'
+              ? form.batchId || undefined
+              : undefined,
           organizationId: form.organizationId || undefined,
           invoiceId: form.invoiceId || undefined,
           lineItems:
@@ -1185,7 +1238,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 disabled={
                   saving ||
                   referenceLoading ||
-                  (formType === 'FEE' && !editing && (!invoicePayerValid || invoiceItems.length === 0 || invoiceTotal <= 0)) ||
+                  (formType === 'FEE' && !editing && (!invoiceBillingContextValid || invoiceItems.length === 0 || invoiceTotal <= 0)) ||
                   (formType === 'PAYMENT' && !form.invoiceId) ||
                   (formType === 'SETTLEMENT' && !form.organizationId) ||
                   (formType !== 'FEE' && !form.description.trim()) ||
