@@ -1046,7 +1046,8 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
-            <DetailBox label="Account" value={accountName(viewing)} />
+            <DetailBox label="Bill To" value={accountName(viewing)} />
+            <DetailBox label="Payer Type" value={String(viewing.payerType || (viewing.universityId ? 'UNIVERSITY' : viewing.organizationId && !viewing.userId ? 'ORGANIZATION' : 'STUDENT')).replace(/_/g, ' ')} />
             <DetailBox label="Email" value={accountEmail(viewing) || '—'} />
             <DetailBox label="Type" value={viewing.type || '—'} />
             <DetailBox label="Status" value={viewing.status || '—'} />
@@ -1059,9 +1060,32 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
             <DetailBox label="Payment Method" value={(viewing.paymentMethod || '—').replace(/_/g, ' ')} />
             <DetailBox label="Due Date" value={formatDate(viewing.dueDate)} />
             <DetailBox label="Paid Date" value={formatDate(viewing.paidAt)} />
+            <DetailBox label="University" value={viewing.universityId?.name || '—'} />
             <DetailBox label="Organization" value={viewing.organizationId?.name || '—'} />
             <DetailBox label="Created" value={formatDate(viewing.createdAt)} />
           </div>
+
+          {viewing.type === 'FEE' && Array.isArray(viewing.lineItems) && viewing.lineItems.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Invoice Services</div>
+              <div className="mt-3 space-y-2">
+                {viewing.lineItems.map((item: RecordObject, index: number) => (
+                  <div key={String(item.feeRuleId || index)} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-black text-slate-800">{item.serviceName || 'Service'}</div>
+                      <div className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                        Qty {item.quantity || 1} × {formatMoney(item.unitPrice || 0, viewing.currency)}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-xs font-black text-slate-900">
+                      {formatMoney(item.amount || 0, viewing.currency)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {viewing.notes && (
             <div className="mt-3 rounded-2xl bg-slate-50 p-4">
               <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Notes</div>
