@@ -562,16 +562,16 @@ export class FinanceController {
           return;
         }
 
-        if (!invoice.userId) {
+        if (!invoice.userId && !invoice.universityId && !invoice.organizationId) {
           res.status(400).json({
             success: false,
-            error: { code: 'INVOICE_ACCOUNT_MISSING', message: 'The selected invoice has no account' },
+            error: { code: 'INVOICE_PAYER_MISSING', message: 'The selected invoice has no billing payer' },
           });
           return;
         }
 
         const suppliedUserId = String(req.body?.userId || '');
-        if (suppliedUserId && suppliedUserId !== String(invoice.userId)) {
+        if (invoice.userId && suppliedUserId && suppliedUserId !== String(invoice.userId)) {
           res.status(400).json({
             success: false,
             error: { code: 'PAYMENT_ACCOUNT_MISMATCH', message: 'Payment account must match the invoice account' },
@@ -602,7 +602,9 @@ export class FinanceController {
         }
 
         const record = await Payment.create({
-          userId: invoice.userId,
+          userId: invoice.userId || null,
+          universityId: invoice.universityId || null,
+          payerType: invoice.payerType || (invoice.universityId ? 'UNIVERSITY' : invoice.organizationId ? 'ORGANIZATION' : 'STUDENT'),
           applicationId: invoice.applicationId || null,
           organizationId: invoice.organizationId || null,
           invoiceId: invoice._id,
@@ -630,6 +632,8 @@ export class FinanceController {
             amount,
             currency: invoice.currency,
             userId: invoice.userId,
+            universityId: invoice.universityId,
+            payerType: invoice.payerType,
             reference: record.reference,
           },
         });
@@ -661,6 +665,7 @@ export class FinanceController {
 
       const record = await Payment.create({
         userId: null,
+        payerType: 'ORGANIZATION',
         organizationId,
         type: 'SETTLEMENT',
         description,
@@ -1036,7 +1041,9 @@ export class FinanceController {
       }
 
       const refund = await Payment.create({
-        userId: original.userId,
+        userId: original.userId || null,
+        universityId: original.universityId || null,
+        payerType: original.payerType || (original.universityId ? 'UNIVERSITY' : original.organizationId ? 'ORGANIZATION' : 'STUDENT'),
         applicationId: original.applicationId || null,
         organizationId: original.organizationId || null,
         invoiceId: original.invoiceId || null,
