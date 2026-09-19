@@ -222,6 +222,7 @@ export class AdminApiService {
     hospitalId?: string;
     visaStatus?: string;
     completionStatus?: string;
+    createdDate?: string;
   }): Promise<{ students: AdminStudent[]; pagination: PaginationMeta }> {
     const res = await api.get('/admin/students', { params });
     const students: AdminStudent[] = Array.isArray(res.data?.data) ? res.data.data : [];
