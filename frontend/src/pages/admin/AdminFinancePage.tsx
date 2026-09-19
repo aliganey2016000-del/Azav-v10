@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Banknote,
   Ban,
@@ -245,7 +245,9 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const [invoiceItems, setInvoiceItems] = useState<Array<{ feeRuleId: string; quantity: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(false);
+  const [feeRulesLoading, setFeeRulesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const feeRuleRequestRef = useRef(0);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -348,19 +350,34 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   ).length;
 
   const loadResolvedFeeRules = async (payerType: string, universityId?: string) => {
+    const requestId = ++feeRuleRequestRef.current;
+
     if (!payerType) {
       setFeeRules([]);
+      setFeeRulesLoading(false);
       return;
     }
+
+    setFeeRulesLoading(true);
+    setError('');
 
     try {
       const params: Record<string, string> = { payer: payerType };
       if (universityId) params.universityId = universityId;
       const response = await api.get('/finance/pricing/resolved', { params });
-      setFeeRules(asArray(response));
+
+      if (requestId === feeRuleRequestRef.current) {
+        setFeeRules(asArray(response));
+      }
     } catch (requestError: any) {
-      setFeeRules([]);
-      setError(requestError?.response?.data?.error?.message || 'Unable to load service pricing.');
+      if (requestId === feeRuleRequestRef.current) {
+        setFeeRules([]);
+        setError(requestError?.response?.data?.error?.message || 'Unable to load service pricing.');
+      }
+    } finally {
+      if (requestId === feeRuleRequestRef.current) {
+        setFeeRulesLoading(false);
+      }
     }
   };
 
@@ -380,9 +397,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setFormOpen(true);
     await loadReferences();
 
-    if (config.type === 'FEE') {
-      await loadResolvedFeeRules('UNIVERSITY');
-    }
   };
 
   const openEdit = async (record: RecordObject) => {
@@ -441,7 +455,9 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setFormOpen(false);
     setEditing(null);
     setInvoiceItems([]);
+    feeRuleRequestRef.current += 1;
     setFeeRules([]);
+    setFeeRulesLoading(false);
     setForm(EMPTY_FORM);
   };
 
@@ -1194,7 +1210,9 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         organizationId: '',
                       }));
                       setInvoiceItems([]);
-                      void loadResolvedFeeRules(value);
+                      feeRuleRequestRef.current += 1;
+                      setFeeRules([]);
+                      setFeeRulesLoading(false);
                     }}
                   >
                     <option value="UNIVERSITY">University</option>
@@ -1210,7 +1228,12 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                       onChange={(value) => {
                         setForm((current) => ({ ...current, universityId: value }));
                         setInvoiceItems([]);
-                        void loadResolvedFeeRules('UNIVERSITY', value);
+                        if (value) void loadResolvedFeeRules('UNIVERSITY', value);
+                        else {
+                          feeRuleRequestRef.current += 1;
+                          setFeeRules([]);
+                          setFeeRulesLoading(false);
+                        }
                       }}
                     >
                       <option value="">Select university</option>
@@ -1232,7 +1255,12 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         const universityId = asId(account?.universityId);
                         setForm((current) => ({ ...current, userId: value }));
                         setInvoiceItems([]);
-                        void loadResolvedFeeRules('STUDENT', universityId || undefined);
+                        if (value) void loadResolvedFeeRules('STUDENT', universityId || undefined);
+                        else {
+                          feeRuleRequestRef.current += 1;
+                          setFeeRules([]);
+                          setFeeRulesLoading(false);
+                        }
                       }}
                     >
                       <option value="">Select student/account</option>
@@ -1252,7 +1280,12 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                       onChange={(value) => {
                         setForm((current) => ({ ...current, organizationId: value }));
                         setInvoiceItems([]);
-                        void loadResolvedFeeRules('ORGANIZATION');
+                        if (value) void loadResolvedFeeRules('ORGANIZATION');
+                        else {
+                          feeRuleRequestRef.current += 1;
+                          setFeeRules([]);
+                          setFeeRulesLoading(false);
+                        }
                       }}
                     >
                       <option value="">Select organization</option>
@@ -1277,6 +1310,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                           <Select
                             label="Add Service"
                             value=""
+                            disabled={feeRulesLoading || !invoicePayerValid}
                             onChange={addInvoiceRule}
                           >
                             <option value="">Select service</option>
@@ -1289,9 +1323,18 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         </div>
                       </div>
 
-                      {feeRules.length === 0 ? (
+                      {!invoicePayerValid ? (
+                        <div className="mt-4 rounded-xl border border-cyan-200 bg-white/70 p-3 text-xs font-semibold text-slate-600">
+                          Select the university, student or organization first. The applicable service prices will load automatically.
+                        </div>
+                      ) : feeRulesLoading ? (
+                        <div className="mt-4 flex items-center gap-2 rounded-xl border border-cyan-200 bg-white/70 p-3 text-xs font-bold text-cyan-800">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading the applicable service prices...
+                        </div>
+                      ) : feeRules.length === 0 ? (
                         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
-                          No active pricing rules are available for this payer. Create them first under Finance → Service Pricing.
+                          No active pricing rules are available for this selected payer. Check Finance → Service Pricing for this exact account.
                         </div>
                       ) : invoiceItems.length === 0 ? (
                         <div className="mt-4 rounded-xl border border-dashed border-cyan-200 bg-white/70 p-4 text-center text-xs font-semibold text-slate-500">
