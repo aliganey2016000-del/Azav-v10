@@ -96,7 +96,7 @@ export class SupervisorManagementController {
         ClinicalSupervisor.countDocuments(query),
         ClinicalSupervisor.countDocuments(summaryQuery),
         ClinicalSupervisor.countDocuments({ ...summaryQuery, status: 'ACTIVE' }),
-        ClinicalSupervisor.distinct('departmentId', { ...summaryQuery, departmentId: { $ne: null } }),
+        ClinicalSupervisor.distinct('departmentId', summaryQuery),
         ClinicalSupervisor.find(summaryQuery).select('_id').lean(),
       ]);
 
