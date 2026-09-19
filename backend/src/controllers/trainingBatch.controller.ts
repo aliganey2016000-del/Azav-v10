@@ -75,7 +75,17 @@ export class TrainingBatchController {
       const counts = ids.length
         ? await Application.aggregate([
             { $match: { batchId: { $in: ids } } },
-            { $group: { _id: '$batchId', students: { $sum: 1 } } },
+            {
+              $group: {
+                _id: { batchId: '$batchId', studentId: '$studentId' },
+              },
+            },
+            {
+              $group: {
+                _id: '$_id.batchId',
+                students: { $sum: 1 },
+              },
+            },
           ])
         : [];
 
