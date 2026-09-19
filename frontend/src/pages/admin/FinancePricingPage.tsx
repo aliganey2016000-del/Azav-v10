@@ -3,6 +3,7 @@ import {
   Building2,
   Check,
   ChevronDown,
+  ChevronRight,
   CircleDollarSign,
   Edit3,
   Layers3,
@@ -151,6 +152,7 @@ export const FinancePricingPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [rowMenuId, setRowMenuId] = useState<string | null>(null);
+  const [expandedPricingGroups, setExpandedPricingGroups] = useState<Set<string>>(new Set());
   const [modalOpen, setModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [editing, setEditing] = useState<RecordObject | null>(null);
@@ -206,6 +208,75 @@ export const FinancePricingPage: React.FC = () => {
         .includes(query);
     });
   }, [rules, search, payerFilter, scopeFilter, statusFilter]);
+
+  const pricingGroups = useMemo(() => {
+    const groups = new Map<string, {
+      id: string;
+      kind: 'UNIVERSITY' | 'GLOBAL';
+      universityId: string;
+      name: string;
+      code: string;
+      rules: RecordObject[];
+    }>();
+
+    filtered.forEach((rule) => {
+      const isUniversity = rule.scope === 'UNIVERSITY';
+      const universityId = isUniversity ? asId(rule.universityId) : '';
+      const key = isUniversity
+        ? 'UNIVERSITY:' + (universityId || 'UNKNOWN')
+        : 'GLOBAL:' + String(rule.defaultPayer || 'UNIVERSITY');
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          id: key,
+          kind: isUniversity ? 'UNIVERSITY' : 'GLOBAL',
+          universityId,
+          name: isUniversity
+            ? rule.universityId?.name || 'University'
+            : 'Global Default · ' + formatLabel(rule.defaultPayer),
+          code: isUniversity ? rule.universityId?.code || '' : String(rule.defaultPayer || ''),
+          rules: [],
+        });
+      }
+
+      groups.get(key)!.rules.push(rule);
+    });
+
+    return Array.from(groups.values())
+      .map((group) => ({
+        ...group,
+        rules: [...group.rules].sort((a, b) =>
+          String(a.serviceName || '').localeCompare(String(b.serviceName || ''))
+        ),
+      }))
+      .sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind === 'UNIVERSITY' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+  }, [filtered]);
+
+  const togglePricingGroup = (groupId: string) => {
+    setExpandedPricingGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+    setRowMenuId(null);
+  };
+
+  const groupOverallStatus = (groupRules: RecordObject[]) => {
+    const active = groupRules.filter((rule) => rule.status === 'ACTIVE').length;
+    if (active === groupRules.length && groupRules.length > 0) return 'ACTIVE';
+    if (active === 0) return 'INACTIVE';
+    return 'MIXED';
+  };
+
+  const groupCurrencies = (groupRules: RecordObject[]) =>
+    Array.from(new Set(groupRules.map((rule) => String(rule.currency || 'USD')))).join(', ');
+
+  const groupPayers = (groupRules: RecordObject[]) =>
+    Array.from(new Set(groupRules.map((rule) => formatLabel(rule.defaultPayer)))).join(', ');
 
   const buildBulkRows = (universityId: string): BulkServiceRow[] => {
     const byCode = new Map<string, RecordObject>();
@@ -278,6 +349,16 @@ export const FinancePricingPage: React.FC = () => {
     setSuccess('');
     setBulkForm(EMPTY_BULK_FORM);
     setBulkRows(buildBulkRows(''));
+    setBulkModalOpen(true);
+  };
+
+  const openBulkUniversityFor = (universityId: string) => {
+    setHeaderMenuOpen(false);
+    setRowMenuId(null);
+    setError('');
+    setSuccess('');
+    setBulkForm({ ...EMPTY_BULK_FORM, universityId });
+    setBulkRows(buildBulkRows(universityId));
     setBulkModalOpen(true);
   };
 
@@ -423,7 +504,12 @@ export const FinancePricingPage: React.FC = () => {
     }
   };
 
-  const universityRuleCount = rules.filter((rule) => rule.scope === 'UNIVERSITY').length;
+  const universityRuleCount = new Set(
+    rules
+      .filter((rule) => rule.scope === 'UNIVERSITY')
+      .map((rule) => asId(rule.universityId))
+      .filter(Boolean)
+  ).size;
   const activeCount = rules.filter((rule) => rule.status === 'ACTIVE').length;
   const serviceCount = new Set(rules.map((rule) => rule.serviceCode)).size;
 
@@ -521,9 +607,11 @@ export const FinancePricingPage: React.FC = () => {
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-4 sm:p-5">
-          <h2 className="text-sm font-black text-slate-950">Pricing Rules ({filtered.length})</h2>
+          <h2 className="text-sm font-black text-slate-950">
+            Pricing Groups ({pricingGroups.length})
+          </h2>
           <p className="mt-1 text-xs text-slate-500">
-            Keep global defaults simple, then add university-specific overrides only where agreements differ.
+            Each university appears once. Click the row to expand its complete service price list.
           </p>
         </div>
 
@@ -532,119 +620,344 @@ export const FinancePricingPage: React.FC = () => {
             <Loader2 className="h-5 w-5 animate-spin" />
             Loading pricing rules...
           </div>
-        ) : filtered.length === 0 ? (
+        ) : pricingGroups.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <CircleDollarSign className="mx-auto h-10 w-10 text-slate-300" />
-            <p className="mt-3 text-sm font-black text-slate-700">No pricing rules found</p>
-            <p className="mt-1 text-xs text-slate-500">Create the first service rule from the three-dot menu above.</p>
+            <p className="mt-3 text-sm font-black text-slate-700">No pricing groups found</p>
+            <p className="mt-1 text-xs text-slate-500">Create university pricing from the three-dot menu above.</p>
           </div>
         ) : (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[1180px] text-left text-xs">
+              <table className="w-full min-w-[980px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
                   <tr>
-                    <th className="px-4 py-3.5">Service</th>
-                    <th className="px-4 py-3.5">Category</th>
+                    <th className="px-4 py-3.5">University / Pricing Group</th>
+                    <th className="px-4 py-3.5">Services</th>
                     <th className="px-4 py-3.5">Payer</th>
-                    <th className="px-4 py-3.5">Price</th>
-                    <th className="px-4 py-3.5">Billing Basis</th>
-                    <th className="px-4 py-3.5">Scope</th>
-                    <th className="px-4 py-3.5">Status</th>
-                    <th className="px-4 py-3.5 text-right">Actions</th>
+                    <th className="px-4 py-3.5">Currency</th>
+                    <th className="px-4 py-3.5">Active</th>
+                    <th className="px-4 py-3.5">Overall Status</th>
+                    <th className="px-4 py-3.5 text-right">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filtered.map((rule) => (
-                    <tr key={asId(rule)} className="transition hover:bg-cyan-50/40">
-                      <td className="px-4 py-3.5">
-                        <div className="font-black text-slate-900">{rule.serviceName}</div>
-                        <div className="mt-0.5 font-mono text-[10px] font-semibold text-slate-500">{rule.serviceCode}</div>
-                      </td>
-                      <td className="px-4 py-3.5 font-bold text-slate-600">{formatLabel(rule.category)}</td>
-                      <td className="px-4 py-3.5">
-                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">{formatLabel(rule.defaultPayer)}</span>
-                      </td>
-                      <td className="px-4 py-3.5 font-black text-slate-900">{formatMoney(rule.amount, rule.currency)}</td>
-                      <td className="px-4 py-3.5 font-semibold text-slate-600">{formatLabel(rule.billingBasis)}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="font-black text-slate-700">{rule.scope === 'GLOBAL' ? 'Global Default' : 'University Specific'}</div>
-                        {rule.scope === 'UNIVERSITY' && (
-                          <div className="mt-0.5 text-[10px] font-semibold text-violet-600">{rule.universityId?.name || 'University'}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className={'rounded-full px-2.5 py-1 text-[10px] font-black ' + (rule.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
-                          {rule.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="inline-flex flex-col items-end">
-                          <button
-                            type="button"
-                            onClick={() => setRowMenuId((current) => current === asId(rule) ? null : asId(rule))}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                          {rowMenuId === asId(rule) && (
-                            <div className="mt-1 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
-                              <ActionItem icon={<Edit3 className="h-4 w-4" />} label="Edit Rule" onClick={() => openEdit(rule)} />
-                              <ActionItem
-                                icon={rule.status === 'ACTIVE' ? <ToggleLeft className="h-4 w-4" /> : <ToggleRight className="h-4 w-4" />}
-                                label={rule.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                                onClick={() => void toggleStatus(rule)}
-                              />
+
+                {pricingGroups.map((group) => {
+                  const expanded = expandedPricingGroups.has(group.id);
+                  const overallStatus = groupOverallStatus(group.rules);
+                  const activeRules = group.rules.filter((rule) => rule.status === 'ACTIVE').length;
+
+                  return (
+                    <tbody key={group.id} className="border-b border-slate-100 last:border-b-0">
+                      <tr
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expanded}
+                        onClick={() => togglePricingGroup(group.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            togglePricingGroup(group.id);
+                          }
+                        }}
+                        className={
+                          'cursor-pointer transition ' +
+                          (expanded ? 'bg-cyan-50/60' : 'hover:bg-cyan-50/35')
+                        }
+                      >
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                              <Building2 className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate font-black text-slate-950">{group.name}</div>
+                              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[10px] font-semibold text-slate-500">
+                                {group.code && <span>{group.code}</span>}
+                                <span className={group.kind === 'UNIVERSITY' ? 'text-violet-600' : 'text-cyan-700'}>
+                                  {group.kind === 'UNIVERSITY' ? 'University Specific' : 'Global Default'}
+                                </span>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 text-[10px] font-black text-violet-700">
+                            <Layers3 className="h-3.5 w-3.5" />
+                            {group.rules.length} service{group.rules.length === 1 ? '' : 's'}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-4 font-bold text-slate-600">{groupPayers(group.rules)}</td>
+                        <td className="px-4 py-4 font-black text-slate-700">{groupCurrencies(group.rules)}</td>
+                        <td className="px-4 py-4 font-black text-slate-700">
+                          {activeRules} / {group.rules.length}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={
+                              'inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ' +
+                              (overallStatus === 'ACTIVE'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : overallStatus === 'INACTIVE'
+                                  ? 'bg-slate-100 text-slate-500'
+                                  : 'bg-amber-50 text-amber-700')
+                            }
+                          >
+                            {overallStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm">
+                            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </span>
+                        </td>
+                      </tr>
+
+                      {expanded && (
+                        <tr>
+                          <td colSpan={7} className="bg-slate-50/70 px-4 py-4">
+                            <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
+                              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                                <div>
+                                  <h3 className="text-xs font-black text-slate-900">Service Pricing Details</h3>
+                                  <p className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                                    {group.rules.length} pricing rule{group.rules.length === 1 ? '' : 's'} for {group.name}.
+                                  </p>
+                                </div>
+
+                                {group.kind === 'UNIVERSITY' && group.universityId && (
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openBulkUniversityFor(group.universityId);
+                                    }}
+                                    className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-3 text-[10px] font-black text-teal-700 hover:bg-teal-100"
+                                  >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                    Edit All Services
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="overflow-x-auto">
+                                <table className="w-full min-w-[1000px] text-left text-xs">
+                                  <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                    <tr>
+                                      <th className="px-4 py-3">Service</th>
+                                      <th className="px-4 py-3">Category</th>
+                                      <th className="px-4 py-3">Payer</th>
+                                      <th className="px-4 py-3">Price</th>
+                                      <th className="px-4 py-3">Billing Basis</th>
+                                      <th className="px-4 py-3">Status</th>
+                                      <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                  </thead>
+
+                                  <tbody className="divide-y divide-slate-100">
+                                    {group.rules.map((rule) => (
+                                      <tr key={asId(rule)} className="transition hover:bg-slate-50/80">
+                                        <td className="px-4 py-3">
+                                          <div className="font-black text-slate-900">{rule.serviceName}</div>
+                                          <div className="mt-0.5 font-mono text-[9px] font-semibold text-slate-400">
+                                            {rule.serviceCode}
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-3 font-bold text-slate-600">{formatLabel(rule.category)}</td>
+                                        <td className="px-4 py-3">
+                                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700">
+                                            {formatLabel(rule.defaultPayer)}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 font-black text-slate-900">
+                                          {formatMoney(rule.amount, rule.currency)}
+                                        </td>
+                                        <td className="px-4 py-3 font-semibold text-slate-600">
+                                          {formatLabel(rule.billingBasis)}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          <span
+                                            className={
+                                              'rounded-full px-2.5 py-1 text-[10px] font-black ' +
+                                              (rule.status === 'ACTIVE'
+                                                ? 'bg-emerald-50 text-emerald-700'
+                                                : 'bg-slate-100 text-slate-500')
+                                            }
+                                          >
+                                            {rule.status}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                          <div className="relative inline-flex">
+                                            <button
+                                              type="button"
+                                              aria-label="Pricing rule actions"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                setRowMenuId((current) =>
+                                                  current === asId(rule) ? null : asId(rule)
+                                                );
+                                              }}
+                                              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                                            >
+                                              <MoreVertical className="h-4 w-4" />
+                                            </button>
+
+                                            {rowMenuId === asId(rule) && (
+                                              <div className="absolute right-0 top-10 z-40 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
+                                                <ActionItem
+                                                  icon={<Edit3 className="h-4 w-4" />}
+                                                  label="Edit Rule"
+                                                  onClick={() => openEdit(rule)}
+                                                />
+                                                <ActionItem
+                                                  icon={
+                                                    rule.status === 'ACTIVE'
+                                                      ? <ToggleLeft className="h-4 w-4" />
+                                                      : <ToggleRight className="h-4 w-4" />
+                                                  }
+                                                  label={rule.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                                                  onClick={() => void toggleStatus(rule)}
+                                                />
+                                              </div>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  );
+                })}
               </table>
             </div>
 
-            <div className="grid gap-3 p-3 sm:grid-cols-2 lg:hidden">
-              {filtered.map((rule) => (
-                <article key={asId(rule)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black text-slate-950">{rule.serviceName}</h3>
-                      <p className="mt-0.5 font-mono text-[10px] font-semibold text-slate-500">{rule.serviceCode}</p>
-                    </div>
+            <div className="grid gap-3 p-3 lg:hidden">
+              {pricingGroups.map((group) => {
+                const expanded = expandedPricingGroups.has(group.id);
+                const overallStatus = groupOverallStatus(group.rules);
+                const activeRules = group.rules.filter((rule) => rule.status === 'ACTIVE').length;
+
+                return (
+                  <article key={group.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <button
                       type="button"
-                      onClick={() => setRowMenuId((current) => current === asId(rule) ? null : asId(rule))}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500"
+                      aria-expanded={expanded}
+                      onClick={() => togglePricingGroup(group.id)}
+                      className="flex w-full items-start justify-between gap-3 p-4 text-left"
                     >
-                      <MoreVertical className="h-4 w-4" />
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                          <Building2 className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-black text-slate-950">{group.name}</h3>
+                          <p className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                            {group.rules.length} services · {activeRules} active
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[9px] font-black text-violet-700">
+                              {groupCurrencies(group.rules)}
+                            </span>
+                            <span
+                              className={
+                                'rounded-full px-2.5 py-1 text-[9px] font-black ' +
+                                (overallStatus === 'ACTIVE'
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : overallStatus === 'INACTIVE'
+                                    ? 'bg-slate-100 text-slate-500'
+                                    : 'bg-amber-50 text-amber-700')
+                              }
+                            >
+                              {overallStatus}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+                        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </span>
                     </button>
-                  </div>
-                  {rowMenuId === asId(rule) && (
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-                      <ActionItem icon={<Edit3 className="h-4 w-4" />} label="Edit Rule" onClick={() => openEdit(rule)} />
-                      <ActionItem
-                        icon={rule.status === 'ACTIVE' ? <ToggleLeft className="h-4 w-4" /> : <ToggleRight className="h-4 w-4" />}
-                        label={rule.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                        onClick={() => void toggleStatus(rule)}
-                      />
-                    </div>
-                  )}
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <MobileInfo label="Price" value={formatMoney(rule.amount, rule.currency)} />
-                    <MobileInfo label="Payer" value={formatLabel(rule.defaultPayer)} />
-                    <MobileInfo label="Basis" value={formatLabel(rule.billingBasis)} />
-                    <MobileInfo label="Scope" value={rule.scope === 'GLOBAL' ? 'Global' : rule.universityId?.name || 'University'} />
-                  </div>
-                </article>
-              ))}
+
+                    {expanded && (
+                      <div className="space-y-2 border-t border-slate-100 bg-slate-50/70 p-3">
+                        {group.kind === 'UNIVERSITY' && group.universityId && (
+                          <button
+                            type="button"
+                            onClick={() => openBulkUniversityFor(group.universityId)}
+                            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50 text-[10px] font-black text-teal-700"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            Edit All Service Prices
+                          </button>
+                        )}
+
+                        {group.rules.map((rule) => (
+                          <div key={asId(rule)} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h4 className="truncate text-xs font-black text-slate-900">{rule.serviceName}</h4>
+                                <p className="mt-0.5 font-mono text-[9px] font-semibold text-slate-400">{rule.serviceCode}</p>
+                              </div>
+                              <span
+                                className={
+                                  'shrink-0 rounded-full px-2 py-1 text-[9px] font-black ' +
+                                  (rule.status === 'ACTIVE'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-slate-100 text-slate-500')
+                                }
+                              >
+                                {rule.status}
+                              </span>
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <MobileInfo label="Price" value={formatMoney(rule.amount, rule.currency)} />
+                              <MobileInfo label="Category" value={formatLabel(rule.category)} />
+                              <MobileInfo label="Payer" value={formatLabel(rule.defaultPayer)} />
+                              <MobileInfo label="Basis" value={formatLabel(rule.billingBasis)} />
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openEdit(rule)}
+                                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 text-[10px] font-black text-slate-700"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void toggleStatus(rule)}
+                                className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 text-[10px] font-black text-slate-700"
+                              >
+                                {rule.status === 'ACTIVE' ? <ToggleLeft className="h-3.5 w-3.5" /> : <ToggleRight className="h-3.5 w-3.5" />}
+                                {rule.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           </>
         )}
       </section>
 
-      {bulkModalOpen && (
+            {bulkModalOpen && (
         <div className="fixed inset-0 z-[95] flex items-end justify-center bg-slate-950/65 p-0 backdrop-blur-sm sm:items-center sm:p-4">
           <button
             type="button"
