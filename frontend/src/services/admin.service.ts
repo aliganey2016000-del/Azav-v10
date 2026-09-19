@@ -212,6 +212,23 @@ export class AdminApiService {
     };
   }
 
+  static async getTrainingBatches(universityId?: string): Promise<any[]> {
+    const res = await api.get('/admin/training-batches', {
+      params: universityId ? { universityId } : undefined,
+    });
+    return Array.isArray(res.data?.data) ? res.data.data : [];
+  }
+
+  static async createTrainingBatch(input: {
+    universityId?: string;
+    batchNumber?: string;
+    name?: string;
+    intakeDate?: string;
+  }): Promise<any> {
+    const res = await api.post('/admin/training-batches', input);
+    return res.data.data;
+  }
+
   // Students & Complete Journey Management
   static async getStudents(params: {
     page?: number;
@@ -290,6 +307,7 @@ export class AdminApiService {
     specialty?: string;
     academicLevel?: string;
     durationWeeks?: number;
+    batchId?: string;
   }): Promise<AdminStudent> {
     const res = await api.post('/admin/students', input);
     return res.data.data;
@@ -305,6 +323,7 @@ export class AdminApiService {
     specialty?: string;
     academicLevel?: string;
     durationWeeks?: number;
+    batchId?: string;
   }>): Promise<AdminStudent> {
     const res = await api.patch(`/admin/students/${id}`, input);
     return res.data.data;
