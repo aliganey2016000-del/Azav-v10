@@ -4,6 +4,7 @@ import { JourneyController } from '../controllers/journey.controller.js';
 import { StudentAdminController } from '../controllers/studentAdmin.controller.js';
 import { updateOrganizationAdminAccount } from '../controllers/organizationAdminAccount.controller.js';
 import { SupervisorManagementController } from '../controllers/supervisorManagement.controller.js';
+import { TrainingBatchController } from '../controllers/trainingBatch.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { authorizeManagedUserTarget, validateManagedUserCreate } from '../middleware/adminUserGuard.js';
@@ -110,6 +111,17 @@ const STUDENT_NOMINATION_ROLES = [
   UserRole.UNIVERSITY_ADMIN,
   UserRole.UNIVERSITY_STAFF,
 ];
+
+adminRouter.get(
+  '/training-batches',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  TrainingBatchController.list
+);
+adminRouter.post(
+  '/training-batches',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  TrainingBatchController.create
+);
 
 adminRouter.get('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.list);
 adminRouter.post('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.nominate);
