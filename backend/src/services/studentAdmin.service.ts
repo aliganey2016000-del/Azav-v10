@@ -4,6 +4,7 @@ import { Student, IStudent } from '../models/Student.js';
 import { Application, IApplication } from '../models/Application.js';
 import { University } from '../models/University.js';
 import { DocumentModel } from '../models/Document.js';
+import { Placement } from '../models/Placement.js';
 import { ApplicantType, ApplicationStatus, AuthUser, UserRole } from '../types/index.js';
 
 export interface NominateStudentInput {
@@ -48,7 +49,16 @@ const resolveUniversityId = (actor: AuthUser, bodyUniversityId?: string): string
 const toAdminStudentShape = async (student: IStudent, application: IApplication | null) => {
   const user: any = await User.findById(student.userId).select('firstName lastName email phone');
   const university: any = student.universityId ? await University.findById(student.universityId).select('name code') : null;
-  const documentsCount = await DocumentModel.countDocuments({ studentId: student._id });
+  const [documentsCount, placement]: [number, any] = await Promise.all([
+    DocumentModel.countDocuments({ studentId: student._id }),
+    Placement.findOne({
+      studentId: student._id,
+      status: { $ne: 'CANCELLED' },
+    })
+      .sort({ createdAt: -1 })
+      .populate('organizationId', 'name city country')
+      .lean(),
+  ]);
 
   const applicationStatus = application?.status || ApplicationStatus.SUBMITTED;
   const statusMap: Record<string, 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'INACTIVE'> = {
@@ -86,7 +96,16 @@ const toAdminStudentShape = async (student: IStudent, application: IApplication 
     paidFees: 0,
     visaStatus: 'NOT_REQUIRED',
     residenceStatus: 'NOT_REQUIRED',
-    hospitalPlacement: { name: 'Pending AZAAM placement' },
+    hospitalPlacement: placement?.organizationId
+      ? {
+          _id: placement.organizationId._id?.toString?.() || String(placement.organizationId._id || ''),
+          name: placement.organizationId.name || 'Assigned hospital',
+          cityCountry: [placement.organizationId.city, placement.organizationId.country]
+            .filter(Boolean)
+            .join(', '),
+          placementStatus: placement.status,
+        }
+      : { name: 'Pending AZAAM placement' },
     rotationSchedule: '',
     startDate: application?.preferredStartDate ? new Date(application.preferredStartDate).toISOString() : '',
     endDate: application?.preferredEndDate ? new Date(application.preferredEndDate).toISOString() : '',
@@ -295,7 +314,17 @@ export class StudentAdminService {
     return toAdminStudentShape(student, application);
   }
 
-  static async listStudents(query: { page?: number; limit?: number; search?: string; universityId?: string }, actor: AuthUser) {
+  static async listStudents(
+    query: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      universityId?: string;
+      status?: string;
+      createdDate?: string;
+    },
+    actor: AuthUser
+  ) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
@@ -312,6 +341,56 @@ export class StudentAdminService {
     if (query.search) {
       const regex = new RegExp(query.search.trim(), 'i');
       filter.studentNumber = regex;
+    }
+
+    if (query.createdDate) {
+      const start = new Date(`${query.createdDate}T00:00:00.000Z`);
+      if (!Number.isNaN(start.getTime())) {
+        const end = new Date(start);
+        end.setUTCDate(end.getUTCDate() + 1);
+        filter.createdAt = { $gte: start, $lt: end };
+      }
+    }
+
+    const requestedStatus = String(query.status || '').toUpperCase();
+    if (requestedStatus && requestedStatus !== 'ALL') {
+      const statusGroups: Record<string, ApplicationStatus[]> = {
+        PENDING: [
+          ApplicationStatus.DRAFT,
+          ApplicationStatus.SUBMITTED,
+          ApplicationStatus.UNDER_REVIEW,
+          ApplicationStatus.DOCUMENTS_REQUIRED,
+        ],
+        ACTIVE: [
+          ApplicationStatus.APPROVED,
+          ApplicationStatus.PLACEMENT_PENDING,
+          ApplicationStatus.PLACED,
+          ApplicationStatus.SUPERVISOR_ASSIGNED,
+          ApplicationStatus.ACTIVE,
+        ],
+        COMPLETED: [
+          ApplicationStatus.COMPLETED,
+          ApplicationStatus.CERTIFICATE_ISSUED,
+        ],
+        INACTIVE: [ApplicationStatus.REJECTED],
+      };
+
+      const targetStatuses = statusGroups[requestedStatus];
+      if (targetStatuses) {
+        const latestApplications = await Application.aggregate([
+          { $sort: { createdAt: -1 } },
+          {
+            $group: {
+              _id: '$studentId',
+              status: { $first: '$status' },
+            },
+          },
+          { $match: { status: { $in: targetStatuses } } },
+          { $project: { _id: 1 } },
+        ]);
+
+        filter._id = { $in: latestApplications.map((item: any) => item._id) };
+      }
     }
 
     const [students, total] = await Promise.all([
