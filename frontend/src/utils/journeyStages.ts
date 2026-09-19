@@ -110,6 +110,7 @@ export const buildDisplayStages = (
       actionable:
         canAct &&
         uiStatus !== 'PENDING' &&
+        uiStatus !== 'COMPLETED' &&
         !isDocumentChatStage(stage.stageKey) &&
         !isEvidenceUpdateStage(stage.stageKey) &&
         !isPlacementStage(stage.stageKey),
