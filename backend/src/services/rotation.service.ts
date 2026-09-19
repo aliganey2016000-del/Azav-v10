@@ -557,6 +557,240 @@ export class RotationService {
       .sort({ batchId: 1, groupCode: 1, studentId: 1, sequence: 1 });
   }
 
+  static async updateRotation(
+    actorUserId: string,
+    rotationId: string,
+    data: {
+      title?: string;
+      departmentId?: string | null;
+      supervisorId?: string | null;
+      startDate?: Date | string;
+      endDate?: Date | string;
+    }
+  ) {
+    const rotation = await ClinicalRotation.findById(rotationId);
+    if (!rotation) {
+      const err: any = new Error('Rotation not found');
+      err.statusCode = 404;
+      err.code = 'ROTATION_NOT_FOUND';
+      throw err;
+    }
+
+    const placement = await Placement.findById(rotation.placementId);
+    if (!placement) {
+      const err: any = new Error('Placement not found');
+      err.statusCode = 404;
+      err.code = 'PLACEMENT_NOT_FOUND';
+      throw err;
+    }
+
+    const title = data.title === undefined ? rotation.title : String(data.title || '').trim();
+    const departmentId = data.departmentId === undefined
+      ? rotation.departmentId?.toString() || null
+      : data.departmentId
+        ? String(data.departmentId)
+        : null;
+    const supervisorId = data.supervisorId === undefined
+      ? rotation.supervisorId?.toString() || null
+      : data.supervisorId
+        ? String(data.supervisorId)
+        : null;
+    const startDate = data.startDate === undefined ? dayStart(rotation.startDate) : dayStart(data.startDate);
+    const endDate = data.endDate === undefined ? dayStart(rotation.endDate) : dayStart(data.endDate);
+
+    if (!title) {
+      const err: any = new Error('Rotation title is required');
+      err.statusCode = 400;
+      err.code = 'ROTATION_TITLE_REQUIRED';
+      throw err;
+    }
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
+      const err: any = new Error('Rotation dates are invalid');
+      err.statusCode = 400;
+      err.code = 'INVALID_ROTATION_DATE_RANGE';
+      throw err;
+    }
+
+    const placementStart = dayStart(placement.startDate);
+    const placementEnd = dayStart(placement.endDate);
+    if (startDate < placementStart || endDate > placementEnd) {
+      const err: any = new Error('Rotation must stay within the placement date range');
+      err.statusCode = 400;
+      err.code = 'ROTATION_OUTSIDE_PLACEMENT';
+      throw err;
+    }
+
+    if (departmentId) {
+      if (!mongoose.Types.ObjectId.isValid(departmentId)) {
+        const err: any = new Error('Invalid department');
+        err.statusCode = 400;
+        err.code = 'INVALID_ROTATION_DEPARTMENT';
+        throw err;
+      }
+      const department = await Department.findOne({
+        _id: departmentId,
+        organizationId: placement.organizationId,
+        status: 'ACTIVE',
+      }).select('_id');
+      if (!department) {
+        const err: any = new Error('Department does not belong to the placement hospital');
+        err.statusCode = 400;
+        err.code = 'ROTATION_DEPARTMENT_MISMATCH';
+        throw err;
+      }
+    }
+
+    if (supervisorId) {
+      if (!mongoose.Types.ObjectId.isValid(supervisorId)) {
+        const err: any = new Error('Invalid supervisor');
+        err.statusCode = 400;
+        err.code = 'INVALID_ROTATION_SUPERVISOR';
+        throw err;
+      }
+      const supervisor = await ClinicalSupervisor.findOne({
+        _id: supervisorId,
+        organizationId: placement.organizationId,
+        status: 'ACTIVE',
+      }).select('_id');
+      if (!supervisor) {
+        const err: any = new Error('Supervisor does not belong to the placement hospital');
+        err.statusCode = 400;
+        err.code = 'ROTATION_SUPERVISOR_MISMATCH';
+        throw err;
+      }
+    }
+
+    const overlap = await ClinicalRotation.findOne({
+      _id: { $ne: rotation._id },
+      placementId: rotation.placementId,
+      status: { $ne: 'CANCELLED' },
+      startDate: { $lte: endDate },
+      endDate: { $gte: startDate },
+    }).select('_id title');
+
+    if (overlap) {
+      const err: any = new Error(`Rotation dates overlap with ${overlap.title}`);
+      err.statusCode = 400;
+      err.code = 'ROTATION_OVERLAP';
+      throw err;
+    }
+
+    const before = {
+      title: rotation.title,
+      departmentId: rotation.departmentId,
+      supervisorId: rotation.supervisorId,
+      startDate: rotation.startDate,
+      endDate: rotation.endDate,
+      status: rotation.status,
+    };
+
+    rotation.title = title;
+    rotation.departmentId = departmentId ? new mongoose.Types.ObjectId(departmentId) : null;
+    rotation.supervisorId = supervisorId ? new mongoose.Types.ObjectId(supervisorId) : null;
+    rotation.startDate = startDate;
+    rotation.endDate = endDate;
+    await rotation.save();
+
+    await this.refreshStatuses({ _id: rotation._id });
+
+    await AuditLog.create({
+      actorUserId,
+      action: 'rotation.record.update',
+      entityType: 'ClinicalRotation',
+      entityId: rotation._id,
+      before,
+      after: {
+        title,
+        departmentId,
+        supervisorId,
+        startDate,
+        endDate,
+      },
+    });
+
+    const [updated] = await this.getRotations({ _id: rotation._id });
+    return updated;
+  }
+
+  static async changeRotationStatus(actorUserId: string, rotationId: string, status: string) {
+    const rotation = await ClinicalRotation.findById(rotationId);
+    if (!rotation) {
+      const err: any = new Error('Rotation not found');
+      err.statusCode = 404;
+      err.code = 'ROTATION_NOT_FOUND';
+      throw err;
+    }
+
+    const normalized = String(status || '').toUpperCase();
+    if (!['AUTO', 'CANCELLED'].includes(normalized)) {
+      const err: any = new Error('Status must be AUTO or CANCELLED');
+      err.statusCode = 400;
+      err.code = 'INVALID_ROTATION_STATUS';
+      throw err;
+    }
+
+    const beforeStatus = rotation.status;
+
+    if (normalized === 'CANCELLED') {
+      rotation.status = 'CANCELLED';
+      await rotation.save();
+    } else {
+      rotation.status = 'UPCOMING';
+      await rotation.save();
+      await this.refreshStatuses({ _id: rotation._id });
+    }
+
+    const refreshed = await ClinicalRotation.findById(rotation._id).select('status');
+
+    await AuditLog.create({
+      actorUserId,
+      action: 'rotation.record.status',
+      entityType: 'ClinicalRotation',
+      entityId: rotation._id,
+      before: { status: beforeStatus },
+      after: { status: refreshed?.status || rotation.status, mode: normalized },
+    });
+
+    const [updated] = await this.getRotations({ _id: rotation._id });
+    return updated;
+  }
+
+  static async deleteRotation(actorUserId: string, rotationId: string) {
+    const rotation = await ClinicalRotation.findById(rotationId);
+    if (!rotation) {
+      const err: any = new Error('Rotation not found');
+      err.statusCode = 404;
+      err.code = 'ROTATION_NOT_FOUND';
+      throw err;
+    }
+
+    const before = {
+      placementId: rotation.placementId,
+      studentId: rotation.studentId,
+      organizationId: rotation.organizationId,
+      departmentId: rotation.departmentId,
+      supervisorId: rotation.supervisorId,
+      title: rotation.title,
+      sequence: rotation.sequence,
+      startDate: rotation.startDate,
+      endDate: rotation.endDate,
+      status: rotation.status,
+    };
+
+    await ClinicalRotation.deleteOne({ _id: rotation._id });
+
+    await AuditLog.create({
+      actorUserId,
+      action: 'rotation.record.delete',
+      entityType: 'ClinicalRotation',
+      entityId: rotation._id,
+      before,
+    });
+
+    return true;
+  }
+
   static async deletePlan(actorUserId: string, placementId: string) {
     const result = await ClinicalRotation.deleteMany({ placementId });
     await AuditLog.create({
