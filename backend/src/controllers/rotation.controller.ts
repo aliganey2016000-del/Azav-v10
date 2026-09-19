@@ -106,6 +106,52 @@ export class RotationController {
     }
   }
 
+  static async updateRotation(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const rotation = await RotationService.updateRotation(req.user.userId, req.params.id, req.body);
+      res.status(200).json({ success: true, data: { rotation } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async changeStatus(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const rotation = await RotationService.changeRotationStatus(
+        req.user.userId,
+        req.params.id,
+        req.body?.status
+      );
+      res.status(200).json({ success: true, data: { rotation } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteRotation(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      await RotationService.deleteRotation(req.user.userId, req.params.id);
+      res.status(200).json({ success: true, data: { deleted: true } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async deletePlan(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user) {
