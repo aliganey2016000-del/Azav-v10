@@ -278,6 +278,16 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
     [filteredRecords]
   );
 
+  const currencySet = useMemo(
+    () => new Set(filteredRecords.map((record) => record.currency || 'USD')),
+    [filteredRecords]
+  );
+
+  const totalAmountLabel =
+    currencySet.size > 1
+      ? 'Multiple currencies'
+      : formatMoney(totalAmount, Array.from(currencySet)[0] || 'USD');
+
   const pendingCount = filteredRecords.filter((record) =>
     ['PENDING', 'PARTIAL', 'OVERDUE'].includes(record.status)
   ).length;
@@ -512,7 +522,7 @@ export const AdminFinancePage: React.FC<{ mode: FinanceMode }> = ({ mode }) => {
         <FinanceStat
           icon={<CircleDollarSign className="h-5 w-5" />}
           label="Total Amount"
-          value={loading ? '—' : formatMoney(totalAmount, filteredRecords[0]?.currency || 'USD')}
+          value={loading ? '—' : totalAmountLabel}
         />
         <FinanceStat
           icon={<CalendarDays className="h-5 w-5" />}
