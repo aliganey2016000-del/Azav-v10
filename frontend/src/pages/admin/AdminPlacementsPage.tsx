@@ -16,9 +16,7 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Stethoscope,
   GraduationCap,
-  UserRound,
   Users,
   X,
 } from 'lucide-react';
@@ -142,7 +140,6 @@ export const AdminPlacementsPage: React.FC = () => {
   const [filters, setFilters] = useState({
     university: '',
     hospital: '',
-    department: '',
     programme: '',
     status: '',
     from: '',
@@ -215,12 +212,6 @@ export const AdminPlacementsPage: React.FC = () => {
   const hospitalName = (placement: RecordObject) =>
     placement.organizationId?.name || '-';
 
-  const departmentName = (placement: RecordObject) =>
-    placement.departmentId?.name || 'Not assigned';
-
-  const supervisorName = (placement: RecordObject) =>
-    fullName(placement.supervisorId?.userId);
-
   const activeStatuses = new Set(['CONFIRMED', 'ACTIVE']);
   const activePlacements = placements.filter((item) => activeStatuses.has(item.status));
   const uniqueStudentCount = new Set(placements.map((item) => asId(item.studentId)).filter(Boolean)).size;
@@ -249,15 +240,6 @@ export const AdminPlacementsPage: React.FC = () => {
     return Array.from(values).sort();
   }, [applications]);
 
-  const departmentOptions = useMemo(() => {
-    const values = new Map<string, string>();
-    placements.forEach((placement) => {
-      const id = asId(placement.departmentId);
-      const name = placement.departmentId?.name;
-      if (id && name) values.set(id, name);
-    });
-    return Array.from(values.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [placements]);
 
   const filteredPlacements = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
@@ -272,7 +254,6 @@ export const AdminPlacementsPage: React.FC = () => {
       const studentName = fullName(user);
       const studentNumber = placement.studentId?.studentNumber || '';
       const hospital = placement.organizationId?.name || '';
-      const department = placement.departmentId?.name || '';
       const universityId = asId(application?.universityId);
       const programme = application?.programmeId?.name || application?.programmeText || '';
       const start = toInputDate(placement.startDate);
@@ -280,7 +261,6 @@ export const AdminPlacementsPage: React.FC = () => {
 
       if (filters.university && universityId !== filters.university) return false;
       if (filters.hospital && asId(placement.organizationId) !== filters.hospital) return false;
-      if (filters.department && asId(placement.departmentId) !== filters.department) return false;
       if (filters.programme && programme !== filters.programme) return false;
       if (filters.status && placement.status !== filters.status) return false;
       if (filters.from && end && end < filters.from) return false;
@@ -292,7 +272,6 @@ export const AdminPlacementsPage: React.FC = () => {
           studentNumber,
           user?.email,
           hospital,
-          department,
           programme,
           application?.universityId?.name,
         ]
@@ -321,7 +300,6 @@ export const AdminPlacementsPage: React.FC = () => {
     setFilters({
       university: '',
       hospital: '',
-      department: '',
       programme: '',
       status: '',
       from: '',
@@ -332,7 +310,6 @@ export const AdminPlacementsPage: React.FC = () => {
   const activeAdvancedFilterCount = [
     filters.university,
     filters.hospital,
-    filters.department,
     filters.programme,
     filters.status,
     filters.from,
@@ -494,8 +471,6 @@ export const AdminPlacementsPage: React.FC = () => {
       University: universityName(placement),
       Programme: programmeName(placement),
       Hospital: hospitalName(placement),
-      Department: departmentName(placement),
-      Supervisor: supervisorName(placement),
       StartDate: formatDate(placement.startDate),
       EndDate: formatDate(placement.endDate),
       Status: statusLabel(placement.status),
@@ -507,8 +482,6 @@ export const AdminPlacementsPage: React.FC = () => {
       University: '',
       Programme: '',
       Hospital: '',
-      Department: '',
-      Supervisor: '',
       StartDate: '',
       EndDate: '',
       Status: '',
@@ -698,20 +671,6 @@ export const AdminPlacementsPage: React.FC = () => {
                 </label>
 
                 <label className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500">Department</span>
-                  <select
-                    value={filters.department}
-                    onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}
-                    className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500"
-                  >
-                    <option value="">All</option>
-                    {departmentOptions.map(([id, name]) => (
-                      <option key={id} value={id}>{name}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-1">
                   <span className="text-[10px] font-bold text-slate-500">Programme</span>
                   <select
                     value={filters.programme}
@@ -808,20 +767,6 @@ export const AdminPlacementsPage: React.FC = () => {
                   <option key={asId(organization)} value={asId(organization)}>
                     {organization.name}
                   </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-1.5">
-              <span className="text-[11px] font-bold text-slate-500">Department</span>
-              <select
-                value={filters.department}
-                onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}
-                className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500"
-              >
-                <option value="">All Departments</option>
-                {departmentOptions.map(([id, name]) => (
-                  <option key={id} value={id}>{name}</option>
                 ))}
               </select>
             </label>
@@ -925,15 +870,13 @@ export const AdminPlacementsPage: React.FC = () => {
         ) : (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="min-w-[1100px] w-full text-left text-xs">
+              <table className="min-w-[900px] w-full text-left text-xs">
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-black">#</th>
                     <th className="px-4 py-3 font-black">Student</th>
                     <th className="px-4 py-3 font-black">Programme</th>
                     <th className="px-4 py-3 font-black">Hospital</th>
-                    <th className="px-4 py-3 font-black">Department</th>
-                    <th className="px-4 py-3 font-black">Supervisor</th>
                     <th className="px-4 py-3 font-black">Start Date</th>
                     <th className="px-4 py-3 font-black">End Date</th>
                     <th className="px-4 py-3 font-black">Status</th>
@@ -964,8 +907,6 @@ export const AdminPlacementsPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 font-semibold text-slate-600">{programmeName(placement)}</td>
                         <td className="px-4 py-3 font-semibold text-slate-600">{hospitalName(placement)}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-600">{departmentName(placement)}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-600">{supervisorName(placement)}</td>
                         <td className="px-4 py-3 whitespace-nowrap font-semibold text-slate-600">{formatDate(placement.startDate)}</td>
                         <td className="px-4 py-3 whitespace-nowrap font-semibold text-slate-600">{formatDate(placement.endDate)}</td>
                         <td className="px-4 py-3">
@@ -985,7 +926,7 @@ export const AdminPlacementsPage: React.FC = () => {
                             </button>
                             <button
                               type="button"
-                              title="Edit or reassign"
+                              title="Edit placement"
                               onClick={() => openEditForm(placement)}
                               className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                             >
@@ -1107,16 +1048,6 @@ export const AdminPlacementsPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex min-w-0 items-center gap-2.5 border-b border-blue-100 p-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                          <Stethoscope className="h-4.5 w-4.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-bold text-blue-500">Department</div>
-                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{departmentName(placement)}</div>
-                        </div>
-                      </div>
-
                       <div className="flex min-w-0 items-center gap-2.5 border-b border-r border-blue-100 p-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
                           <GraduationCap className="h-4.5 w-4.5" />
@@ -1124,16 +1055,6 @@ export const AdminPlacementsPage: React.FC = () => {
                         <div className="min-w-0">
                           <div className="text-[10px] font-bold text-blue-500">Programme</div>
                           <div className="mt-0.5 truncate text-xs font-black text-slate-800">{programmeName(placement)}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex min-w-0 items-center gap-2.5 border-b border-blue-100 p-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
-                          <UserRound className="h-4.5 w-4.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-bold text-blue-500">Supervisor</div>
-                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{supervisorName(placement)}</div>
                         </div>
                       </div>
 
@@ -1434,8 +1355,6 @@ export const AdminPlacementsPage: React.FC = () => {
                 ['University', universityName(viewingPlacement)],
                 ['Programme', programmeName(viewingPlacement)],
                 ['Hospital', hospitalName(viewingPlacement)],
-                ['Department', departmentName(viewingPlacement)],
-                ['Supervisor', supervisorName(viewingPlacement)],
                 ['Status', statusLabel(viewingPlacement.status)],
                 ['Start Date', formatDate(viewingPlacement.startDate)],
                 ['End Date', formatDate(viewingPlacement.endDate)],
