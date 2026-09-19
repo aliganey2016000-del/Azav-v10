@@ -48,9 +48,16 @@ export class StudentAdminController {
         res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'User not authenticated' } });
         return;
       }
-      const { page, limit, search, universityId } = req.query;
+      const { page, limit, search, universityId, status, createdDate } = req.query;
       const result = await StudentAdminService.listStudents(
-        { page: Number(page) || undefined, limit: Number(limit) || undefined, search: search as string, universityId: universityId as string },
+        {
+          page: Number(page) || undefined,
+          limit: Number(limit) || undefined,
+          search: search as string,
+          universityId: universityId as string,
+          status: status as string,
+          createdDate: createdDate as string,
+        },
         req.user
       );
       res.json({ success: true, data: result.students, pagination: result.pagination });
