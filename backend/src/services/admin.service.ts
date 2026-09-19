@@ -105,6 +105,9 @@ export class AdminService {
       }
     }
 
+    // Core dashboard totals should fail loudly if the database itself is unavailable.
+    // Optional dashboard panels are loaded independently below so one malformed
+    // recent-record relation can never take down the whole Super Admin dashboard.
     const [
       studentsCount,
       applicationsCount,
@@ -113,10 +116,6 @@ export class AdminService {
       organizationsCount,
       supervisorsCount,
       certificatesCount,
-      recentApplications,
-      recentUsers,
-      recentActivity,
-      organizationsList,
     ] = await Promise.all([
       User.countDocuments({ ...userFilter, roles: { $in: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT] } }),
       Application.countDocuments(appFilter),
@@ -125,12 +124,21 @@ export class AdminService {
       Organization.countDocuments(orgFilter),
       ClinicalSupervisor.countDocuments(supFilter),
       Certificate.countDocuments({}),
+    ]);
+
+    const optionalResults = await Promise.allSettled([
       Application.find(appFilter)
         .sort({ createdAt: -1 })
         .limit(5)
-        .populate('studentId', 'firstName lastName email')
+        .populate({
+          path: 'studentId',
+          select: 'studentNumber userId universityId programmeId',
+          populate: {
+            path: 'userId',
+            select: 'firstName lastName email',
+          },
+        })
         .populate('universityId', 'name shortName code')
-        .populate('desiredOrganizationId', 'name type')
         .lean(),
       User.find(userFilter)
         .sort({ createdAt: -1 })
@@ -146,14 +154,30 @@ export class AdminService {
       Organization.find(orgFilter).limit(10).lean(),
     ]);
 
-    // Calculate capacity for organizations
-    const organizationCapacity = await Promise.all(
+    const readOptional = <T>(index: number, label: string, fallback: T): T => {
+      const result = optionalResults[index];
+      if (result?.status === 'fulfilled') return result.value as T;
+      console.warn(
+        `[AdminDashboard] Optional panel "${label}" failed and was omitted:`,
+        result?.status === 'rejected' ? result.reason : 'Unknown query result'
+      );
+      return fallback;
+    };
+
+    const recentApplications = readOptional<any[]>(0, 'recent applications', []);
+    const recentUsers = readOptional<any[]>(1, 'recent users', []);
+    const recentActivity = readOptional<any[]>(2, 'recent activity', []);
+    const organizationsList = readOptional<any[]>(3, 'organization capacity', []);
+
+    // Capacity figures are also isolated per organization so one damaged record
+    // does not make the dashboard endpoint return HTTP 500.
+    const capacityResults = await Promise.allSettled(
       organizationsList.map(async (org: any) => {
         const occupied = await Placement.countDocuments({
           organizationId: org._id,
           status: { $in: [PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE] },
         });
-        const capacity = org.capacity || 20;
+        const capacity = Number(org.capacity) || 20;
         const available = Math.max(0, capacity - occupied);
         const utilization = capacity > 0 ? Math.min(100, Math.round((occupied / capacity) * 100)) : 0;
 
@@ -169,6 +193,10 @@ export class AdminService {
         };
       })
     );
+
+    const organizationCapacity = capacityResults
+      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+      .map((result) => result.value);
 
     return {
       stats: {
