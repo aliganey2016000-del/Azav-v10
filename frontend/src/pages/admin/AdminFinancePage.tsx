@@ -1091,11 +1091,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 disabled={
                   saving ||
                   referenceLoading ||
-                  (formType === 'FEE' && !form.userId) ||
+                  (formType === 'FEE' && !editing && (!invoicePayerValid || invoiceItems.length === 0 || invoiceTotal <= 0)) ||
                   (formType === 'PAYMENT' && !form.invoiceId) ||
                   (formType === 'SETTLEMENT' && !form.organizationId) ||
-                  !form.description.trim() ||
-                  form.amount === ''
+                  (formType !== 'FEE' && !form.description.trim()) ||
+                  (formType !== 'FEE' && form.amount === '')
                 }
                 onClick={() => void saveRecord()}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40"
@@ -1156,19 +1156,173 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               )}
 
               {formType === 'FEE' && (
-                <Select
-                  label="Account / User *"
-                  value={form.userId}
-                  onChange={(value) => setForm((current) => ({ ...current, userId: value }))}
-                  disabled={Boolean(editing)}
-                >
-                  <option value="">Select account</option>
-                  {users.map((item) => (
-                    <option key={asId(item)} value={asId(item)}>
-                      {[item.firstName, item.lastName].filter(Boolean).join(' ') || item.email} · {item.email}
-                    </option>
-                  ))}
-                </Select>
+                <>
+                  <Select
+                    label="Bill To / Payer *"
+                    value={form.payerType}
+                    disabled={Boolean(editing)}
+                    onChange={(value) => {
+                      setForm((current) => ({
+                        ...current,
+                        payerType: value,
+                        userId: '',
+                        universityId: '',
+                        organizationId: '',
+                      }));
+                      setInvoiceItems([]);
+                      void loadResolvedFeeRules(value);
+                    }}
+                  >
+                    <option value="UNIVERSITY">University</option>
+                    <option value="STUDENT">Student / Independent Applicant</option>
+                    <option value="ORGANIZATION">Organization</option>
+                  </Select>
+
+                  {form.payerType === 'UNIVERSITY' && (
+                    <Select
+                      label="University *"
+                      value={form.universityId}
+                      disabled={Boolean(editing)}
+                      onChange={(value) => {
+                        setForm((current) => ({ ...current, universityId: value }));
+                        setInvoiceItems([]);
+                        void loadResolvedFeeRules('UNIVERSITY', value);
+                      }}
+                    >
+                      <option value="">Select university</option>
+                      {universities.map((university) => (
+                        <option key={asId(university)} value={asId(university)}>
+                          {university.name}{university.code ? ' · ' + university.code : ''}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+
+                  {form.payerType === 'STUDENT' && (
+                    <Select
+                      label="Student / Account *"
+                      value={form.userId}
+                      disabled={Boolean(editing)}
+                      onChange={(value) => {
+                        const account = users.find((item) => asId(item) === value);
+                        const universityId = asId(account?.universityId);
+                        setForm((current) => ({ ...current, userId: value }));
+                        setInvoiceItems([]);
+                        void loadResolvedFeeRules('STUDENT', universityId || undefined);
+                      }}
+                    >
+                      <option value="">Select student/account</option>
+                      {users.map((item) => (
+                        <option key={asId(item)} value={asId(item)}>
+                          {[item.firstName, item.lastName].filter(Boolean).join(' ') || item.email} · {item.email}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+
+                  {form.payerType === 'ORGANIZATION' && (
+                    <Select
+                      label="Organization *"
+                      value={form.organizationId}
+                      disabled={Boolean(editing)}
+                      onChange={(value) => {
+                        setForm((current) => ({ ...current, organizationId: value }));
+                        setInvoiceItems([]);
+                        void loadResolvedFeeRules('ORGANIZATION');
+                      }}
+                    >
+                      <option value="">Select organization</option>
+                      {organizations.map((organization) => (
+                        <option key={asId(organization)} value={asId(organization)}>
+                          {organization.name}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+
+                  {!editing && (
+                    <div className="sm:col-span-2 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <div className="text-[10px] font-black uppercase tracking-wide text-cyan-700">Invoice Services</div>
+                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                            Prices come from Service Pricing. University-specific rules automatically replace global defaults.
+                          </p>
+                        </div>
+                        <div className="w-full sm:w-72">
+                          <Select
+                            label="Add Service"
+                            value=""
+                            onChange={addInvoiceRule}
+                          >
+                            <option value="">Select service</option>
+                            {availableFeeRules.map((rule) => (
+                              <option key={asId(rule)} value={asId(rule)}>
+                                {rule.serviceName} · {formatMoney(rule.amount, rule.currency)} · {String(rule.billingBasis || '').replace(/_/g, ' ')}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                      </div>
+
+                      {feeRules.length === 0 ? (
+                        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
+                          No active pricing rules are available for this payer. Create them first under Finance → Service Pricing.
+                        </div>
+                      ) : invoiceItems.length === 0 ? (
+                        <div className="mt-4 rounded-xl border border-dashed border-cyan-200 bg-white/70 p-4 text-center text-xs font-semibold text-slate-500">
+                          Add one or more services to build this invoice.
+                        </div>
+                      ) : (
+                        <div className="mt-4 space-y-2">
+                          {invoiceItems.map((item) => {
+                            const rule = feeRuleById.get(item.feeRuleId);
+                            if (!rule) return null;
+                            const lineAmount = Number(rule.amount || 0) * Number(item.quantity || 0);
+                            return (
+                              <div key={item.feeRuleId} className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_110px_140px_40px] sm:items-center">
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-black text-slate-900">{rule.serviceName}</div>
+                                  <div className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                                    {String(rule.billingBasis || '').replace(/_/g, ' ')} · {rule.scope === 'UNIVERSITY' ? 'University price' : 'Global price'}
+                                  </div>
+                                </div>
+                                <label>
+                                  <span className="text-[9px] font-black uppercase tracking-wide text-slate-400">Qty</span>
+                                  <input
+                                    type="number"
+                                    min="0.01"
+                                    step="1"
+                                    value={item.quantity}
+                                    onChange={(event) => updateInvoiceQuantity(item.feeRuleId, Number(event.target.value))}
+                                    className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-sm font-black text-slate-800 outline-none focus:border-teal-500"
+                                  />
+                                </label>
+                                <div className="sm:text-right">
+                                  <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Line Total</div>
+                                  <div className="mt-1 text-sm font-black text-slate-900">{formatMoney(lineAmount, rule.currency)}</div>
+                                </div>
+                                <button
+                                  type="button"
+                                  aria-label="Remove service"
+                                  onClick={() => removeInvoiceRule(item.feeRuleId)}
+                                  className="flex h-10 w-10 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
+
+                          <div className="flex items-center justify-between rounded-xl bg-slate-950 px-4 py-3 text-white">
+                            <span className="text-xs font-black uppercase tracking-wide text-slate-300">Invoice Total</span>
+                            <span className="text-lg font-black">{formatMoney(invoiceTotal, invoiceCurrency)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {formType === 'SETTLEMENT' && (
@@ -1186,23 +1340,34 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 </Select>
               )}
 
-              <label>
-                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Amount *</span>
-                <input
-                  type="number"
-                  min="0.01"
-                  max={formType === 'PAYMENT' && selectedInvoice ? Number(selectedInvoice.balance ?? selectedInvoice.amount) : undefined}
-                  step="0.01"
-                  value={form.amount}
-                  disabled={Boolean(editing && ['PAYMENT', 'REFUND'].includes(formType))}
-                  onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
-                  placeholder="0.00"
-                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-                />
-              </label>
+              {formType === 'FEE' && !editing ? (
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Amount</div>
+                  <div className="mt-1 text-sm font-black text-slate-900">
+                    {invoiceItems.length ? formatMoney(invoiceTotal, invoiceCurrency) : 'Calculated from services'}
+                  </div>
+                </div>
+              ) : (
+                <label>
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Amount *</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    max={formType === 'PAYMENT' && selectedInvoice ? Number(selectedInvoice.balance ?? selectedInvoice.amount) : undefined}
+                    step="0.01"
+                    value={form.amount}
+                    disabled={Boolean(editing && ['PAYMENT', 'REFUND'].includes(formType))}
+                    onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+                    placeholder="0.00"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </label>
+              )}
 
               <label className="sm:col-span-2">
-                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">Description *</span>
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                  {formType === 'FEE' ? 'Description (optional)' : 'Description *'}
+                </span>
                 <input
                   value={form.description}
                   onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
@@ -1211,17 +1376,26 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 />
               </label>
 
-              <Select
-                label="Currency"
-                value={form.currency}
-                onChange={(value) => setForm((current) => ({ ...current, currency: value }))}
-                disabled={['PAYMENT', 'REFUND'].includes(formType)}
-              >
-                <option value="USD">USD</option>
-                <option value="SOS">SOS</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-              </Select>
+              {formType === 'FEE' && !editing ? (
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Currency</div>
+                  <div className="mt-1 text-sm font-black text-slate-900">
+                    {invoiceItems.length ? invoiceCurrency : 'From service pricing'}
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  label="Currency"
+                  value={form.currency}
+                  onChange={(value) => setForm((current) => ({ ...current, currency: value }))}
+                  disabled={['PAYMENT', 'REFUND'].includes(formType)}
+                >
+                  <option value="USD">USD</option>
+                  <option value="SOS">SOS</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                </Select>
+              )}
 
               {formType === 'SETTLEMENT' ? (
                 <Select
