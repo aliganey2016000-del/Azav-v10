@@ -4,6 +4,7 @@ import {
   Ban,
   Building2,
   CalendarDays,
+  Check,
   ChevronDown,
   CircleDollarSign,
   Eye,
@@ -242,6 +243,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const [organizations, setOrganizations] = useState<RecordObject[]>([]);
   const [invoices, setInvoices] = useState<RecordObject[]>([]);
   const [feeRules, setFeeRules] = useState<RecordObject[]>([]);
+  const [pricingProfile, setPricingProfile] = useState<RecordObject | null>(null);
   const [invoiceItems, setInvoiceItems] = useState<Array<{ feeRuleId: string; quantity: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [referenceLoading, setReferenceLoading] = useState(false);
@@ -349,10 +351,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     ['PAID', 'REFUNDED'].includes(record.status)
   ).length;
 
-  const loadResolvedFeeRules = async (payerType: string, universityId?: string) => {
+  const loadPricingProfile = async (payerType: string, universityId?: string) => {
     const requestId = ++feeRuleRequestRef.current;
 
     if (!payerType) {
+      setPricingProfile(null);
       setFeeRules([]);
       setFeeRulesLoading(false);
       return;
@@ -364,67 +367,23 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     try {
       const params: Record<string, string> = { payer: payerType };
       if (universityId) params.universityId = universityId;
-      const response = await api.get('/finance/pricing/resolved', { params });
-      let resolvedRules = asArray(response);
 
-      // Defensive fallback for university billing: the invoice screen must use
-      // the same active rules visible in Service Pricing even if a legacy
-      // effective-date record is stored differently. Keep the exact selected
-      // university scope and apply university overrides over global defaults.
-      if (resolvedRules.length === 0 && universityId) {
-        const fallbackResponse = await api.get('/finance/pricing', {
-          params: {
-            payer: payerType,
-            status: 'ACTIVE',
-            universityId,
-          },
-        });
-
-        const now = new Date();
-        const startOfToday = new Date(
-          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-        );
-
-        const eligible = asArray(fallbackResponse).filter((rule) => {
-          if (rule.status !== 'ACTIVE' || rule.defaultPayer !== payerType) return false;
-
-          if (rule.scope === 'UNIVERSITY' && asId(rule.universityId) !== universityId) {
-            return false;
-          }
-
-          const effectiveFrom = rule.effectiveFrom ? new Date(rule.effectiveFrom) : null;
-          const effectiveTo = rule.effectiveTo ? new Date(rule.effectiveTo) : null;
-
-          if (effectiveFrom && !Number.isNaN(effectiveFrom.getTime()) && effectiveFrom > now) {
-            return false;
-          }
-          if (effectiveTo && !Number.isNaN(effectiveTo.getTime()) && effectiveTo < startOfToday) {
-            return false;
-          }
-
-          return true;
-        });
-
-        const byServiceCode = new Map<string, RecordObject>();
-        eligible
-          .filter((rule) => rule.scope === 'GLOBAL')
-          .forEach((rule) => byServiceCode.set(String(rule.serviceCode), rule));
-        eligible
-          .filter((rule) => rule.scope === 'UNIVERSITY')
-          .forEach((rule) => byServiceCode.set(String(rule.serviceCode), rule));
-
-        resolvedRules = Array.from(byServiceCode.values()).sort((a, b) =>
-          String(a.serviceName || '').localeCompare(String(b.serviceName || ''))
-        );
-      }
+      const response = await api.get('/finance/pricing/profile', { params });
+      const profile = response?.data?.data ?? response?.data ?? {};
+      const services = Array.isArray(profile?.services) ? profile.services : [];
 
       if (requestId === feeRuleRequestRef.current) {
-        setFeeRules(resolvedRules);
+        setPricingProfile(profile);
+        setFeeRules(services);
       }
     } catch (requestError: any) {
       if (requestId === feeRuleRequestRef.current) {
+        setPricingProfile(null);
         setFeeRules([]);
-        setError(requestError?.response?.data?.error?.message || 'Unable to load service pricing.');
+        setError(
+          requestError?.response?.data?.error?.message ||
+            'Unable to load the pricing profile for this payer.'
+        );
       }
     } finally {
       if (requestId === feeRuleRequestRef.current) {
@@ -444,6 +403,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     });
     setEditing(null);
     setInvoiceItems([]);
+    setPricingProfile(null);
     setFeeRules([]);
     setHeaderMenuOpen(false);
     setFormOpen(true);
@@ -498,7 +458,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         payerType === 'STUDENT' && typeof record.userId === 'object'
           ? asId(record.userId?.universityId)
           : '';
-      await loadResolvedFeeRules(payerType, universityId || studentUniversityId);
+      await loadPricingProfile(payerType, universityId || studentUniversityId);
     }
   };
 
@@ -508,6 +468,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setEditing(null);
     setInvoiceItems([]);
     feeRuleRequestRef.current += 1;
+    setPricingProfile(null);
     setFeeRules([]);
     setFeeRulesLoading(false);
     setForm(EMPTY_FORM);
@@ -542,6 +503,17 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     return true;
   });
 
+  const selectedUniversity = universities.find((item) => asId(item) === form.universityId) || null;
+  const selectedOrganization = organizations.find((item) => asId(item) === form.organizationId) || null;
+  const selectedPayerName =
+    form.payerType === 'UNIVERSITY'
+      ? selectedUniversity?.name || ''
+      : form.payerType === 'ORGANIZATION'
+        ? selectedOrganization?.name || ''
+        : selectedUser
+          ? [selectedUser.firstName, selectedUser.lastName].filter(Boolean).join(' ') || selectedUser.email
+          : '';
+
   const invoicePayerValid =
     form.payerType === 'UNIVERSITY'
       ? Boolean(form.universityId)
@@ -553,6 +525,51 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     if (!feeRuleId) return;
     setInvoiceItems((current) => [...current, { feeRuleId, quantity: 1 }]);
   };
+
+  const toggleInvoiceRule = (feeRuleId: string) => {
+    if (!feeRuleId) return;
+
+    setInvoiceItems((current) => {
+      const exists = current.some((item) => item.feeRuleId === feeRuleId);
+      if (exists) return current.filter((item) => item.feeRuleId !== feeRuleId);
+
+      const rule = feeRuleById.get(feeRuleId);
+      if (!rule) return current;
+
+      const activeCurrency =
+        current.length > 0
+          ? feeRuleById.get(current[0].feeRuleId)?.currency
+          : rule.currency;
+
+      if (activeCurrency && rule.currency !== activeCurrency) {
+        setError('All services on one invoice must use the same currency.');
+        return current;
+      }
+
+      return [...current, { feeRuleId, quantity: 1 }];
+    });
+  };
+
+  const selectAllInvoiceRules = () => {
+    if (!feeRules.length) return;
+
+    const preferredCurrency =
+      pricingProfile?.currency ||
+      feeRules[0]?.currency ||
+      'USD';
+
+    setInvoiceItems(
+      feeRules
+        .filter((rule) => String(rule.currency || 'USD') === String(preferredCurrency))
+        .map((rule) => ({ feeRuleId: asId(rule), quantity: 1 }))
+        .filter((item) => item.feeRuleId)
+    );
+  };
+
+  const clearInvoiceRules = () => setInvoiceItems([]);
+
+  const isInvoiceRuleSelected = (feeRuleId: string) =>
+    invoiceItems.some((item) => item.feeRuleId === feeRuleId);
 
   const updateInvoiceQuantity = (feeRuleId: string, quantity: number) => {
     const next = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
@@ -1168,6 +1185,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
           title={editing ? 'Edit Finance Record' : config.action}
           eyebrow={editing ? editing.type : config.type || 'Finance'}
           onClose={closeForm}
+          wide={formType === 'FEE' && !editing}
           footer={
             <>
               <button
@@ -1193,7 +1211,13 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 text-sm font-black text-white disabled:opacity-40"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Banknote className="h-4 w-4" />}
-                {saving ? 'Saving...' : editing ? 'Save Changes' : config.action}
+                {saving
+                  ? 'Saving...'
+                  : editing
+                    ? 'Save Changes'
+                    : formType === 'FEE'
+                      ? `Create Invoice · ${formatMoney(invoiceTotal, invoiceCurrency)}`
+                      : config.action}
               </button>
             </>
           }
@@ -1249,6 +1273,23 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
               {formType === 'FEE' && (
                 <>
+                  {!editing && (
+                    <div className="sm:col-span-2 grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-teal-200 bg-teal-50 p-3">
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-teal-700">1. Select Payer</div>
+                        <div className="mt-1 text-xs font-black text-slate-800">Choose who receives the invoice</div>
+                      </div>
+                      <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">2. Select Services</div>
+                        <div className="mt-1 text-xs font-black text-slate-800">Pricing profile loads automatically</div>
+                      </div>
+                      <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-3">
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-700">3. Review & Create</div>
+                        <div className="mt-1 text-xs font-black text-slate-800">Confirm total and due date</div>
+                      </div>
+                    </div>
+                  )}
+
                   <Select
                     label="Bill To / Payer *"
                     value={form.payerType}
@@ -1263,6 +1304,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                       }));
                       setInvoiceItems([]);
                       feeRuleRequestRef.current += 1;
+                      setPricingProfile(null);
                       setFeeRules([]);
                       setFeeRulesLoading(false);
                     }}
@@ -1280,7 +1322,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                       onChange={(value) => {
                         setForm((current) => ({ ...current, universityId: value }));
                         setInvoiceItems([]);
-                        if (value) void loadResolvedFeeRules('UNIVERSITY', value);
+                        if (value) void loadPricingProfile('UNIVERSITY', value);
                         else {
                           feeRuleRequestRef.current += 1;
                           setFeeRules([]);
@@ -1307,7 +1349,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         const universityId = asId(account?.universityId);
                         setForm((current) => ({ ...current, userId: value }));
                         setInvoiceItems([]);
-                        if (value) void loadResolvedFeeRules('STUDENT', universityId || undefined);
+                        if (value) void loadPricingProfile('STUDENT', universityId || undefined);
                         else {
                           feeRuleRequestRef.current += 1;
                           setFeeRules([]);
@@ -1332,7 +1374,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                       onChange={(value) => {
                         setForm((current) => ({ ...current, organizationId: value }));
                         setInvoiceItems([]);
-                        if (value) void loadResolvedFeeRules('ORGANIZATION');
+                        if (value) void loadPricingProfile('ORGANIZATION');
                         else {
                           feeRuleRequestRef.current += 1;
                           setFeeRules([]);
@@ -1350,98 +1392,212 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                   )}
 
                   {!editing && (
-                    <div className="sm:col-span-2 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="sm:col-span-2 overflow-hidden rounded-3xl border border-cyan-200 bg-white shadow-sm">
+                      <div className="flex flex-col gap-3 border-b border-cyan-100 bg-gradient-to-r from-cyan-50 to-teal-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                          <div className="text-[10px] font-black uppercase tracking-wide text-cyan-700">Invoice Services</div>
-                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-                            Prices come from Service Pricing. University-specific rules automatically replace global defaults.
+                          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">
+                            Service Price List
+                          </div>
+                          <div className="mt-1 text-base font-black text-slate-950">
+                            {selectedPayerName || 'Select a payer to load services'}
+                          </div>
+                          <p className="mt-1 text-[11px] font-semibold text-slate-600">
+                            {pricingProfile?.serviceCount
+                              ? `${pricingProfile.serviceCount} active services · ${pricingProfile.currency || pricingProfile.currencies?.join(', ') || 'Currency varies'} · Pricing snapshot will be saved on the invoice`
+                              : 'All applicable services will appear here automatically.'}
                           </p>
                         </div>
-                        <div className="w-full sm:w-72">
-                          <Select
-                            label="Add Service"
-                            value=""
-                            disabled={feeRulesLoading || !invoicePayerValid}
-                            onChange={addInvoiceRule}
-                          >
-                            <option value="">Select service</option>
-                            {availableFeeRules.map((rule) => (
-                              <option key={asId(rule)} value={asId(rule)}>
-                                {rule.serviceName} · {formatMoney(rule.amount, rule.currency)} · {String(rule.billingBasis || '').replace(/_/g, ' ')}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
+
+                        {feeRules.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={selectAllInvoiceRules}
+                              className="min-h-9 rounded-xl border border-teal-200 bg-white px-3 text-[10px] font-black text-teal-700 hover:bg-teal-50"
+                            >
+                              Select All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearInvoiceRules}
+                              className="min-h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-black text-slate-600 hover:bg-slate-50"
+                            >
+                              Clear All
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {!invoicePayerValid ? (
-                        <div className="mt-4 rounded-xl border border-cyan-200 bg-white/70 p-3 text-xs font-semibold text-slate-600">
-                          Select the university, student or organization first. The applicable service prices will load automatically.
+                        <div className="m-4 rounded-2xl border border-dashed border-cyan-200 bg-cyan-50/40 p-6 text-center">
+                          <Building2 className="mx-auto h-8 w-8 text-cyan-500" />
+                          <div className="mt-2 text-sm font-black text-slate-800">Choose the payer first</div>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            The correct service price list will load automatically.
+                          </p>
                         </div>
                       ) : feeRulesLoading ? (
-                        <div className="mt-4 flex items-center gap-2 rounded-xl border border-cyan-200 bg-white/70 p-3 text-xs font-bold text-cyan-800">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Loading the applicable service prices...
+                        <div className="flex items-center justify-center gap-2 p-8 text-sm font-bold text-cyan-800">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Loading pricing profile...
                         </div>
                       ) : feeRules.length === 0 ? (
-                        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
-                          No active pricing rules are available for this selected payer. Check Finance → Service Pricing for this exact account.
-                        </div>
-                      ) : invoiceItems.length === 0 ? (
-                        <div className="mt-4 rounded-xl border border-dashed border-cyan-200 bg-white/70 p-4 text-center text-xs font-semibold text-slate-500">
-                          Add one or more services to build this invoice.
+                        <div className="m-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                          No active services were found for this payer. Open Finance → Service Pricing and confirm the payer, university and effective dates.
                         </div>
                       ) : (
-                        <div className="mt-4 space-y-2">
-                          {invoiceItems.map((item) => {
-                            const rule = feeRuleById.get(item.feeRuleId);
-                            if (!rule) return null;
-                            const lineAmount = Number(rule.amount || 0) * Number(item.quantity || 0);
-                            return (
-                              <div key={item.feeRuleId} className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_110px_140px_40px] sm:items-center">
-                                <div className="min-w-0">
-                                  <div className="truncate text-sm font-black text-slate-900">{rule.serviceName}</div>
-                                  <div className="mt-0.5 text-[10px] font-semibold text-slate-500">
-                                    {String(rule.billingBasis || '').replace(/_/g, ' ')} · {rule.scope === 'UNIVERSITY' ? 'University price' : 'Global price'}
-                                  </div>
-                                </div>
-                                <label>
-                                  <span className="text-[9px] font-black uppercase tracking-wide text-slate-400">Qty</span>
-                                  <input
-                                    type="number"
-                                    min="0.01"
-                                    step="1"
-                                    value={item.quantity}
-                                    onChange={(event) => updateInvoiceQuantity(item.feeRuleId, Number(event.target.value))}
-                                    className="mt-1 min-h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 text-sm font-black text-slate-800 outline-none focus:border-teal-500"
-                                  />
-                                </label>
-                                <div className="sm:text-right">
-                                  <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Line Total</div>
-                                  <div className="mt-1 text-sm font-black text-slate-900">{formatMoney(lineAmount, rule.currency)}</div>
-                                </div>
-                                <button
-                                  type="button"
-                                  aria-label="Remove service"
-                                  onClick={() => removeInvoiceRule(item.feeRuleId)}
-                                  className="flex h-10 w-10 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            );
-                          })}
+                        <>
+                          <div className="hidden overflow-x-auto md:block">
+                            <table className="w-full min-w-[900px] text-left text-xs">
+                              <thead className="border-b border-slate-200 bg-slate-50 text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                <tr>
+                                  <th className="w-16 px-4 py-3 text-center">Use</th>
+                                  <th className="px-4 py-3">Service</th>
+                                  <th className="px-4 py-3">Unit Price</th>
+                                  <th className="px-4 py-3">Billing Basis</th>
+                                  <th className="w-28 px-4 py-3">Qty</th>
+                                  <th className="px-4 py-3 text-right">Line Total</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {feeRules.map((rule) => {
+                                  const ruleId = asId(rule);
+                                  const selected = isInvoiceRuleSelected(ruleId);
+                                  const item = invoiceItems.find((entry) => entry.feeRuleId === ruleId);
+                                  const quantity = Number(item?.quantity || 1);
+                                  const lineTotal = Number(rule.amount || 0) * quantity;
 
-                          <div className="flex items-center justify-between rounded-xl bg-slate-950 px-4 py-3 text-white">
-                            <span className="text-xs font-black uppercase tracking-wide text-slate-300">Invoice Total</span>
-                            <span className="text-lg font-black">{formatMoney(invoiceTotal, invoiceCurrency)}</span>
+                                  return (
+                                    <tr key={ruleId} className={selected ? 'bg-cyan-50/45' : 'bg-white hover:bg-slate-50'}>
+                                      <td className="px-4 py-3 text-center">
+                                        <button
+                                          type="button"
+                                          aria-label={selected ? 'Remove service from invoice' : 'Add service to invoice'}
+                                          onClick={() => toggleInvoiceRule(ruleId)}
+                                          className={
+                                            'mx-auto flex h-8 w-8 items-center justify-center rounded-lg border transition ' +
+                                            (selected
+                                              ? 'border-teal-600 bg-teal-600 text-white'
+                                              : 'border-slate-300 bg-white text-transparent hover:border-teal-400')
+                                          }
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </button>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <div className="font-black text-slate-900">{rule.serviceName}</div>
+                                        <div className="mt-0.5 flex items-center gap-2 text-[9px] font-semibold text-slate-500">
+                                          <span>{rule.serviceCode}</span>
+                                          <span className={rule.pricingSource === 'UNIVERSITY' ? 'text-violet-600' : 'text-cyan-700'}>
+                                            {rule.pricingSource === 'UNIVERSITY' ? 'University Price' : 'Global Price'}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 font-black text-slate-900">
+                                        {formatMoney(rule.amount, rule.currency)}
+                                      </td>
+                                      <td className="px-4 py-3 font-semibold text-slate-600">
+                                        {String(rule.billingBasis || '').replace(/_/g, ' ')}
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <input
+                                          type="number"
+                                          min="0.01"
+                                          step={rule.billingBasis === 'PER_MONTH' ? '1' : '1'}
+                                          disabled={!selected}
+                                          value={selected ? quantity : 1}
+                                          onChange={(event) => updateInvoiceQuantity(ruleId, Number(event.target.value))}
+                                          className="min-h-9 w-20 rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-slate-800 outline-none focus:border-teal-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        <div className="font-black text-slate-900">
+                                          {selected ? formatMoney(lineTotal, rule.currency) : '—'}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
-                        </div>
+
+                          <div className="grid gap-3 p-3 md:hidden">
+                            {feeRules.map((rule) => {
+                              const ruleId = asId(rule);
+                              const selected = isInvoiceRuleSelected(ruleId);
+                              const item = invoiceItems.find((entry) => entry.feeRuleId === ruleId);
+                              const quantity = Number(item?.quantity || 1);
+
+                              return (
+                                <article
+                                  key={ruleId}
+                                  className={
+                                    'rounded-2xl border p-3 ' +
+                                    (selected ? 'border-teal-200 bg-teal-50/50' : 'border-slate-200 bg-white')
+                                  }
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <h4 className="truncate text-xs font-black text-slate-900">{rule.serviceName}</h4>
+                                      <p className="mt-1 text-[10px] font-semibold text-slate-500">
+                                        {formatMoney(rule.amount, rule.currency)} · {String(rule.billingBasis || '').replace(/_/g, ' ')}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleInvoiceRule(ruleId)}
+                                      className={
+                                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ' +
+                                        (selected
+                                          ? 'border-teal-600 bg-teal-600 text-white'
+                                          : 'border-slate-300 bg-white text-transparent')
+                                      }
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                  </div>
+
+                                  {selected && (
+                                    <div className="mt-3 grid grid-cols-2 gap-2">
+                                      <label>
+                                        <span className="text-[9px] font-black uppercase tracking-wide text-slate-400">Quantity</span>
+                                        <input
+                                          type="number"
+                                          min="0.01"
+                                          step="1"
+                                          value={quantity}
+                                          onChange={(event) => updateInvoiceQuantity(ruleId, Number(event.target.value))}
+                                          className="mt-1 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-800 outline-none focus:border-teal-500"
+                                        />
+                                      </label>
+                                      <div className="rounded-xl bg-white p-2">
+                                        <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Line Total</div>
+                                        <div className="mt-1 text-xs font-black text-slate-900">
+                                          {formatMoney(Number(rule.amount || 0) * quantity, rule.currency)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </article>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex flex-col gap-2 border-t border-slate-100 bg-slate-950 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-[10px] font-semibold text-slate-300">
+                              {invoiceItems.length} service{invoiceItems.length === 1 ? '' : 's'} selected
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wide text-slate-400">Invoice Total</span>
+                              <span className="text-xl font-black">{formatMoney(invoiceTotal, invoiceCurrency)}</span>
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
-                </>
+               </>
               )}
 
               {formType === 'SETTLEMENT' && (
@@ -1457,6 +1613,15 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                     </option>
                   ))}
                 </Select>
+              )}
+
+              {formType === 'FEE' && !editing && (
+                <div className="sm:col-span-2 rounded-2xl border border-violet-100 bg-violet-50/60 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-700">3. Review & Create Invoice</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-600">
+                    Confirm the total, invoice number, due date and notes. Service prices are copied into the invoice as a permanent snapshot.
+                  </div>
+                </div>
               )}
 
               {formType === 'FEE' && !editing ? (
@@ -1657,10 +1822,11 @@ const ModalShell: React.FC<{
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
-}> = ({ eyebrow, title, onClose, children, footer }) => (
+  wide?: boolean;
+}> = ({ eyebrow, title, onClose, children, footer, wide = false }) => (
   <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
     <button type="button" aria-label="Close modal" className="absolute inset-0 cursor-default" onClick={onClose} />
-    <div className="relative z-10 flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-3xl sm:rounded-3xl">
+    <div className={'relative z-10 flex max-h-[96vh] w-full flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl ' + (wide ? 'sm:max-w-6xl' : 'sm:max-w-3xl')}>
       <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-700">{eyebrow}</p>
