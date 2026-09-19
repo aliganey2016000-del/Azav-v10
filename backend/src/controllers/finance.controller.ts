@@ -5,6 +5,8 @@ import { Payment, FinanceRecordStatus, FinanceRecordType, FinancePayerType } fro
 import { FeeRule } from '../models/FeeRule.js';
 import { User } from '../models/User.js';
 import { University } from '../models/University.js';
+import { TrainingBatch } from '../models/TrainingBatch.js';
+import { Application } from '../models/Application.js';
 import { Organization } from '../models/Organization.js';
 import { AuditLog } from '../models/Notification.js';
 import { UserRole } from '../types/index.js';
@@ -51,7 +53,8 @@ const PAYER_TYPES: FinancePayerType[] = ['UNIVERSITY', 'STUDENT', 'ORGANIZATION'
 const normalizeInvoiceLineItems = async (
   rawItems: any[],
   payerType: FinancePayerType,
-  universityId?: string
+  universityId?: string,
+  batchStudentCount?: number
 ) => {
   const items = Array.isArray(rawItems) ? rawItems : [];
   if (!items.length) return [];
@@ -61,10 +64,9 @@ const normalizeInvoiceLineItems = async (
 
   for (const item of items) {
     const feeRuleId = String(item?.feeRuleId || '');
-    const quantity = positiveAmount(item?.quantity ?? 1);
 
-    if (!mongoose.Types.ObjectId.isValid(feeRuleId) || !quantity) {
-      const err: any = new Error('Each invoice service requires a valid pricing rule and quantity');
+    if (!mongoose.Types.ObjectId.isValid(feeRuleId)) {
+      const err: any = new Error('Each invoice service requires a valid pricing rule');
       err.statusCode = 400;
       err.code = 'INVALID_INVOICE_LINE';
       throw err;
@@ -122,6 +124,20 @@ const normalizeInvoiceLineItems = async (
     }
     currency = rule.currency;
 
+    const quantity =
+      payerType === 'UNIVERSITY' &&
+      rule.billingBasis === 'PER_STUDENT' &&
+      Number(batchStudentCount || 0) > 0
+        ? Number(batchStudentCount)
+        : positiveAmount(item?.quantity ?? 1);
+
+    if (!quantity) {
+      const err: any = new Error('Each invoice service requires a valid quantity');
+      err.statusCode = 400;
+      err.code = 'INVALID_INVOICE_LINE_QUANTITY';
+      throw err;
+    }
+
     normalized.push({
       feeRuleId: rule._id,
       serviceCode: rule.serviceCode,
@@ -142,6 +158,7 @@ const populateFinanceRecord = (id: mongoose.Types.ObjectId | string) =>
   Payment.findById(id)
     .populate('userId', 'firstName lastName email phone universityId organizationId')
     .populate('universityId', 'name code city country email phone')
+    .populate('batchId', 'batchNumber name intakeDate status universityId')
     .populate('applicationId', 'status programmeText specialtyText')
     .populate('organizationId', 'name code city country')
     .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId universityId payerType')
@@ -333,6 +350,7 @@ export class FinanceController {
       const records = await Payment.find(filter)
         .populate('userId', 'firstName lastName email phone universityId organizationId')
         .populate('universityId', 'name code city country email phone')
+        .populate('batchId', 'batchNumber name intakeDate status universityId')
         .populate('applicationId', 'status programmeText specialtyText')
         .populate('organizationId', 'name code city country')
         .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId universityId payerType')
@@ -452,6 +470,56 @@ export class FinanceController {
           }
         }
 
+        let batch: any = null;
+        let batchStudentCount = 0;
+        const batchId = String(req.body?.batchId || '');
+
+        if (payerType === 'UNIVERSITY') {
+          if (!mongoose.Types.ObjectId.isValid(batchId)) {
+            res.status(400).json({
+              success: false,
+              error: {
+                code: 'BATCH_REQUIRED',
+                message: 'Select the university batch before choosing services and creating the invoice',
+              },
+            });
+            return;
+          }
+
+          batch = await TrainingBatch.findOne({
+            _id: batchId,
+            universityId: new mongoose.Types.ObjectId(universityId),
+          }).lean();
+
+          if (!batch) {
+            res.status(400).json({
+              success: false,
+              error: {
+                code: 'INVALID_BATCH',
+                message: 'The selected batch does not belong to this university',
+              },
+            });
+            return;
+          }
+
+          const batchStudents = await Application.distinct('studentId', {
+            batchId: batch._id,
+            studentId: { $ne: null },
+          });
+          batchStudentCount = batchStudents.length;
+
+          if (batchStudentCount <= 0) {
+            res.status(400).json({
+              success: false,
+              error: {
+                code: 'EMPTY_BATCH',
+                message: 'This batch has no approved students to bill',
+              },
+            });
+            return;
+          }
+        }
+
         if (payerType === 'ORGANIZATION') {
           if (!mongoose.Types.ObjectId.isValid(organizationId)) {
             res.status(400).json({
@@ -474,8 +542,51 @@ export class FinanceController {
         const lineItems = await normalizeInvoiceLineItems(
           req.body?.lineItems,
           payerType,
-          payerType === 'UNIVERSITY' ? universityId : undefined
+          payerType === 'UNIVERSITY' ? universityId : undefined,
+          payerType === 'UNIVERSITY' ? batchStudentCount : undefined
         );
+
+        if (payerType === 'UNIVERSITY' && batch?._id && lineItems.length) {
+          const selectedRuleIds = lineItems
+            .map((item) => item.feeRuleId)
+            .filter(Boolean);
+
+          const duplicateInvoice = await Payment.findOne({
+            type: 'FEE',
+            universityId: new mongoose.Types.ObjectId(universityId),
+            batchId: batch._id,
+            status: { $ne: 'CANCELLED' },
+            'lineItems.feeRuleId': { $in: selectedRuleIds },
+          })
+            .select('invoiceNumber lineItems')
+            .lean();
+
+          if (duplicateInvoice) {
+            const duplicateRuleIds = new Set(
+              (duplicateInvoice.lineItems || [])
+                .map((item: any) => String(item.feeRuleId || ''))
+                .filter(Boolean)
+            );
+            const duplicateServices = lineItems
+              .filter((item) => duplicateRuleIds.has(String(item.feeRuleId || '')))
+              .map((item) => item.serviceName)
+              .join(', ');
+
+            res.status(409).json({
+              success: false,
+              error: {
+                code: 'BATCH_SERVICE_ALREADY_INVOICED',
+                message:
+                  'This batch has already been invoiced for: ' +
+                  (duplicateServices || 'one or more selected services') +
+                  (duplicateInvoice.invoiceNumber
+                    ? ' (' + duplicateInvoice.invoiceNumber + ')'
+                    : ''),
+              },
+            });
+            return;
+          }
+        }
 
         const calculatedAmount = lineItems.length
           ? Number(lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2))
@@ -504,7 +615,9 @@ export class FinanceController {
 
         const invoiceDescription =
           description ||
-          lineItems.map((item) => item.serviceName).join(', ') ||
+          (payerType === 'UNIVERSITY' && batch
+            ? batch.batchNumber + ' · ' + lineItems.map((item) => item.serviceName).join(', ')
+            : lineItems.map((item) => item.serviceName).join(', ')) ||
           'AZAAM services';
 
         const dueDate = parseDate(req.body?.dueDate);
@@ -513,6 +626,7 @@ export class FinanceController {
         const record = await Payment.create({
           userId: payerType === 'STUDENT' ? userId : null,
           universityId: payerType === 'UNIVERSITY' ? universityId : null,
+          batchId: payerType === 'UNIVERSITY' ? batch?._id || null : null,
           payerType,
           applicationId: req.body?.applicationId || null,
           organizationId: payerType === 'ORGANIZATION' ? organizationId : req.body?.organizationId || null,
@@ -604,6 +718,7 @@ export class FinanceController {
         const record = await Payment.create({
           userId: invoice.userId || null,
           universityId: invoice.universityId || null,
+          batchId: invoice.batchId || null,
           payerType: invoice.payerType || (invoice.universityId ? 'UNIVERSITY' : invoice.organizationId ? 'ORGANIZATION' : 'STUDENT'),
           applicationId: invoice.applicationId || null,
           organizationId: invoice.organizationId || null,
