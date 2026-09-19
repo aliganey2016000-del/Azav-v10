@@ -631,6 +631,12 @@ export const StudentJourneyAdminPage: React.FC = () => {
             const Icon = icons[index];
             const complete = stage.uiStatus === 'COMPLETED';
             const draft = formState[stage.key] || emptyDraft;
+            const needsBatchBackfill =
+              stage.key === 'AZAAM_REVIEW' &&
+              stage.uiStatus === 'COMPLETED' &&
+              Boolean(data?.student?.university?._id) &&
+              !data?.student?.batch;
+            const canSubmitStage = stage.actionable || needsBatchBackfill;
             return (
               <div key={stage.key} className={`relative rounded-2xl border p-4 transition ${STATUS_STYLE[stage.uiStatus]}`}>
                 <div className="flex items-start gap-4">
@@ -1098,7 +1104,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
                     )}
 
                     {stage.key === 'AZAAM_REVIEW' &&
-                      stage.actionable &&
+                      canSubmitStage &&
                       draft.action === 'APPROVE' &&
                       Boolean(data?.student?.university?._id) && (
                         <div className="mt-3 overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
@@ -1224,13 +1230,14 @@ export const StudentJourneyAdminPage: React.FC = () => {
                         </div>
                       )}
 
-                    {stage.actionable && (
+                    {canSubmitStage && (
                       <div className="mt-3 flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                           <select
                             value={draft.action}
+                            disabled={needsBatchBackfill}
                             onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, action: e.target.value as ActionType } }))}
-                            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold text-slate-800"
+                            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500"
                           >
                             <option value="APPROVE">Approve</option>
                             <option value="REQUEST_CORRECTION">Request Correction</option>
@@ -1259,7 +1266,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700 disabled:opacity-50"
                           >
                             {submitting === stage.key && <Loader2 className="h-3 w-3 animate-spin" />}
-                            Submit
+                            {needsBatchBackfill ? 'Submit Batch' : 'Submit'}
                           </button>
                         </div>
                       </div>
