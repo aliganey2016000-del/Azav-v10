@@ -20,6 +20,7 @@ export interface IPayment extends Document {
   applicationId?: mongoose.Types.ObjectId | null;
   organizationId?: mongoose.Types.ObjectId | null;
   originalPaymentId?: mongoose.Types.ObjectId | null;
+  invoiceId?: mongoose.Types.ObjectId | null;
   invoiceNumber?: string;
   type: FinanceRecordType;
   description: string;
@@ -31,6 +32,9 @@ export interface IPayment extends Document {
   reference?: string;
   paymentMethod?: FinancePaymentMethod;
   notes?: string;
+  voidReason?: string;
+  voidedAt?: Date | null;
+  voidedBy?: mongoose.Types.ObjectId | null;
   createdBy?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +46,7 @@ const PaymentSchema = new Schema<IPayment>(
     applicationId: { type: Schema.Types.ObjectId, ref: 'Application', default: null, index: true },
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', default: null, index: true },
     originalPaymentId: { type: Schema.Types.ObjectId, ref: 'Payment', default: null, index: true },
+    invoiceId: { type: Schema.Types.ObjectId, ref: 'Payment', default: null, index: true },
     invoiceNumber: { type: String, trim: true, index: true },
     type: {
       type: String,
@@ -50,7 +55,7 @@ const PaymentSchema = new Schema<IPayment>(
       index: true,
     },
     description: { type: String, required: true, trim: true, maxlength: 500 },
-    amount: { type: Number, required: true, min: 0 },
+    amount: { type: Number, required: true, min: 0.01 },
     currency: { type: String, default: 'USD', uppercase: true, trim: true, maxlength: 8 },
     status: {
       type: String,
@@ -66,6 +71,9 @@ const PaymentSchema = new Schema<IPayment>(
       enum: ['CASH', 'BANK_TRANSFER', 'MOBILE_MONEY', 'CARD', 'OTHER'],
     },
     notes: { type: String, trim: true, maxlength: 2000 },
+    voidReason: { type: String, trim: true, maxlength: 1000 },
+    voidedAt: { type: Date, default: null },
+    voidedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
@@ -73,6 +81,7 @@ const PaymentSchema = new Schema<IPayment>(
 
 PaymentSchema.index({ type: 1, status: 1, createdAt: -1 });
 PaymentSchema.index({ userId: 1, createdAt: -1 });
+PaymentSchema.index({ invoiceId: 1, type: 1, status: 1 });
 
 export const Payment =
   (mongoose.models.Payment as mongoose.Model<IPayment>) ||
