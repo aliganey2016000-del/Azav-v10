@@ -1183,6 +1183,15 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
             <DetailBox label="Due Date" value={formatDate(viewing.dueDate)} />
             <DetailBox label="Paid Date" value={formatDate(viewing.paidAt)} />
             <DetailBox label="University" value={viewing.universityId?.name || '—'} />
+            {viewing.batchId && (
+              <DetailBox
+                label="Batch"
+                value={
+                  (viewing.batchId?.batchNumber || 'Batch') +
+                  (viewing.batchId?.name ? ' · ' + viewing.batchId.name : '')
+                }
+              />
+            )}
             <DetailBox label="Organization" value={viewing.organizationId?.name || '—'} />
             <DetailBox label="Created" value={formatDate(viewing.createdAt)} />
           </div>
