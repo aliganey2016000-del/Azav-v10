@@ -42,6 +42,24 @@ rotationRouter.post(
   RotationController.createPlan
 );
 
+rotationRouter.patch(
+  '/:id/status',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.changeStatus
+);
+
+rotationRouter.patch(
+  '/:id',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.updateRotation
+);
+
+rotationRouter.delete(
+  '/:id',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  RotationController.deleteRotation
+);
+
 rotationRouter.delete(
   '/placement/:placementId',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
