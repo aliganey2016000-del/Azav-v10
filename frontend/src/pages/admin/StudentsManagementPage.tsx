@@ -14,7 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
-import { AdminStudent } from '../../types/admin.types';
+import { AdminStudent, AdminUniversity } from '../../types/admin.types';
 import { PageHeader } from '../../components/admin/PageHeader';
 import { StatusBadge } from '../../components/admin/Badge';
 import { LoadingState, EmptyState, ErrorState } from '../../components/admin/States';
@@ -25,8 +25,10 @@ export const StudentsManagementPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [universities, setUniversities] = useState<AdminUniversity[]>([]);
+  const [universityFilter, setUniversityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [visaFilter, setVisaFilter] = useState('ALL');
+  const [createdDateFilter, setCreatedDateFilter] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 20;
@@ -39,8 +41,9 @@ export const StudentsManagementPage: React.FC = () => {
         page,
         limit,
         search: searchQuery,
+        universityId: universityFilter === 'ALL' ? undefined : universityFilter,
         status: statusFilter,
-        visaStatus: visaFilter,
+        createdDate: createdDateFilter || undefined,
       });
       setStudents(res.students || []);
       setTotal(res.pagination?.total || 0);
@@ -52,8 +55,18 @@ export const StudentsManagementPage: React.FC = () => {
   };
 
   useEffect(() => {
+    AdminApiService.getUniversities({ page: 1, limit: 100 })
+      .then((res) =>
+        setUniversities(
+          (res.universities || []).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+        )
+      )
+      .catch(() => setUniversities([]));
+  }, []);
+
+  useEffect(() => {
     fetchStudents();
-  }, [page, statusFilter, visaFilter]);
+  }, [page, universityFilter, statusFilter, createdDateFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +74,7 @@ export const StudentsManagementPage: React.FC = () => {
     fetchStudents();
   };
 
-  const activeCount = students.filter((s) => s.status === 'ACTIVE').length;
+  const activeCount = students.filter((s) => Boolean(s.hospitalPlacement?._id)).length;
   const internationalCount = students.filter((s) => s.visaStatus !== 'NOT_REQUIRED').length;
   const completedCount = students.filter((s) => s.certificateIssued || s.status === 'COMPLETED').length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -157,7 +170,24 @@ export const StudentsManagementPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-3 grid grid-cols-2 gap-2.5">
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+          <select
+            value={universityFilter}
+            onChange={(e) => {
+              setUniversityFilter(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Filter by university"
+            className="h-11 min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
+          >
+            <option value="ALL">All Universities</option>
+            {universities.map((university) => (
+              <option key={university._id} value={university._id}>
+                {university.name}{university.code ? ' · ' + university.code : ''}
+              </option>
+            ))}
+          </select>
+
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -168,26 +198,27 @@ export const StudentsManagementPage: React.FC = () => {
             className="h-11 min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
           >
             <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active Rotations</option>
-            <option value="PENDING">Pending Placements</option>
-            <option value="COMPLETED">Graduated / Certified</option>
+            <option value="PENDING">Pending</option>
+            <option value="ACTIVE">Active</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="INACTIVE">Rejected / Inactive</option>
           </select>
 
-          <select
-            value={visaFilter}
-            onChange={(e) => {
-              setVisaFilter(e.target.value);
-              setPage(1);
-            }}
-            aria-label="Filter immigration status"
-            className="h-11 min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-700 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
-          >
-            <option value="ALL">All Trainees</option>
-            <option value="NOT_REQUIRED">Local / No Visa</option>
-            <option value="GRANTED">Visa Granted</option>
-            <option value="EMBASSY_PROCESSING">Embassy Processing</option>
-            <option value="APPLIED">Visa Applied</option>
-          </select>
+          <label className="relative">
+            <span className="pointer-events-none absolute left-3 top-1.5 text-[9px] font-extrabold uppercase tracking-wide text-slate-400">
+              Created Date
+            </span>
+            <input
+              type="date"
+              value={createdDateFilter}
+              onChange={(e) => {
+                setCreatedDateFilter(e.target.value);
+                setPage(1);
+              }}
+              aria-label="Filter by created date"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 pt-3 text-xs font-bold text-slate-700 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/10 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
+            />
+          </label>
         </div>
       </section>
 
@@ -249,31 +280,19 @@ export const StudentsManagementPage: React.FC = () => {
                         <Building2 className="h-3.5 w-3.5" />
                         Placement
                       </div>
-                      <p className="line-clamp-2 text-xs font-extrabold text-slate-800 dark:text-slate-100">
-                        {student.hospitalPlacement?.name || 'Pending AZAAM placement'}
+                      <p className={
+                        'line-clamp-2 text-xs font-extrabold ' +
+                        (student.hospitalPlacement?._id
+                          ? 'text-slate-800 dark:text-slate-100'
+                          : 'text-amber-700 dark:text-amber-300')
+                      }>
+                        {student.hospitalPlacement?._id
+                          ? student.hospitalPlacement.name
+                          : 'Pending AZAAM placement'}
                       </p>
                       <p className="mt-0.5 text-[11px] font-bold text-teal-700 dark:text-teal-300">
                         {student.specialty || '—'}
                       </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-slate-500 dark:text-slate-400">Clinical progress</span>
-                      <span className="font-extrabold text-slate-800 dark:text-slate-100">
-                        {student.attendancePercent || 0}%
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"
-                        style={{ width: Math.min(student.attendancePercent || 0, 100) + '%' }}
-                      />
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400">
-                      <span>Logbook: {student.logbookSigned || 0} / {student.logbookRequired || 0}</span>
-                      <span>{student.visaStatus === 'NOT_REQUIRED' ? 'Local trainee' : 'Visa: ' + student.visaStatus.replaceAll('_', ' ')}</span>
                     </div>
                   </div>
 
@@ -304,14 +323,12 @@ export const StudentsManagementPage: React.FC = () => {
 
           <section className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#0f1b2d] md:block">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px] text-left text-xs">
+              <table className="w-full min-w-[820px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
                   <tr>
                     <th className="px-4 py-3">Student & ID</th>
                     <th className="px-4 py-3">University</th>
                     <th className="px-4 py-3">Hospital & Specialty</th>
-                    <th className="px-4 py-3">Immigration & Fees</th>
-                    <th className="px-4 py-3">Clinical Progress</th>
                     <th className="px-4 py-3">Documents</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
@@ -347,33 +364,18 @@ export const StudentsManagementPage: React.FC = () => {
                         <div className="flex items-start gap-1.5">
                           <Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
                           <div>
-                            <p className="max-w-[200px] font-bold text-slate-800 dark:text-slate-100">{student.hospitalPlacement?.name || 'Pending AZAAM placement'}</p>
+                            <p className={
+                              'max-w-[220px] font-bold ' +
+                              (student.hospitalPlacement?._id
+                                ? 'text-slate-800 dark:text-slate-100'
+                                : 'text-amber-700 dark:text-amber-300')
+                            }>
+                              {student.hospitalPlacement?._id
+                                ? student.hospitalPlacement.name
+                                : 'Pending AZAAM placement'}
+                            </p>
                             <p className="text-[11px] font-bold text-teal-700 dark:text-teal-300">{student.specialty || '—'}</p>
                           </div>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-4">
-                        <div className="space-y-1 text-[11px]">
-                          <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            {student.visaStatus === 'NOT_REQUIRED' ? 'Local National' : 'Visa: ' + student.visaStatus.replaceAll('_', ' ')}
-                          </span>
-                          <p className="text-slate-500 dark:text-slate-400">
-                            Tuition: <span className="font-bold text-slate-700 dark:text-slate-200">${student.paidFees || 0} / ${student.totalFees || 0}</span>
-                          </p>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-4">
-                        <div className="w-32 space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-slate-500 dark:text-slate-400">Attendance</span>
-                            <span className="font-extrabold text-slate-800 dark:text-slate-100">{student.attendancePercent || 0}%</span>
-                          </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                            <div className="h-full rounded-full bg-teal-600" style={{ width: Math.min(student.attendancePercent || 0, 100) + '%' }} />
-                          </div>
-                          <p className="text-[10px] text-slate-400">Logbook: {student.logbookSigned || 0} / {student.logbookRequired || 0}</p>
                         </div>
                       </td>
 
