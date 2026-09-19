@@ -14,7 +14,6 @@ import {
   Loader2,
   MoreVertical,
   Search,
-  Stethoscope,
   UserRound,
   Users,
   X,
@@ -88,8 +87,6 @@ const applicationFor = (placement: RecordObject) => placement.applicationId;
 const studentFor = (placement: RecordObject) => placement.studentId;
 const userFor = (placement: RecordObject) => studentFor(placement)?.userId;
 const hospitalName = (placement: RecordObject) => placement.organizationId?.name || '-';
-const departmentName = (placement: RecordObject) => placement.departmentId?.name || 'Not assigned';
-const supervisorName = (placement: RecordObject) => fullName(placement.supervisorId?.userId);
 const programmeName = (placement: RecordObject) =>
   applicationFor(placement)?.programmeId?.name ||
   applicationFor(placement)?.programmeText ||
@@ -165,8 +162,6 @@ export const UniversityPlacementsPage: React.FC = () => {
           studentFor(placement)?.studentNumber,
           user?.email,
           hospitalName(placement),
-          departmentName(placement),
-          supervisorName(placement),
           programmeName(placement),
         ]
           .filter(Boolean)
@@ -464,14 +459,12 @@ export const UniversityPlacementsPage: React.FC = () => {
         ) : (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="min-w-[1000px] w-full text-left text-xs">
+              <table className="min-w-[760px] w-full text-left text-xs">
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-black">Student</th>
                     <th className="px-4 py-3 font-black">Programme</th>
                     <th className="px-4 py-3 font-black">Hospital</th>
-                    <th className="px-4 py-3 font-black">Department</th>
-                    <th className="px-4 py-3 font-black">Supervisor</th>
                     <th className="px-4 py-3 font-black">Dates</th>
                     <th className="px-4 py-3 font-black">Status</th>
                     <th className="px-4 py-3 text-right font-black">Action</th>
@@ -498,8 +491,6 @@ export const UniversityPlacementsPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 font-semibold text-slate-600">{programmeName(placement)}</td>
                         <td className="px-4 py-3 font-semibold text-slate-600">{hospitalName(placement)}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-600">{departmentName(placement)}</td>
-                        <td className="px-4 py-3 font-semibold text-slate-600">{supervisorName(placement)}</td>
                         <td className="px-4 py-3 whitespace-nowrap font-semibold text-slate-600">
                           {formatDate(placement.startDate)} — {formatDate(placement.endDate)}
                         </td>
@@ -609,32 +600,12 @@ export const UniversityPlacementsPage: React.FC = () => {
                       </div>
 
                       <div className="flex min-w-0 items-center gap-2.5 border-b border-blue-100 p-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                          <Stethoscope className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-bold text-blue-500">Department</div>
-                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{departmentName(placement)}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex min-w-0 items-center gap-2.5 border-b border-r border-blue-100 p-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
                           <GraduationCap className="h-4 w-4" />
                         </span>
                         <div className="min-w-0">
                           <div className="text-[10px] font-bold text-blue-500">Programme</div>
                           <div className="mt-0.5 truncate text-xs font-black text-slate-800">{programmeName(placement)}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex min-w-0 items-center gap-2.5 border-b border-blue-100 p-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
-                          <UserRound className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-bold text-blue-500">Supervisor</div>
-                          <div className="mt-0.5 truncate text-xs font-black text-slate-800">{supervisorName(placement)}</div>
                         </div>
                       </div>
 
@@ -712,8 +683,6 @@ export const UniversityPlacementsPage: React.FC = () => {
                 ['Student ID', studentFor(viewingPlacement)?.studentNumber || '-'],
                 ['Programme', programmeName(viewingPlacement)],
                 ['Hospital', hospitalName(viewingPlacement)],
-                ['Department', departmentName(viewingPlacement)],
-                ['Supervisor', supervisorName(viewingPlacement)],
                 ['Status', statusLabel(viewingPlacement.status)],
                 ['Start Date', formatDate(viewingPlacement.startDate)],
                 ['End Date', formatDate(viewingPlacement.endDate)],
