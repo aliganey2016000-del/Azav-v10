@@ -111,6 +111,9 @@ export const AppRouter: React.FC = () => (
           <Route path="/university/student-status" element={<UniversityStudentStatusPage />} />
           <Route path="/university/mou" element={<PortalResourcePage eyebrow="University Admin" title="MoU & Agreement" description="View the university partnership agreement stored in the live database." endpoint="/universities/mou/current" />} />
           <Route path="/university/financials" element={<PortalResourcePage eyebrow="University Admin" title="Financials" description="Review live finance records associated with this authenticated account." endpoint="/finance" />} />
+          <Route path="/university/finance/fees" element={<PortalResourcePage eyebrow="University Finance" title="Fees & Invoices" description="Review fee and invoice records for university-associated trainees." endpoint="/finance?type=FEE" />} />
+          <Route path="/university/finance/payments" element={<PortalResourcePage eyebrow="University Finance" title="Payments" description="Review payment records for university-associated trainees." endpoint="/finance?type=PAYMENT" />} />
+          <Route path="/university/finance/history" element={<PortalResourcePage eyebrow="University Finance" title="Payment History" description="Review the complete finance history available to this university." endpoint="/finance" />} />
           <Route path="/university/applications" element={<PortalResourcePage eyebrow="University Admin" title="Student Applications" description="Review live applications submitted by or associated with this university." endpoint="/applications" />} />
           <Route path="/university/placements" element={<UniversityPlacementsPage />} />
           <Route path="/university/rotations" element={<UniversityRotationsPage />} />
@@ -145,6 +148,9 @@ export const AppRouter: React.FC = () => (
           <Route path="/organization/staff" element={<UsersManagementPage />} />
           <Route path="/organization/documents" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Documents" description="Review documents submitted for organization and placement compliance." endpoint="/documents" />} />
           <Route path="/organization/certificates" element={<PortalResourcePage eyebrow="Organization Admin" title="Certificates" description="Review certificates persisted in the database." endpoint="/certificates" />} />
+          <Route path="/organization/finance/fees" element={<PortalResourcePage eyebrow="Organization Finance" title="Placement Fees" description="Review finance records associated with organization placement fees." endpoint="/finance?type=FEE" />} />
+          <Route path="/organization/finance/history" element={<PortalResourcePage eyebrow="Organization Finance" title="Payment History" description="Review payment records visible to this organization." endpoint="/finance?type=PAYMENT" />} />
+          <Route path="/organization/finance/settlements" element={<PortalResourcePage eyebrow="Organization Finance" title="Settlement History" description="Review settlement transfers recorded for this organization." endpoint="/finance?type=SETTLEMENT" />} />
           <Route path="/organization/profile" element={<PortalResourcePage eyebrow="Organization Admin" title="Organization Profile" description="View the organization profile currently associated with this account." endpoint="/auth/me" />} />
           <Route path="/organization" element={<Navigate to="/organization/dashboard" replace />} />
 
@@ -191,8 +197,8 @@ export const AppRouter: React.FC = () => (
           <Route path="/student/attendance" element={<PortalResourcePage eyebrow="Student" title="Attendance" description="Review your attendance records stored in the database." endpoint="/attendance" />} />
           <Route path="/student/logbook" element={<PortalResourcePage eyebrow="Student" title="Logbook" description="Review your clinical logbook records stored in the database." endpoint="/logbooks" />} />
           <Route path="/student/evaluations" element={<PortalResourcePage eyebrow="Student" title="Evaluations" description="Review your live clinical evaluations." endpoint="/evaluations" />} />
-          <Route path="/student/finance/fees" element={<PortalResourcePage eyebrow="Student" title="Training Fees" description="Review fee records and payment obligations returned by the live finance service." endpoint="/finance" />} />
-          <Route path="/student/finance/payments" element={<PortalResourcePage eyebrow="Student" title="Payments" description="Review payment records associated with your clinical training applications." endpoint="/finance" />} />
+          <Route path="/student/finance/fees" element={<PortalResourcePage eyebrow="Student" title="Training Fees" description="Review fee records and payment obligations returned by the live finance service." endpoint="/finance?type=FEE" />} />
+          <Route path="/student/finance/payments" element={<PortalResourcePage eyebrow="Student" title="Payments" description="Review payment records associated with your clinical training applications." endpoint="/finance?type=PAYMENT" />} />
           <Route path="/student/finance/history" element={<PortalResourcePage eyebrow="Student" title="Payment History" description="Review the live payment history available to your account." endpoint="/finance" />} />
           <Route path="/student/documents" element={<PortalResourcePage eyebrow="Student" title="My Documents" description="Upload and review documents required for application and placement clearance." endpoint="/documents" />} />
           <Route path="/student/certificates" element={<PortalResourcePage eyebrow="Student" title="Certificates" description="Review your issued certificates stored in the database." endpoint="/certificates" />} />
