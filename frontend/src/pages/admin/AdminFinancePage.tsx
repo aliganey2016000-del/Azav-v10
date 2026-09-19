@@ -445,19 +445,72 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setForm(EMPTY_FORM);
   };
 
+  const selectedUser = users.find((item) => asId(item) === form.userId) || null;
+  const payerUniversityId =
+    form.payerType === 'UNIVERSITY'
+      ? form.universityId
+      : form.payerType === 'STUDENT'
+        ? asId(selectedUser?.universityId)
+        : '';
+
+  const feeRuleById = useMemo(
+    () => new Map(feeRules.map((rule) => [asId(rule), rule])),
+    [feeRules]
+  );
+
+  const invoiceCurrency =
+    invoiceItems.length > 0
+      ? feeRuleById.get(invoiceItems[0].feeRuleId)?.currency || form.currency || 'USD'
+      : form.currency || 'USD';
+
+  const invoiceTotal = invoiceItems.reduce((sum, item) => {
+    const rule = feeRuleById.get(item.feeRuleId);
+    return sum + Number(rule?.amount || 0) * Number(item.quantity || 0);
+  }, 0);
+
+  const availableFeeRules = feeRules.filter((rule) => {
+    if (invoiceItems.some((item) => item.feeRuleId === asId(rule))) return false;
+    if (invoiceItems.length && rule.currency !== invoiceCurrency) return false;
+    return true;
+  });
+
+  const invoicePayerValid =
+    form.payerType === 'UNIVERSITY'
+      ? Boolean(form.universityId)
+      : form.payerType === 'ORGANIZATION'
+        ? Boolean(form.organizationId)
+        : Boolean(form.userId);
+
+  const addInvoiceRule = (feeRuleId: string) => {
+    if (!feeRuleId) return;
+    setInvoiceItems((current) => [...current, { feeRuleId, quantity: 1 }]);
+  };
+
+  const updateInvoiceQuantity = (feeRuleId: string, quantity: number) => {
+    const next = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+    setInvoiceItems((current) =>
+      current.map((item) => (item.feeRuleId === feeRuleId ? { ...item, quantity: next } : item))
+    );
+  };
+
+  const removeInvoiceRule = (feeRuleId: string) => {
+    setInvoiceItems((current) => current.filter((item) => item.feeRuleId !== feeRuleId));
+  };
+
   const saveRecord = async () => {
     const recordType = editing?.type || config.type;
-    const requiresAccount = recordType === 'FEE';
     const requiresOrganization = recordType === 'SETTLEMENT';
     const requiresInvoice = recordType === 'PAYMENT';
+    const creatingRuleInvoice = recordType === 'FEE' && !editing;
 
     if (
       !recordType ||
-      (requiresAccount && !form.userId) ||
+      (creatingRuleInvoice && (!invoicePayerValid || invoiceItems.length === 0 || invoiceTotal <= 0)) ||
+      (!creatingRuleInvoice && recordType === 'FEE' && !form.userId && !form.universityId && !form.organizationId) ||
       (requiresOrganization && !form.organizationId) ||
       (requiresInvoice && !form.invoiceId) ||
-      !form.description.trim() ||
-      form.amount === ''
+      (recordType !== 'FEE' && !form.description.trim()) ||
+      (!creatingRuleInvoice && form.amount === '')
     ) return;
 
     setSaving(true);
@@ -509,12 +562,24 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       } else {
         await api.post('/finance', {
           type: recordType,
+          payerType: recordType === 'FEE' ? form.payerType : undefined,
           userId: form.userId || undefined,
+          universityId: form.universityId || undefined,
           organizationId: form.organizationId || undefined,
           invoiceId: form.invoiceId || undefined,
-          description: form.description.trim(),
-          amount: Number(form.amount),
-          currency: form.currency || 'USD',
+          lineItems:
+            recordType === 'FEE'
+              ? invoiceItems.map((item) => ({
+                  feeRuleId: item.feeRuleId,
+                  quantity: item.quantity,
+                }))
+              : undefined,
+          description:
+            recordType === 'FEE'
+              ? form.description.trim() || undefined
+              : form.description.trim(),
+          amount: recordType === 'FEE' ? invoiceTotal : Number(form.amount),
+          currency: recordType === 'FEE' ? invoiceCurrency : form.currency || 'USD',
           status: recordType === 'SETTLEMENT' ? form.status : undefined,
           invoiceNumber: form.invoiceNumber.trim() || undefined,
           reference: form.reference.trim() || undefined,
