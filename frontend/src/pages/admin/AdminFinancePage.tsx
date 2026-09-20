@@ -1061,7 +1061,20 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const selectedInvoice = invoices.find((invoice) => asId(invoice) === form.invoiceId) || null;
   const openInvoices = invoices.filter((invoice) => {
     if (editing && asId(invoice) === form.invoiceId) return true;
-    return !['PAID', 'CANCELLED'].includes(invoice.status) && Number(invoice.balance ?? invoice.amount) > 0;
+
+    const isOpen =
+      !['PAID', 'CANCELLED'].includes(invoice.status) &&
+      Number(invoice.balance ?? invoice.amount) > 0;
+
+    if (!isOpen) return false;
+
+    // The Super Admin Payments Register is for university collections.
+    // Only show invoices billed to a university in the Record Payment form.
+    if (isAdminPaymentsView) {
+      return invoice.payerType === 'UNIVERSITY' || Boolean(asId(invoice.universityId));
+    }
+
+    return true;
   });
 
   if (isAdminPaymentsView) {
@@ -1100,7 +1113,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-teal-600 px-4 text-xs font-black text-white shadow-lg transition hover:bg-teal-700 hover:shadow-xl sm:px-5"
               >
                 <Plus className="h-4 w-4" />
-                <span>Record Payment</span>
+                <span>Record University Payment</span>
               </button>
               <button
                 type="button"
@@ -1498,7 +1511,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
         {formOpen && (
           <ModalShell
-            title={editing ? 'Edit Payment' : 'Record Payment'}
+            title={editing ? 'Edit University Payment' : 'Record University Payment'}
             eyebrow="Finance · Payment"
             onClose={closeForm}
             footer={
@@ -1560,7 +1573,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                   }}
                   disabled={Boolean(editing)}
                 >
-                  <option value="">Select unpaid invoice</option>
+                  <option value="">Select unpaid university invoice</option>
                   {openInvoices.map((invoice) => (
                     <option key={asId(invoice)} value={asId(invoice)}>
                       {invoice.invoiceNumber || 'Invoice'} · {accountName(invoice)} · Balance {formatMoney(invoice.balance ?? invoice.amount, invoice.currency)}
@@ -1570,10 +1583,10 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                   <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">
-                    Invoice Account
+                    University
                   </div>
                   <div className="mt-1 text-sm font-black text-slate-800">
-                    {selectedInvoice ? accountName(selectedInvoice) : 'Select an invoice'}
+                    {selectedInvoice ? accountName(selectedInvoice) : 'Select a university invoice'}
                   </div>
                   {selectedInvoice && (
                     <>
