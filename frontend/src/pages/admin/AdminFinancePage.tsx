@@ -1023,14 +1023,15 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1050px] text-left text-xs">
+              <table className="w-full min-w-[900px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
                   <tr>
                     <th className="px-4 py-3.5">Account</th>
                     {mode === 'transactions' && <th className="px-4 py-3.5">Type</th>}
                     <th className="px-4 py-3.5">Reference</th>
-                    <th className="px-4 py-3.5">Description</th>
+                    {mode === 'fees' && <th className="px-4 py-3.5">Batch</th>}
                     <th className="px-4 py-3.5">Amount</th>
+                    {mode === 'fees' && <th className="px-4 py-3.5">Balance</th>}
                     <th className="px-4 py-3.5">Date</th>
                     <th className="px-4 py-3.5">Status</th>
                     <th className="px-4 py-3.5 text-right">Actions</th>
@@ -1039,11 +1040,23 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
                 <tbody className="divide-y divide-slate-100">
                   {filteredRecords.map((record) => (
-                    <tr key={asId(record)} className="transition hover:bg-teal-50/30">
+                    <tr
+                      key={asId(record)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setViewing(record)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setViewing(record);
+                        }
+                      }}
+                      className="cursor-pointer transition hover:bg-teal-50/40 focus:bg-teal-50/40 focus:outline-none"
+                    >
                       <td className="px-4 py-3.5">
                         <div className="font-black text-slate-900">{accountName(record)}</div>
                         <div className="mt-0.5 max-w-[180px] truncate text-[10px] font-semibold text-slate-500">
-                          {accountEmail(record) || 'Finance account'}
+                          {accountEmail(record) || String(record.payerType || 'Finance account').replace(/_/g, ' ')}
                         </div>
                       </td>
 
@@ -1055,27 +1068,37 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         </td>
                       )}
 
-                      <td className="px-4 py-3.5 font-mono text-[11px] font-bold text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-3.5 font-mono text-[11px] font-bold text-teal-700">
                         {referenceLabel(record)}
                       </td>
 
-                      <td className="max-w-[240px] px-4 py-3.5">
-                        <div className="truncate font-bold text-slate-700">{record.description}</div>
-                        {record.organizationId?.name && (
-                          <div className="mt-0.5 truncate text-[10px] font-semibold text-violet-600">
-                            {record.organizationId.name}
+                      {mode === 'fees' && (
+                        <td className="px-4 py-3.5">
+                          <div className="max-w-[180px] truncate font-bold text-slate-700">
+                            {record.batchId?.batchNumber || '—'}
                           </div>
-                        )}
-                      </td>
+                          {record.batchId?.name && (
+                            <div className="mt-0.5 max-w-[180px] truncate text-[10px] font-semibold text-slate-500">
+                              {record.batchId.name}
+                            </div>
+                          )}
+                        </td>
+                      )}
 
                       <td className="whitespace-nowrap px-4 py-3.5">
                         <div className="font-black text-slate-900">{formatMoney(record.amount, record.currency)}</div>
                         {record.type === 'FEE' && (
                           <div className="mt-0.5 text-[9px] font-semibold text-slate-500">
-                            Paid {formatMoney(record.paidAmount || 0, record.currency)} · Balance {formatMoney(record.balance || 0, record.currency)}
+                            Paid {formatMoney(record.paidAmount || 0, record.currency)}
                           </div>
                         )}
                       </td>
+
+                      {mode === 'fees' && (
+                        <td className="whitespace-nowrap px-4 py-3.5 font-black text-amber-700">
+                          {formatMoney(record.balance || 0, record.currency)}
+                        </td>
+                      )}
 
                       <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-slate-600">
                         {formatDate(record.paidAt || record.dueDate || record.createdAt)}
@@ -1087,7 +1110,10 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         </span>
                       </td>
 
-                      <td className="px-4 py-3.5 text-right">
+                      <td
+                        className="px-4 py-3.5 text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <div className="inline-flex flex-col items-end">
                           <button
                             type="button"
@@ -1144,11 +1170,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
             <div className="grid min-w-0 gap-3 p-3 md:hidden">
               {filteredRecords.map((record) => {
-                const services = Array.isArray(record.lineItems) ? record.lineItems : [];
-                const batchLabel = record.batchId
-                  ? (record.batchId?.batchNumber || 'Batch') +
-                    (record.batchId?.name ? ' · ' + record.batchId.name : '')
-                  : '—';
+                const batchLabel = record.batchId?.batchNumber || '—';
                 const payerType = String(
                   record.payerType ||
                     (record.universityId
@@ -1161,9 +1183,18 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 return (
                   <article
                     key={asId(record)}
-                    className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setViewing(record)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setViewing(record);
+                      }
+                    }}
+                    className="min-w-0 max-w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition active:scale-[0.995]"
                   >
-                    <div className="border-b border-slate-100 bg-gradient-to-r from-white via-teal-50/40 to-cyan-50/70 p-4">
+                    <div className="bg-gradient-to-r from-white via-teal-50/35 to-cyan-50/70 p-4">
                       <div className="flex min-w-0 items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -1186,141 +1217,92 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         <button
                           type="button"
                           aria-label="Finance record actions"
-                          onClick={() =>
-                            setRowMenuId((current) => current === asId(record) ? null : asId(record))
-                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setRowMenuId((current) => current === asId(record) ? null : asId(record));
+                          }}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm"
                         >
                           <MoreVertical className="h-4 w-4" />
                         </button>
                       </div>
 
-                      <div className="mt-4 flex min-w-0 items-end justify-between gap-3">
-                        <div className="min-w-0">
+                      {rowMenuId === asId(record) && (
+                        <div
+                          className="mt-3 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <ActionItem
+                            icon={<Eye className="h-4 w-4" />}
+                            label="View Details"
+                            onClick={() => {
+                              setRowMenuId(null);
+                              setViewing(record);
+                            }}
+                          />
+                          {!readOnly && (
+                            <ActionItem
+                              icon={<Pencil className="h-4 w-4" />}
+                              label="Edit Record"
+                              onClick={() => void openEdit(record)}
+                            />
+                          )}
+                          {!readOnly && record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
+                            <ActionItem
+                              icon={<RotateCcw className="h-4 w-4" />}
+                              label="Create Refund"
+                              onClick={() => void refundPayment(record)}
+                            />
+                          )}
+                          {!readOnly && record.status !== 'CANCELLED' && (
+                            <ActionItem
+                              danger
+                              icon={<Ban className="h-4 w-4" />}
+                              label="Void / Cancel"
+                              onClick={() => void voidRecord(record)}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
+                        <div className="min-w-0 rounded-xl bg-white/85 p-3">
                           <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                            Total Amount
+                            Amount
                           </div>
-                          <div className="mt-0.5 break-words text-2xl font-black tracking-tight text-slate-950">
+                          <div className="mt-1 break-words text-lg font-black text-slate-950">
                             {formatMoney(record.amount, record.currency)}
                           </div>
                         </div>
 
-                        {record.type === 'FEE' && (
-                          <div className="shrink-0 text-right">
-                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                              Balance
-                            </div>
-                            <div className="mt-0.5 text-sm font-black text-amber-700">
-                              {formatMoney(record.balance || 0, record.currency)}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {rowMenuId === asId(record) && (
-                      <div className="m-3 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-                        <ActionItem
-                          icon={<Eye className="h-4 w-4" />}
-                          label="View Details"
-                          onClick={() => {
-                            setRowMenuId(null);
-                            setViewing(record);
-                          }}
-                        />
-                        {!readOnly && (
-                          <ActionItem
-                            icon={<Pencil className="h-4 w-4" />}
-                            label="Edit Record"
-                            onClick={() => void openEdit(record)}
-                          />
-                        )}
-                        {!readOnly && record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
-                          <ActionItem
-                            icon={<RotateCcw className="h-4 w-4" />}
-                            label="Create Refund"
-                            onClick={() => void refundPayment(record)}
-                          />
-                        )}
-                        {!readOnly && record.status !== 'CANCELLED' && (
-                          <ActionItem
-                            danger
-                            icon={<Ban className="h-4 w-4" />}
-                            label="Void / Cancel"
-                            onClick={() => void voidRecord(record)}
-                          />
-                        )}
-                      </div>
-                    )}
-
-                    <div className="space-y-3 p-4">
-                      {record.description && (
-                        <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+                        <div className="min-w-0 rounded-xl bg-white/85 p-3">
                           <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                            Description
+                            {record.type === 'FEE' ? 'Balance' : 'Date'}
                           </div>
-                          <div className="mt-1 break-words text-xs font-bold leading-5 text-slate-700">
-                            {record.description}
+                          <div className={'mt-1 break-words text-sm font-black ' + (record.type === 'FEE' ? 'text-amber-700' : 'text-slate-800')}>
+                            {record.type === 'FEE'
+                              ? formatMoney(record.balance || 0, record.currency)
+                              : formatDate(record.paidAt || record.createdAt)}
                           </div>
                         </div>
-                      )}
 
-                      <div className="grid min-w-0 grid-cols-2 gap-2">
                         {record.type === 'FEE' && (
-                          <MobileInfo
-                            label="Paid"
-                            value={formatMoney(record.paidAmount || 0, record.currency)}
-                          />
+                          <>
+                            <MobileInfo label="Batch" value={batchLabel} />
+                            <MobileInfo label="Created" value={formatDate(record.createdAt)} />
+                          </>
                         )}
-                        <MobileInfo label="Batch" value={batchLabel} />
-                        <MobileInfo label="Due Date" value={formatDate(record.dueDate)} />
-                        <MobileInfo label="Created" value={formatDate(record.createdAt)} />
                       </div>
 
-                      {record.type === 'FEE' && services.length > 0 && (
-                        <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                              Invoice Services
-                            </div>
-                            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[9px] font-black text-slate-500">
-                              {services.length} service{services.length === 1 ? '' : 's'}
-                            </span>
-                          </div>
-
-                          <div className="mt-2 space-y-2">
-                            {services.map((item: RecordObject, index: number) => (
-                              <div
-                                key={String(item.feeRuleId || index)}
-                                className="min-w-0 rounded-xl border border-slate-100 bg-white p-3"
-                              >
-                                <div className="flex min-w-0 items-start justify-between gap-3">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="break-words text-xs font-black text-slate-800">
-                                      {item.serviceName || 'Service'}
-                                    </div>
-                                    <div className="mt-1 break-words text-[10px] font-semibold text-slate-500">
-                                      {String(item.billingBasis || '').replace(/_/g, ' ') || 'Service'} · Qty {item.quantity || 1} × {formatMoney(item.unitPrice || 0, record.currency)}
-                                    </div>
-                                  </div>
-                                  <div className="shrink-0 text-xs font-black text-slate-900">
-                                    {formatMoney(item.amount || 0, record.currency)}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => setViewing(record)}
-                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 text-xs font-black text-white shadow-sm"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View Full Invoice
-                      </button>
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200/70 pt-3">
+                        <span className="text-[10px] font-bold text-slate-500">
+                          Tap card to view full details
+                        </span>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-black text-teal-700">
+                          <Eye className="h-3.5 w-3.5" />
+                          Details
+                        </span>
+                      </div>
                     </div>
                   </article>
                 );
@@ -1332,8 +1314,8 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
       {viewing && (
         <ModalShell
-          title="Finance Record"
-          eyebrow={viewing.type || 'Finance'}
+          title={viewing.type === 'FEE' ? 'Invoice Details' : 'Finance Record Details'}
+          eyebrow={viewing.type === 'FEE' ? referenceLabel(viewing) : viewing.type || 'Finance'}
           onClose={() => setViewing(null)}
         >
           {readOnly && (
