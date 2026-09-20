@@ -153,6 +153,7 @@ export const AdminSettlementsPage: React.FC = () => {
   const [contextLoading, setContextLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
 
   const loadRecords = async () => {
@@ -360,6 +361,7 @@ export const AdminSettlementsPage: React.FC = () => {
 
   const resetForm = () => {
     setEditing(null);
+    setFormError('');
     setForm(emptyForm());
     setBatches([]);
     setContextInvoices([]);
@@ -377,6 +379,7 @@ export const AdminSettlementsPage: React.FC = () => {
     resetForm();
     setSuccess('');
     setError('');
+    setFormError('');
     setHeaderMenuOpen(false);
     setFormVisible(true);
     window.requestAnimationFrame(() => {
@@ -461,14 +464,20 @@ export const AdminSettlementsPage: React.FC = () => {
     const hospital = hospitalOptions.find(
       (item) => asId(item.organizationId) === organizationId
     );
+    const suggested = Number(hospital?.suggestedAmount || 0);
+    const remainingCapacity = Number(
+      settlementContext?.remainingInvoiceSettlementCapacity ?? suggested
+    );
+    const safeAmount =
+      suggested > 0
+        ? Math.max(0, Math.min(suggested, remainingCapacity))
+        : 0;
 
+    setFormError('');
     setForm((current) => ({
       ...current,
       organizationId,
-      amount:
-        hospital && Number(hospital.suggestedAmount || 0) > 0
-          ? String(Number(hospital.suggestedAmount).toFixed(2))
-          : '',
+      amount: safeAmount > 0 ? String(safeAmount.toFixed(2)) : '',
       description: hospital
         ? [
             selectedBatch?.batchNumber || 'Batch',
@@ -483,27 +492,28 @@ export const AdminSettlementsPage: React.FC = () => {
     const amount = Number(form.amount);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Enter a valid settlement amount.');
+      setFormError('Enter a valid settlement amount.');
       return;
     }
 
     if (!form.description.trim()) {
-      setError('Enter a settlement description.');
+      setFormError('Enter a settlement description.');
       return;
     }
 
     if (!editing && (!form.universityId || !form.batchId || !form.invoiceId || !form.organizationId)) {
-      setError('Select the university, batch, invoice and hospital before recording the settlement.');
+      setFormError('Select the university, batch, invoice and hospital before recording the settlement.');
       return;
     }
 
     if (editing && isLegacyEditing && !form.organizationId) {
-      setError('Select a beneficiary organization.');
+      setFormError('Select a beneficiary organization.');
       return;
     }
 
     setSaving(true);
     setError('');
+    setFormError('');
     setSuccess('');
 
     const editablePayload = {
@@ -523,7 +533,7 @@ export const AdminSettlementsPage: React.FC = () => {
         });
         setSuccess('Settlement updated successfully.');
       } else {
-        await api.post('/finance', {
+        const response = await api.post('/finance', {
           type: 'SETTLEMENT',
           universityId: form.universityId,
           batchId: form.batchId,
@@ -531,17 +541,22 @@ export const AdminSettlementsPage: React.FC = () => {
           organizationId: form.organizationId,
           ...editablePayload,
         });
-        setSuccess('Batch hospital settlement recorded successfully.');
+        setSuccess(
+          response?.data?.meta?.alreadyExists
+            ? 'This batch hospital settlement was already recorded. The existing record is shown below.'
+            : 'Batch hospital settlement recorded successfully.'
+        );
       }
 
       resetForm();
       setFormVisible(false);
       await loadRecords();
     } catch (requestError: any) {
-      setError(
+      const message =
         requestError?.response?.data?.error?.message ||
-          'Unable to save settlement.'
-      );
+        'Unable to save settlement. Please check the selected batch, invoice and hospital.';
+      setFormError(message);
+      setError('');
     } finally {
       setSaving(false);
     }
@@ -986,9 +1001,10 @@ export const AdminSettlementsPage: React.FC = () => {
                     step="0.01"
                     value={form.amount}
                     disabled={saving}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, amount: event.target.value }))
-                    }
+                    onChange={(event) => {
+                      setFormError('');
+                      setForm((current) => ({ ...current, amount: event.target.value }));
+                    }}
                     placeholder="0.00"
                     className="min-w-0 flex-1 bg-transparent px-4 text-sm font-black text-slate-900 outline-none disabled:bg-slate-100"
                   />
@@ -1016,12 +1032,13 @@ export const AdminSettlementsPage: React.FC = () => {
                   maxLength={250}
                   value={form.description}
                   disabled={saving}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    setFormError('');
                     setForm((current) => ({
                       ...current,
                       description: event.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   placeholder="Batch hospital settlement description..."
                   className="mt-1.5 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100"
                 />
@@ -1072,6 +1089,12 @@ export const AdminSettlementsPage: React.FC = () => {
               </div>
             )}
 
+            {formError && (
+              <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold leading-5 text-rose-700">
+                {formError}
+              </div>
+            )}
+
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -1091,7 +1114,8 @@ export const AdminSettlementsPage: React.FC = () => {
                       !form.invoiceId ||
                       !form.organizationId)) ||
                   !form.description.trim() ||
-                  !form.amount
+                  !Number.isFinite(Number(form.amount)) ||
+                  Number(form.amount) <= 0
                 }
                 onClick={() => void saveSettlement()}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-500 px-6 text-sm font-black text-white shadow-lg shadow-teal-500/15 transition hover:from-teal-700 hover:to-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
