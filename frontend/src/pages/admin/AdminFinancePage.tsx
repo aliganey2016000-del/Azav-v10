@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronRight,
   CircleDollarSign,
   Clock3,
   CreditCard,
@@ -1049,28 +1050,30 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
     return (
       <div className="space-y-5 pb-10">
-        <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-cyan-50/55 to-emerald-50/45 p-5 shadow-sm sm:p-6">
-          <div className="pr-28 sm:pr-40">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-700">
-              Finance · Payments
-            </p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-              Payments Register
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-              Track university payment records, remaining balances and linked invoices.
-            </p>
-          </div>
+        <section className="relative border-0 bg-transparent px-1 py-1 shadow-none md:overflow-hidden md:rounded-3xl md:border md:border-slate-200 md:bg-gradient-to-br md:from-white md:via-cyan-50/55 md:to-emerald-50/45 md:p-6 md:shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="hidden text-[10px] font-black uppercase tracking-[0.2em] text-teal-700 md:block">
+                Finance · Payments
+              </p>
+              <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                Payments Register
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                Track university payment records, balances and linked invoices.
+              </p>
+            </div>
 
-          <button
-            type="button"
-            onClick={exportPaymentsCsv}
-            disabled={filteredRecords.length === 0}
-            className="absolute right-4 top-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-500 px-4 text-xs font-black text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 sm:right-6 sm:top-6 sm:px-5"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
+            <button
+              type="button"
+              onClick={exportPaymentsCsv}
+              disabled={filteredRecords.length === 0}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-500 px-4 text-xs font-black text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 sm:px-5"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </button>
+          </div>
         </section>
 
         {error && (
@@ -1086,28 +1089,28 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         )}
 
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <PaymentSummaryCard
+          <AdminPaymentSummaryCard
             icon={<ReceiptText className="h-5 w-5" />}
             label="Records"
             value={loading ? '—' : String(adminPaymentSummary.records)}
             helper="Payment records"
             tone="blue"
           />
-          <PaymentSummaryCard
+          <AdminPaymentSummaryCard
             icon={<CircleDollarSign className="h-5 w-5" />}
             label="Total Collected"
             value={loading ? '—' : totalCollectedLabel}
             helper="Received payments"
             tone="green"
           />
-          <PaymentSummaryCard
+          <AdminPaymentSummaryCard
             icon={<Clock3 className="h-5 w-5" />}
             label="Pending Review"
             value={loading ? '—' : String(adminPaymentSummary.pendingReview)}
             helper="Needs attention"
             tone="amber"
           />
-          <PaymentSummaryCard
+          <AdminPaymentSummaryCard
             icon={<RotateCcw className="h-5 w-5" />}
             label="Refunded"
             value={loading ? '—' : refundedLabel}
@@ -1116,7 +1119,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
           />
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
@@ -1124,7 +1127,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by university, reference or invoice number..."
-              className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500 focus:bg-white"
+              className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:bg-white"
             />
           </div>
 
@@ -1173,24 +1176,22 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                 setPaymentMethodFilter('');
                 setPaymentDateFilter('');
               }}
-              className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-slate-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-slate-50"
             >
+              <RefreshCw className="h-4 w-4 text-slate-400" />
               Reset Filters
             </button>
-          </div>
-
-          <div className="mt-3 flex items-center justify-end text-[10px] font-semibold text-slate-500">
-            {filteredRecords.length} result{filteredRecords.length === 1 ? '' : 's'} shown
           </div>
         </section>
 
         <section>
           <div className="mb-3 flex items-center justify-between gap-3 px-1">
-            <h2 className="text-base font-black text-slate-950 sm:text-lg">
+            <h2 className="text-xl font-black tracking-tight text-slate-950">
               Recent Payments
             </h2>
-            <div className="inline-flex items-center gap-2 text-[10px] font-bold text-slate-500 sm:text-xs">
-              Sort by: <span className="font-black text-slate-700">Newest</span>
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-slate-500">
+              <span className="hidden sm:inline">Sort by:</span>
+              <span className="font-black text-slate-800">Newest</span>
               <ChevronDown className="h-4 w-4" />
             </div>
           </div>
@@ -1209,92 +1210,61 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredRecords.map((record) => {
-                const invoiceNumber = record.invoiceId?.invoiceNumber || '—';
-                const remainingBalance = Number(record.invoiceBalance || 0);
-                const paymentDate = formatDate(record.paidAt || record.createdAt);
+            <>
+              <div className="space-y-3 md:hidden">
+                {filteredRecords.map((record) => {
+                  const invoiceNumber = record.invoiceId?.invoiceNumber || '—';
+                  const remainingBalance = Number(record.invoiceBalance || 0);
+                  const paymentDate = formatDate(record.paidAt || record.createdAt);
+                  const recordId = asId(record);
 
-                return (
-                  <article
-                    key={asId(record)}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setViewing(record)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        setViewing(record);
-                      }
-                    }}
-                    className="group relative min-w-0 cursor-pointer overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-teal-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-teal-500/10"
-                  >
-                    <div className="grid min-w-0 gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1.45fr)_auto_minmax(140px,.65fr)_minmax(140px,.65fr)_auto] md:items-center">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
-                          <Building2 className="h-6 w-6" />
+                  return (
+                    <article
+                      key={recordId}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setViewing(record)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setViewing(record);
+                        }
+                      }}
+                      className="min-w-0 cursor-pointer overflow-visible rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm transition active:scale-[0.995] focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+                          <Building2 className="h-7 w-7" />
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-black text-slate-950 sm:text-base">
+
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate text-base font-black text-slate-950">
                             {accountName(record)}
                           </h3>
-                          <div className="mt-1 truncate font-mono text-[10px] font-black text-teal-700 sm:text-[11px]">
+                          <div className="mt-1 truncate font-mono text-[11px] font-black text-teal-700">
                             {referenceLabel(record)}
                           </div>
-                          <div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">
+                          <div className="mt-1 truncate text-[11px] font-semibold text-slate-400">
                             {invoiceNumber}
                           </div>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 md:block">
-                        <span className={'inline-flex rounded-full px-2.5 py-1 text-[9px] font-black ' + statusClass(record.status)}>
-                          {record.status}
-                        </span>
-                        <span className="ml-auto text-[10px] font-semibold text-slate-500 md:hidden">
-                          {paymentDate}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 md:block">
-                        <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                          Amount Paid
-                        </div>
-                        <div className="mt-1 text-sm font-black text-emerald-700">
-                          {formatMoney(record.amount, record.currency)}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 md:block">
-                        <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                          Remaining
-                        </div>
-                        <div className="mt-1 text-sm font-black text-amber-700">
-                          {formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 md:justify-end">
-                        <span className="hidden text-[10px] font-semibold text-slate-500 md:block">
-                          {paymentDate}
-                        </span>
 
                         <div
-                          className="relative"
+                          className="relative shrink-0"
                           onClick={(event) => event.stopPropagation()}
                         >
                           <button
                             type="button"
                             aria-label="Payment actions"
                             onClick={() =>
-                              setRowMenuId((current) => current === asId(record) ? null : asId(record))
+                              setRowMenuId((current) => current === recordId ? null : recordId)
                             }
-                            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50"
+                            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>
 
-                          {rowMenuId === asId(record) && (
+                          {rowMenuId === recordId && (
                             <div className="absolute right-0 top-11 z-20 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
                               <ActionItem
                                 icon={<Eye className="h-4 w-4" />}
@@ -1328,11 +1298,120 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                           )}
                         </div>
                       </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+
+                      <div className="mt-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <span className={'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black ' + statusClass(record.status)}>
+                          <span className="h-2 w-2 rounded-full bg-current" />
+                          {record.status}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                          <CalendarDays className="h-4 w-4 text-slate-400" />
+                          {paymentDate}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl bg-emerald-50/70 p-3.5">
+                          <div className="flex items-center gap-2 text-emerald-700">
+                            <WalletCards className="h-5 w-5" />
+                            <span className="text-[9px] font-black uppercase tracking-wide text-slate-500">
+                              Amount Paid
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xl font-black text-emerald-700">
+                            {formatMoney(record.amount, record.currency)}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl bg-amber-50/80 p-3.5">
+                          <div className="flex items-center gap-2 text-amber-700">
+                            <CircleDollarSign className="h-5 w-5" />
+                            <span className="text-[9px] font-black uppercase tracking-wide text-slate-500">
+                              Remaining
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xl font-black text-amber-700">
+                            {formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div className="hidden space-y-3 md:block">
+                {filteredRecords.map((record) => {
+                  const invoiceNumber = record.invoiceId?.invoiceNumber || '—';
+                  const remainingBalance = Number(record.invoiceBalance || 0);
+                  const paymentDate = formatDate(record.paidAt || record.createdAt);
+
+                  return (
+                    <article
+                      key={asId(record)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setViewing(record)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setViewing(record);
+                        }
+                      }}
+                      className="group relative min-w-0 cursor-pointer overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-teal-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+                    >
+                      <div className="grid min-w-0 gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1.45fr)_auto_minmax(140px,.65fr)_minmax(140px,.65fr)_auto] md:items-center">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+                            <Building2 className="h-6 w-6" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-black text-slate-950 sm:text-base">
+                              {accountName(record)}
+                            </h3>
+                            <div className="mt-1 truncate font-mono text-[10px] font-black text-teal-700 sm:text-[11px]">
+                              {referenceLabel(record)}
+                            </div>
+                            <div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">
+                              {invoiceNumber}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span className={'inline-flex rounded-full px-2.5 py-1 text-[9px] font-black ' + statusClass(record.status)}>
+                          {record.status}
+                        </span>
+
+                        <div>
+                          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                            Amount Paid
+                          </div>
+                          <div className="mt-1 text-sm font-black text-emerald-700">
+                            {formatMoney(record.amount, record.currency)}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                            Remaining
+                          </div>
+                          <div className="mt-1 text-sm font-black text-amber-700">
+                            {formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3">
+                          <span className="text-[10px] font-semibold text-slate-500">
+                            {paymentDate}
+                          </span>
+                          <ChevronRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-600" />
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
           )}
         </section>
 
@@ -3079,6 +3158,43 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         </ModalShell>
       )}
     </div>
+  );
+};
+
+const AdminPaymentSummaryCard: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  helper: string;
+  tone: 'blue' | 'green' | 'amber' | 'violet';
+}> = ({ icon, label, value, helper, tone }) => {
+  const tones = {
+    blue: 'border-blue-100 bg-blue-50/70 text-blue-700',
+    green: 'border-emerald-100 bg-emerald-50/70 text-emerald-700',
+    amber: 'border-amber-100 bg-amber-50/80 text-amber-700',
+    violet: 'border-violet-100 bg-violet-50/75 text-violet-700',
+  } as const;
+
+  return (
+    <article className={'relative min-w-0 rounded-3xl border p-4 shadow-sm sm:p-5 ' + tones[tone]}>
+      <div className="flex items-center gap-3 sm:block">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 shadow-sm">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1 sm:mt-4">
+          <div className="break-words text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
+            {value}
+          </div>
+          <div className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-500 sm:text-xs">
+            {label}
+          </div>
+          <div className="mt-1 hidden text-[10px] font-semibold text-slate-400 sm:block">
+            {helper}
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 sm:absolute sm:right-4 sm:top-1/2 sm:-translate-y-1/2" />
+      </div>
+    </article>
   );
 };
 
