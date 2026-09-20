@@ -288,6 +288,13 @@ export class JourneyService {
       throw err;
     }
 
+    if (!isAzaamActor(actor)) {
+      const err: any = new Error('Only AZAAM staff can update review decisions.');
+      err.statusCode = 403;
+      err.code = 'FORBIDDEN_REVIEW_UPDATE';
+      throw err;
+    }
+
     await this.getJourney(studentId, actor);
 
     const milestone = await JourneyMilestone.findOne({ studentId, stageKey });
@@ -309,7 +316,7 @@ export class JourneyService {
       throw err;
     }
 
-    if (milestone.status === JourneyStageStatus.COMPLETED && !completedReviewBatchAssignment) {
+    if (milestone.status === JourneyStageStatus.COMPLETED && stageKey !== JourneyStageKey.AZAAM_REVIEW) {
       const err: any = new Error('This stage is not currently actionable.');
       err.statusCode = 400;
       err.code = 'STAGE_NOT_ACTIONABLE';
@@ -353,7 +360,9 @@ export class JourneyService {
         const batch = await TrainingBatch.findOne({
           _id: selectedBatchId,
           universityId: student.universityId,
-          status: 'OPEN',
+          // Keep an existing closed batch when changing only the review status;
+          // transfers must always target an open batch in the same university.
+          ...(String(application.batchId || '') === selectedBatchId ? {} : { status: 'OPEN' }),
         }).lean();
 
         if (!batch) {

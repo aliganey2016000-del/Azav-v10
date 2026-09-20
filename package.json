@@ -15,7 +15,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc -p frontend/tsconfig.json --noEmit",
     "seed": "tsx backend/src/seed.ts",
-    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts && tsx backend/src/tests/financeRulesTests.ts && tsx backend/src/tests/dbIntegrityTests.ts && tsx backend/src/tests/passwordResetTests.ts && tsx backend/src/tests/authFlowVerificationTests.ts && tsx backend/src/tests/authorizationHardeningTests.ts && tsx backend/src/tests/databaseBootstrapSafetyTests.ts && tsx backend/src/tests/adminUserGuardTests.ts && tsx backend/src/tests/credentialGuardTests.ts",
+    "test": "tsx backend/src/tests/runTests.ts && tsx backend/src/tests/rbacTests.ts && tsx backend/src/tests/attachmentSecurityTests.ts && tsx backend/src/tests/placementSecurityTests.ts && tsx backend/src/tests/financeRulesTests.ts && tsx backend/src/tests/dbIntegrityTests.ts && tsx backend/src/tests/passwordResetTests.ts && tsx backend/src/tests/authFlowVerificationTests.ts && tsx backend/src/tests/authorizationHardeningTests.ts && tsx backend/src/tests/databaseBootstrapSafetyTests.ts && tsx backend/src/tests/adminUserGuardTests.ts && tsx backend/src/tests/credentialGuardTests.ts && tsx backend/src/tests/journeyReviewEditTests.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

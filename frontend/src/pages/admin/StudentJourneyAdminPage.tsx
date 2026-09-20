@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2, MessageCircle, Upload, Plus } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Plane, Home, Car, Building2, Stethoscope, Award, ShieldCheck, AlertTriangle, Download, Eye, Loader2, MessageCircle, Upload, Plus, Edit3 } from 'lucide-react';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudentJourney, AdminJourneyStage, JourneyChatData } from '../../types/admin.types';
 import { LoadingState, ErrorState } from '../../components/admin/States';
@@ -62,6 +62,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
   });
   const [trainingBatches, setTrainingBatches] = useState<any[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState('');
+  const [editingReview, setEditingReview] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [creatingBatch, setCreatingBatch] = useState(false);
@@ -281,6 +282,10 @@ export const StudentJourneyAdminPage: React.FC = () => {
         }
       }
       setFormState((prev) => ({ ...prev, [stageKey]: emptyDraft }));
+      if (stageKey === 'AZAAM_REVIEW') {
+        setEditingReview(false);
+        if (draft.action !== 'APPROVE') setActionSuccess('Review status updated.');
+      }
     } catch (e: any) {
       setActionError(e?.response?.data?.error?.message || e.message || 'Failed to update stage.');
     } finally {
@@ -632,11 +637,12 @@ export const StudentJourneyAdminPage: React.FC = () => {
             const complete = stage.uiStatus === 'COMPLETED';
             const draft = formState[stage.key] || emptyDraft;
             const needsBatchBackfill =
-              stage.key === 'AZAAM_REVIEW' &&
+              canAct && stage.key === 'AZAAM_REVIEW' &&
               stage.uiStatus === 'COMPLETED' &&
               Boolean(data?.student?.university?._id) &&
               !data?.student?.batch;
-            const canSubmitStage = stage.actionable || needsBatchBackfill;
+            const canEditReview = canAct && stage.key === 'AZAAM_REVIEW' && stage.uiStatus !== 'PENDING';
+            const canSubmitStage = stage.actionable || needsBatchBackfill || (canEditReview && editingReview);
             return (
               <div key={stage.key} className={`relative rounded-2xl border p-4 transition ${STATUS_STYLE[stage.uiStatus]}`}>
                 <div className="flex items-start gap-4">
@@ -649,6 +655,22 @@ export const StudentJourneyAdminPage: React.FC = () => {
                       <span className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-black ${BADGE_STYLE[stage.uiStatus]}`}>{STATUS_LABEL[stage.uiStatus]}</span>
                     </div>
                     <p className="mt-1 text-xs leading-5 text-slate-600">{stage.description}</p>
+                    {canEditReview && !editingReview && (
+                      <button type="button" onClick={() => {
+                        setSelectedBatchId(data?.student?.batch?._id || '');
+                        setFormState((prev) => ({ ...prev, AZAAM_REVIEW: {
+                          ...emptyDraft,
+                          action: stage.uiStatus === 'REJECTED' ? 'REJECT' : stage.uiStatus === 'CORRECTION_REQUESTED' ? 'REQUEST_CORRECTION' : 'APPROVE',
+                          reason: stage.reason || '',
+                        } }));
+                        setActionError(null);
+                        setActionSuccess(null);
+                        setEditingReview(true);
+                      }} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-teal-200 bg-white px-4 text-xs font-bold text-teal-700">
+                        <Edit3 className="h-4 w-4" /> Edit Review & Batch
+                      </button>
+                    )}
+
 
                     {stage.reason && (stage.uiStatus === 'REJECTED' || stage.uiStatus === 'CORRECTION_REQUESTED') && (
                       <p className="mt-2 rounded-lg bg-white/70 border border-current/20 p-2 text-[11px] font-semibold text-slate-700">
@@ -1082,10 +1104,10 @@ export const StudentJourneyAdminPage: React.FC = () => {
                       </div>
                     )}
 
-                    {stage.key === 'AZAAM_REVIEW' && data?.student?.batch && !stage.actionable && (
+                    {stage.key === 'AZAAM_REVIEW' && data?.student?.batch && !editingReview && (
                       <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
                         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
-                          Approved Batch
+                          Assigned Batch
                         </p>
                         <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                           <div>
@@ -1136,7 +1158,7 @@ export const StudentJourneyAdminPage: React.FC = () => {
                                     {batchLoading ? 'Loading batches...' : 'Select existing batch'}
                                   </option>
                                   {trainingBatches
-                                    .filter((batch) => batch.status === 'OPEN')
+                                    .filter((batch) => batch.status === 'OPEN' || batch._id === data?.student?.batch?._id)
                                     .map((batch) => (
                                       <option key={batch._id} value={batch._id}>
                                         {batch.batchNumber} · {batch.name} · {batch.studentsCount || 0} student(s)
@@ -1235,7 +1257,8 @@ export const StudentJourneyAdminPage: React.FC = () => {
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                           <select
                             value={draft.action}
-                            disabled={needsBatchBackfill}
+                            aria-label={stage.key === 'AZAAM_REVIEW' ? 'Review status' : 'Stage action'}
+                            disabled={submitting === stage.key}
                             onChange={(e) => setFormState((prev) => ({ ...prev, [stage.key]: { ...draft, action: e.target.value as ActionType } }))}
                             className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-bold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500"
                           >
@@ -1266,8 +1289,16 @@ export const StudentJourneyAdminPage: React.FC = () => {
                             className="inline-flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-black text-white hover:bg-teal-700 disabled:opacity-50"
                           >
                             {submitting === stage.key && <Loader2 className="h-3 w-3 animate-spin" />}
-                            {needsBatchBackfill ? 'Submit Batch' : 'Submit'}
+                            {stage.key === 'AZAAM_REVIEW' && editingReview ? 'Save Changes' : needsBatchBackfill ? 'Submit Batch' : 'Submit'}
                           </button>
+                          {stage.key === 'AZAAM_REVIEW' && editingReview && (
+                            <button type="button" disabled={submitting === stage.key} onClick={() => {
+                              setEditingReview(false);
+                              setSelectedBatchId(data?.student?.batch?._id || '');
+                              setFormState((prev) => ({ ...prev, AZAAM_REVIEW: emptyDraft }));
+                              setActionError(null);
+                            }} className="min-h-10 rounded-lg border border-slate-300 px-3 text-xs font-bold text-slate-600">Cancel</button>
+                          )}
                         </div>
                       </div>
                     )}
