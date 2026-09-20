@@ -5,6 +5,8 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
+  CircleDollarSign,
+  Clock3,
   ChevronDown,
   ChevronRight,
   Download,
@@ -13,6 +15,7 @@ import {
   Loader2,
   MoreVertical,
   Pencil,
+  RotateCcw,
   Search,
   X,
 } from 'lucide-react';
@@ -229,6 +232,26 @@ export const AdminSettlementsPage: React.FC = () => {
     });
   }, [records, search, statusFilter, dateFilter]);
 
+  const settlementSummary = useMemo(() => {
+    const active = records.filter((record) => record.status !== 'CANCELLED');
+    const paid = active.filter((record) => record.status === 'PAID');
+    const currencies = Array.from(
+      new Set(paid.map((record) => String(record.currency || 'USD')))
+    );
+    const totalSettled = paid.reduce(
+      (sum, record) => sum + Number(record.amount || 0),
+      0
+    );
+
+    return {
+      totalSettled,
+      totalSettledCurrency: currencies.length === 1 ? currencies[0] : '',
+      totalSettlements: records.length,
+      pending: records.filter((record) => record.status === 'PENDING').length,
+      cancelled: records.filter((record) => record.status === 'CANCELLED').length,
+    };
+  }, [records]);
+
   const selectedOrganization =
     organizations.find((organization) => asId(organization) === form.organizationId) ||
     null;
@@ -402,16 +425,16 @@ export const AdminSettlementsPage: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-10">
-      <section className="relative overflow-visible rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-cyan-50/45 to-emerald-50/45 p-5 shadow-sm sm:p-6">
-        <div className="flex items-start gap-4 pr-16">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 shadow-sm">
-            <Banknote className="h-6 w-6" />
+      <section className="relative overflow-visible rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-cyan-50/45 to-emerald-50/45 p-4 shadow-sm sm:p-6">
+        <div className="flex items-center gap-3 pr-14 sm:gap-4 sm:pr-16">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 shadow-sm sm:h-12 sm:w-12">
+            <Banknote className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-700">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-teal-700 sm:text-[10px] sm:tracking-[0.2em]">
               Finance · Partners
             </p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+            <h1 className="mt-1 whitespace-nowrap text-xl font-black tracking-tight text-slate-950 sm:text-3xl">
               Record Settlement
             </h1>
           </div>
@@ -457,6 +480,48 @@ export const AdminSettlementsPage: React.FC = () => {
           <span>{success}</span>
         </div>
       )}
+
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <SettlementMetric
+          icon={<CircleDollarSign className="h-5 w-5" />}
+          label="Total Settled"
+          value={
+            loading
+              ? '—'
+              : settlementSummary.totalSettledCurrency
+                ? formatMoney(
+                    settlementSummary.totalSettled,
+                    settlementSummary.totalSettledCurrency
+                  )
+                : settlementSummary.totalSettled > 0
+                  ? 'Multiple currencies'
+                  : formatMoney(0, 'USD')
+          }
+          helper="All time"
+          tone="green"
+        />
+        <SettlementMetric
+          icon={<FileText className="h-5 w-5" />}
+          label="Total Settlements"
+          value={loading ? '—' : String(settlementSummary.totalSettlements)}
+          helper="All time"
+          tone="blue"
+        />
+        <SettlementMetric
+          icon={<Clock3 className="h-5 w-5" />}
+          label="Pending"
+          value={loading ? '—' : String(settlementSummary.pending)}
+          helper="Needs attention"
+          tone="amber"
+        />
+        <SettlementMetric
+          icon={<RotateCcw className="h-5 w-5" />}
+          label="Cancelled"
+          value={loading ? '—' : String(settlementSummary.cancelled)}
+          helper="Recorded reversals"
+          tone="rose"
+        />
+      </section>
 
       {formVisible && (
       <section id="settlement-form-card" className="scroll-mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -710,13 +775,13 @@ export const AdminSettlementsPage: React.FC = () => {
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h2 className="text-lg font-black tracking-tight text-slate-950">
                 Recent Settlements
               </h2>
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                {filteredRecords.length} result{filteredRecords.length === 1 ? '' : 's'} shown
+              <p className="mt-1 hidden text-xs font-semibold text-slate-500 sm:block">
+                Manage and track payments made to partner organizations.
               </p>
             </div>
 
@@ -733,8 +798,8 @@ export const AdminSettlementsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
-            <div className="relative sm:col-span-2 lg:col-span-1">
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
+            <div className="relative col-span-2 lg:col-span-1">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
@@ -775,10 +840,13 @@ export const AdminSettlementsPage: React.FC = () => {
                 setStatusFilter('');
                 setDateFilter('');
               }}
-              className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-slate-50"
+              className="col-span-2 min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-slate-50 lg:col-span-1"
             >
               Reset Filters
             </button>
+          </div>
+          <div className="mt-3 text-right text-[10px] font-bold text-slate-500 sm:text-xs">
+            {filteredRecords.length} result{filteredRecords.length === 1 ? '' : 's'} shown
           </div>
         </div>
 
@@ -924,48 +992,43 @@ export const AdminSettlementsPage: React.FC = () => {
                   }}
                   className="group min-w-0 cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition active:scale-[0.995]"
                 >
-                  <div className="bg-gradient-to-r from-white via-teal-50/35 to-cyan-50/60 p-4">
-                    <div className="flex min-w-0 items-center gap-3">
+                  <div className="bg-gradient-to-r from-white via-teal-50/30 to-cyan-50/55 p-3.5">
+                    <div className="flex min-w-0 items-start gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
                         <Building2 className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-black text-slate-950">
-                          {record.organizationId?.name || 'Beneficiary Organization'}
-                        </h3>
-                        <div className="mt-1 truncate font-mono text-[10px] font-black text-teal-700">
-                          {record.reference || '—'}
-                        </div>
-                      </div>
-                      <span
-                        className={
-                          'inline-flex shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ' +
-                          statusClass(record.status)
-                        }
-                      >
-                        {record.status}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 flex items-end justify-between gap-3">
-                      <div>
-                        <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                          Amount
-                        </div>
-                        <div className="mt-1 text-sm font-black text-emerald-700">
-                          {formatMoney(record.amount, record.currency)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-right">
-                        <div>
-                          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
-                            Date
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-black text-slate-950">
+                              {record.organizationId?.name || 'Beneficiary Organization'}
+                            </h3>
+                            <div className="mt-0.5 truncate font-mono text-[10px] font-black text-teal-700">
+                              {record.reference || '—'}
+                            </div>
                           </div>
-                          <div className="mt-1 text-[11px] font-black text-slate-700">
+                          <span
+                            className={
+                              'inline-flex shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ' +
+                              statusClass(record.status)
+                            }
+                          >
+                            {record.status}
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-slate-500">
+                          {record.description || 'Settlement'}
+                        </p>
+                        <div className="mt-2 flex items-center justify-between gap-3">
+                          <div className="text-sm font-black text-emerald-700">
+                            {formatMoney(record.amount, record.currency)}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-600">
+                            <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
                             {formatDate(record.paidAt || record.createdAt)}
+                            <ChevronRight className="ml-1 h-4 w-4 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-600" />
                           </div>
                         </div>
-                        <ChevronRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-600" />
                       </div>
                     </div>
                   </div>
@@ -1048,6 +1111,38 @@ export const AdminSettlementsPage: React.FC = () => {
         </div>
       )}
     </div>
+  );
+};
+
+const SettlementMetric: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  helper: string;
+  tone: 'green' | 'blue' | 'amber' | 'rose';
+}> = ({ icon, label, value, helper, tone }) => {
+  const tones = {
+    green: 'border-emerald-100 bg-emerald-50/65 text-emerald-700',
+    blue: 'border-blue-100 bg-blue-50/60 text-blue-700',
+    amber: 'border-amber-100 bg-amber-50/70 text-amber-700',
+    rose: 'border-rose-100 bg-rose-50/65 text-rose-700',
+  } as const;
+
+  return (
+    <article className={'min-w-0 rounded-2xl border p-3.5 shadow-sm sm:rounded-3xl sm:p-5 ' + tones[tone]}>
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/85 shadow-sm sm:h-10 sm:w-10">
+        {icon}
+      </div>
+      <div className="mt-3 break-words text-lg font-black tracking-tight text-slate-950 sm:text-2xl">
+        {value}
+      </div>
+      <div className="mt-1 text-[9px] font-black uppercase tracking-wide text-slate-500 sm:text-xs">
+        {label}
+      </div>
+      <div className="mt-1 hidden text-[10px] font-semibold text-slate-400 sm:block">
+        {helper}
+      </div>
+    </article>
   );
 };
 
