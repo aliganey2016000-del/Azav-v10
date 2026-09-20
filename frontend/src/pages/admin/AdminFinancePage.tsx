@@ -396,8 +396,61 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       if (universityId) params.universityId = universityId;
 
       const response = await api.get('/finance/pricing/profile', { params });
-      const profile = response?.data?.data ?? response?.data ?? {};
-      const services = Array.isArray(profile?.services) ? profile.services : [];
+      let profile = response?.data?.data ?? response?.data ?? {};
+      let services = Array.isArray(profile?.services) ? profile.services : [];
+
+      // Resilient fallback for university billing. Service Pricing may contain
+      // active university rules created before the current pricing-profile
+      // resolver. If the strict profile is empty, use the active rules that
+      // are visibly assigned to the selected university and let the admin
+      // choose the exact pricing rule for this batch.
+      if (services.length === 0 && payerType === 'UNIVERSITY' && universityId) {
+        const fallbackResponse = await api.get('/finance/pricing', {
+          params: {
+            payer: payerType,
+            status: 'ACTIVE',
+            universityId,
+          },
+        });
+
+        const eligible = asArray(fallbackResponse).filter((rule) => {
+          if (rule.status !== 'ACTIVE' || rule.defaultPayer !== payerType) return false;
+          if (rule.scope === 'UNIVERSITY') {
+            return asId(rule.universityId) === universityId;
+          }
+          return rule.scope === 'GLOBAL';
+        });
+
+        const byServiceCode = new Map<string, RecordObject>();
+        eligible
+          .filter((rule) => rule.scope === 'GLOBAL')
+          .forEach((rule) =>
+            byServiceCode.set(String(rule.serviceCode), { ...rule, pricingSource: 'GLOBAL' })
+          );
+        eligible
+          .filter((rule) => rule.scope === 'UNIVERSITY')
+          .forEach((rule) =>
+            byServiceCode.set(String(rule.serviceCode), { ...rule, pricingSource: 'UNIVERSITY' })
+          );
+
+        services = Array.from(byServiceCode.values()).sort((a, b) =>
+          String(a.serviceName || '').localeCompare(String(b.serviceName || ''))
+        );
+
+        const currencies = Array.from(
+          new Set(services.map((rule) => String(rule.currency || 'USD').toUpperCase()))
+        );
+
+        profile = {
+          ...profile,
+          payerType,
+          serviceCount: services.length,
+          currency: currencies.length === 1 ? currencies[0] : null,
+          currencies,
+          mixedCurrency: currencies.length > 1,
+          services,
+        };
+      }
 
       if (requestId === feeRuleRequestRef.current) {
         setPricingProfile(profile);
@@ -520,6 +573,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     () => new Map(feeRules.map((rule) => [asId(rule), rule])),
     [feeRules]
   );
+
+  const selectedInvoiceRuleId = invoiceItems[0]?.feeRuleId || '';
+  const selectedInvoiceRule = selectedInvoiceRuleId
+    ? feeRuleById.get(selectedInvoiceRuleId) || null
+    : null;
 
   const invoiceCurrency =
     invoiceItems.length > 0
@@ -1502,7 +1560,91 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                     </Select>
                   )}
 
-                  {!editing && (
+                  {!editing && form.payerType === 'UNIVERSITY' && (
+                    <div className="sm:col-span-2 rounded-3xl border border-cyan-200 bg-white p-4 shadow-sm">
+                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">
+                        Pricing Rule
+                      </div>
+                      <div className="mt-1 text-sm font-black text-slate-900">
+                        {selectedUniversity?.name || 'Selected university'} · {selectedBatch?.batchNumber || 'Select batch'}
+                      </div>
+                      <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                        Choose one pricing rule for this batch. Per Student rules automatically use the approved student count.
+                      </p>
+
+                      <label className="mt-4 block">
+                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                          University Pricing Rule *
+                        </span>
+                        <select
+                          value={selectedInvoiceRuleId}
+                          disabled={!form.batchId || feeRulesLoading}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            const rule = feeRuleById.get(value);
+                            setInvoiceItems(
+                              value && rule
+                                ? [{ feeRuleId: value, quantity: quantityForRule(rule) }]
+                                : []
+                            );
+                          }}
+                          className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-500 disabled:bg-slate-100 disabled:text-slate-400"
+                        >
+                          <option value="">
+                            {!form.batchId
+                              ? 'Select batch first'
+                              : feeRulesLoading
+                                ? 'Loading university pricing...'
+                                : feeRules.length
+                                  ? 'Select pricing rule'
+                                  : 'No active university pricing found'}
+                          </option>
+                          {feeRules.map((rule) => (
+                            <option key={asId(rule)} value={asId(rule)}>
+                              {rule.serviceName} · {formatMoney(rule.amount, rule.currency)} · {String(rule.billingBasis || '').replace(/_/g, ' ')}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {selectedInvoiceRule && (
+                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <div className="rounded-xl bg-slate-50 p-3">
+                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Unit Price</div>
+                            <div className="mt-1 text-sm font-black text-slate-900">
+                              {formatMoney(selectedInvoiceRule.amount, selectedInvoiceRule.currency)}
+                            </div>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3">
+                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Billing Basis</div>
+                            <div className="mt-1 text-sm font-black text-slate-900">
+                              {String(selectedInvoiceRule.billingBasis || '').replace(/_/g, ' ')}
+                            </div>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3">
+                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Billing Qty</div>
+                            <div className="mt-1 text-sm font-black text-slate-900">
+                              {quantityForRule(selectedInvoiceRule)}
+                            </div>
+                          </div>
+                          <div className="rounded-xl bg-teal-50 p-3">
+                            <div className="text-[9px] font-black uppercase tracking-wide text-teal-600">Total</div>
+                            <div className="mt-1 text-sm font-black text-teal-800">
+                              {formatMoney(invoiceTotal, selectedInvoiceRule.currency)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!feeRulesLoading && form.batchId && feeRules.length === 0 && (
+                        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                          No active university pricing was found. Check Finance → Service Pricing for this university.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!editing && form.payerType !== 'UNIVERSITY' && (
                     <div className="sm:col-span-2 overflow-hidden rounded-3xl border border-cyan-200 bg-white shadow-sm">
                       <div className="flex flex-col gap-3 border-b border-cyan-100 bg-gradient-to-r from-cyan-50 to-teal-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
