@@ -39,6 +39,8 @@ export interface IPayment extends Document {
   originalPaymentId?: mongoose.Types.ObjectId | null;
   invoiceId?: mongoose.Types.ObjectId | null;
   invoiceNumber?: string;
+  settlementStudentCount?: number;
+  settlementStudentIds?: mongoose.Types.ObjectId[];
   type: FinanceRecordType;
   description: string;
   amount: number;
@@ -89,6 +91,11 @@ const PaymentSchema = new Schema<IPayment>(
     originalPaymentId: { type: Schema.Types.ObjectId, ref: 'Payment', default: null, index: true },
     invoiceId: { type: Schema.Types.ObjectId, ref: 'Payment', default: null, index: true },
     invoiceNumber: { type: String, trim: true, index: true },
+    settlementStudentCount: { type: Number, min: 0, default: 0 },
+    settlementStudentIds: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'Student' }],
+      default: [],
+    },
     type: {
       type: String,
       enum: ['FEE', 'PAYMENT', 'REFUND', 'SETTLEMENT'],
@@ -126,6 +133,7 @@ PaymentSchema.index({ userId: 1, createdAt: -1 });
 PaymentSchema.index({ universityId: 1, type: 1, createdAt: -1 });
 PaymentSchema.index({ batchId: 1, type: 1, createdAt: -1 });
 PaymentSchema.index({ invoiceId: 1, type: 1, status: 1 });
+PaymentSchema.index({ batchId: 1, organizationId: 1, type: 1, status: 1 });
 
 export const Payment =
   (mongoose.models.Payment as mongoose.Model<IPayment>) ||
