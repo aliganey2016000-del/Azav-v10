@@ -259,7 +259,11 @@ export const BulkJourneyAdminPage: React.FC = () => {
           : [];
 
       const all = [first.students || [], ...more.map((item) => item.students || [])].flat();
-      const batchStudents = all.filter((student) => student.batch?._id === batchId);
+      const batchStudents = all.filter((student) =>
+        stageKey === 'AZAAM_REVIEW'
+          ? !student.batch?._id || student.batch?._id === batchId
+          : student.batch?._id === batchId
+      );
       setStudents(batchStudents);
 
       const stages = await runWithConcurrency(batchStudents, 6, async (student) => {
@@ -739,7 +743,9 @@ export const BulkJourneyAdminPage: React.FC = () => {
             </div>
           ) : students.length === 0 ? (
             <div className="py-12 text-center text-sm font-bold text-slate-500">
-              No students are assigned to this batch.
+              {stageKey === 'AZAAM_REVIEW'
+                ? 'No unbatched or selected-batch students are available for review.'
+                : 'No students are assigned to this batch.'}
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
