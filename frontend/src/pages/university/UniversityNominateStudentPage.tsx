@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import JSZip from 'jszip';
+import * as XLSX from 'xlsx';
 import { Award, CheckCircle2, ChevronRight, Clock3, Download, Eye, FileSpreadsheet, FileText, GraduationCap, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, Upload, UserPlus, Users, X, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminApiService } from '../../services/admin.service';
@@ -28,7 +29,19 @@ const normalizeCsvHeader = (value: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
 
-const parseCsvRows = (text: string): string[][] => {
+const parseDelimitedRows = (text: string): string[][] => {
+  const firstMeaningfulLine = text
+    .split(/\r?\n/)
+    .find((line) => line.trim().length > 0) || '';
+
+  const delimiterCandidates = [',', ';', '\t'];
+  const delimiter = delimiterCandidates
+    .map((candidate) => ({
+      candidate,
+      count: firstMeaningfulLine.split(candidate).length - 1,
+    }))
+    .sort((a, b) => b.count - a.count)[0]?.candidate || ',';
+
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
@@ -48,7 +61,7 @@ const parseCsvRows = (text: string): string[][] => {
       continue;
     }
 
-    if (char === ',' && !quoted) {
+    if (char === delimiter && !quoted) {
       row.push(cell.trim());
       cell = '';
       continue;
@@ -69,6 +82,35 @@ const parseCsvRows = (text: string): string[][] => {
   row.push(cell.trim());
   if (row.some((value) => value !== '')) rows.push(row);
   return rows;
+};
+
+const spreadsheetRows = async (file: File): Promise<string[][]> => {
+  const extension = file.name.split('.').pop()?.toLowerCase() || '';
+
+  if (extension === 'csv' || extension === 'txt') {
+    return parseDelimitedRows(await file.text());
+  }
+
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, {
+    type: 'array',
+    cellDates: false,
+  });
+
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) return [];
+
+  const sheet = workbook.Sheets[firstSheetName];
+  const values = XLSX.utils.sheet_to_json<(string | number | boolean)[]>(sheet, {
+    header: 1,
+    raw: false,
+    defval: '',
+    blankrows: false,
+  });
+
+  return values
+    .map((row) => row.map((value) => String(value ?? '').trim()))
+    .filter((row) => row.some((value) => value !== ''));
 };
 
 type FormState = {
@@ -264,16 +306,20 @@ export const UniversityNominateStudentPage: React.FC = () => {
       'Academic Level',
     ];
 
-    const csv = headers.map((value) => '"' + value.replace(/"/g, '""') + '"').join(',') + '\n';
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'azaam-student-import-template.csv';
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers]);
+    worksheet['!cols'] = [
+      { wch: 26 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 30 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 18 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    XLSX.writeFile(workbook, 'azaam-student-import-template.xlsx');
   };
 
   const readImportFile = async (file: File | null) => {
@@ -283,14 +329,16 @@ export const UniversityNominateStudentPage: React.FC = () => {
     setImportRows([]);
     setImportFileName(file.name);
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setImportError('Please upload the completed CSV template.');
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    const supportedExtensions = ['xlsx', 'xls', 'xlsm', 'xlsb', 'ods', 'csv', 'txt'];
+
+    if (!supportedExtensions.includes(extension)) {
+      setImportError('Please upload an Excel file (.xlsx, .xls, .xlsm, .xlsb, .ods) or CSV file.');
       return;
     }
 
     try {
-      const text = await file.text();
-      const rows = parseCsvRows(text);
+      const rows = await spreadsheetRows(file);
       if (rows.length < 2) {
         setImportError('The file has no student rows. Add students below the template header and upload it again.');
         return;
@@ -358,7 +406,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
 
       setImportRows(parsed);
     } catch {
-      setImportError('Unable to read this CSV file. Please download a fresh template and try again.');
+      setImportError('Unable to read this spreadsheet. Please use the downloaded Excel template or a supported Excel/CSV file.');
     }
   };
 
@@ -683,7 +731,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                   <div className="min-w-0">
                     <h2 className="text-xl font-black text-slate-950 dark:text-white">Import Students</h2>
                     <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                      Bulk nominate students with a CSV file and automatically attach documents from a ZIP archive.
+                      Bulk nominate students with Excel or CSV and automatically attach documents from a ZIP archive.
                     </p>
                   </div>
                 </div>
@@ -724,7 +772,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                     className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 text-xs font-black text-white hover:bg-blue-700"
                   >
                     <Download className="h-4 w-4" />
-                    Download CSV Template
+                    Download Excel Template
                   </button>
                 </div>
 
@@ -734,18 +782,18 @@ export const UniversityNominateStudentPage: React.FC = () => {
                       <FileSpreadsheet className="h-4 w-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-black text-slate-900 dark:text-white">2. Upload Student CSV</div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">2. Upload Student File</div>
                       <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                        Full Name, Student ID, Phone, Email, Password, Program and Academic Level.
+                        Excel/CSV: Full Name, Student ID, Phone, Email, Password, Program and Academic Level.
                       </p>
                     </div>
                   </div>
                   <div className="mt-4 flex min-h-10 items-center justify-center rounded-xl border border-emerald-200 bg-white px-3 text-center text-xs font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-slate-900 dark:text-emerald-300">
-                    {importFileName || 'Choose CSV File'}
+                    {importFileName || 'Choose Excel / CSV File'}
                   </div>
                   <input
                     type="file"
-                    accept=".csv,text/csv"
+                    accept=".xlsx,.xls,.xlsm,.xlsb,.ods,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
                     className="hidden"
                     disabled={importing || readingImportZip}
                     onChange={(event) => void readImportFile(event.target.files?.[0] || null)}
