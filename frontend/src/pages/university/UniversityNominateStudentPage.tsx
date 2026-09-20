@@ -84,19 +84,7 @@ const parseDelimitedRows = (text: string): string[][] => {
   return rows;
 };
 
-const spreadsheetRows = async (file: File): Promise<string[][]> => {
-  const extension = file.name.split('.').pop()?.toLowerCase() || '';
-
-  if (extension === 'csv' || extension === 'txt') {
-    return parseDelimitedRows(await file.text());
-  }
-
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, {
-    type: 'array',
-    cellDates: false,
-  });
-
+const rowsFromWorkbook = (workbook: XLSX.WorkBook): string[][] => {
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) return [];
 
@@ -111,6 +99,60 @@ const spreadsheetRows = async (file: File): Promise<string[][]> => {
   return values
     .map((row) => row.map((value) => String(value ?? '').trim()))
     .filter((row) => row.some((value) => value !== ''));
+};
+
+const decodeSpreadsheetText = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder('utf-16le').decode(bytes);
+  }
+
+  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    const swapped = new Uint8Array(bytes.length - 2);
+    for (let index = 2; index + 1 < bytes.length; index += 2) {
+      swapped[index - 2] = bytes[index + 1];
+      swapped[index - 1] = bytes[index];
+    }
+    return new TextDecoder('utf-16le').decode(swapped);
+  }
+
+  // Excel/WPS sometimes saves a file with a .csv extension as UTF-16 without a BOM.
+  // A high number of NUL bytes in the first part of the file is a reliable signal.
+  const sampleLength = Math.min(bytes.length, 512);
+  let zeroCount = 0;
+  for (let index = 0; index < sampleLength; index += 1) {
+    if (bytes[index] === 0) zeroCount += 1;
+  }
+
+  if (sampleLength > 0 && zeroCount / sampleLength > 0.15) {
+    return new TextDecoder('utf-16le').decode(bytes);
+  }
+
+  return new TextDecoder('utf-8').decode(bytes);
+};
+
+const spreadsheetRows = async (file: File): Promise<string[][]> => {
+  const buffer = await file.arrayBuffer();
+
+  // First let SheetJS auto-detect the real file contents. This supports genuine
+  // Excel workbooks and also spreadsheet files whose extension was changed.
+  try {
+    const workbook = XLSX.read(buffer, {
+      type: 'array',
+      cellDates: false,
+      raw: false,
+    });
+    const workbookRows = rowsFromWorkbook(workbook);
+    if (workbookRows.length >= 2) return workbookRows;
+  } catch {
+    // Fall back to text parsing below for CSV/TXT variants.
+  }
+
+  // CSV files created by Excel/WPS can be UTF-8, UTF-16LE/BE, comma-, semicolon-
+  // or tab-delimited. Decode and detect the delimiter instead of assuming UTF-8 CSV.
+  const text = decodeSpreadsheetText(buffer).replace(/^\uFEFF/, '');
+  return parseDelimitedRows(text);
 };
 
 type FormState = {
@@ -340,7 +382,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
     try {
       const rows = await spreadsheetRows(file);
       if (rows.length < 2) {
-        setImportError('The file has no student rows. Add students below the template header and upload it again.');
+        setImportError('No student rows could be read from this file. Excel/WPS files and CSV are supported; please keep the header row and student rows in the first sheet.');
         return;
       }
 
