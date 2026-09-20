@@ -1026,12 +1026,165 @@ export class FinanceController {
       }
 
       const organizationId = String(req.body?.organizationId || '');
+      const universityId = String(req.body?.universityId || '');
+      const batchId = String(req.body?.batchId || '');
+      const invoiceId = String(req.body?.invoiceId || '');
+
       if (!mongoose.Types.ObjectId.isValid(organizationId)) {
         res.status(400).json({
           success: false,
           error: {
             code: 'INVALID_ORGANIZATION',
-            message: 'A beneficiary organization is required for settlements',
+            message: 'Select the hospital or beneficiary organization for this settlement',
+          },
+        });
+        return;
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(universityId)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'UNIVERSITY_REQUIRED', message: 'Select the university for this settlement' },
+        });
+        return;
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(batchId)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'BATCH_REQUIRED', message: 'Select the batch for this settlement' },
+        });
+        return;
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVOICE_REQUIRED', message: 'Select the batch invoice for this settlement' },
+        });
+        return;
+      }
+
+      const [organization, batch, invoice] = await Promise.all([
+        Organization.findById(organizationId).select('_id name').lean(),
+        TrainingBatch.findById(batchId).select('_id universityId batchNumber name').lean(),
+        Payment.findOne({
+          _id: invoiceId,
+          type: 'FEE',
+          status: { $ne: 'CANCELLED' },
+        }).lean(),
+      ]);
+
+      if (!organization) {
+        res.status(404).json({
+          success: false,
+          error: { code: 'ORGANIZATION_NOT_FOUND', message: 'The selected hospital or organization was not found' },
+        });
+        return;
+      }
+
+      if (!batch || String(batch.universityId) !== universityId) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'BATCH_UNIVERSITY_MISMATCH', message: 'The selected batch does not belong to this university' },
+        });
+        return;
+      }
+
+      if (
+        !invoice ||
+        String(invoice.universityId || '') !== universityId ||
+        String(invoice.batchId || '') !== batchId
+      ) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'INVOICE_BATCH_MISMATCH', message: 'The selected invoice does not belong to this university batch' },
+        });
+        return;
+      }
+
+      const applications = await Application.find({ batchId: batch._id })
+        .select('_id studentId')
+        .lean();
+      const applicationIds = applications.map((application) => application._id);
+
+      const placements = applicationIds.length
+        ? await Placement.find({
+            applicationId: { $in: applicationIds },
+            organizationId,
+            status: { $ne: 'CANCELLED' },
+          })
+            .select('studentId')
+            .lean()
+        : [];
+
+      const settlementStudentIds = Array.from(
+        new Set(placements.map((placement: any) => String(placement.studentId)).filter(Boolean))
+      );
+
+      if (!settlementStudentIds.length) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'NO_BATCH_STUDENTS_AT_HOSPITAL',
+            message: 'This hospital has no students from the selected batch',
+          },
+        });
+        return;
+      }
+
+      const existingSettlement = await Payment.findOne({
+        type: 'SETTLEMENT',
+        universityId,
+        batchId,
+        invoiceId,
+        organizationId,
+        status: { $ne: 'CANCELLED' },
+      })
+        .select('_id reference status')
+        .lean();
+
+      if (existingSettlement) {
+        res.status(409).json({
+          success: false,
+          error: {
+            code: 'SETTLEMENT_ALREADY_EXISTS',
+            message: 'This batch has already been settled once for the selected hospital and invoice',
+          },
+        });
+        return;
+      }
+
+      const settlementCurrency = String(req.body?.currency || invoice.currency || 'USD').toUpperCase();
+      if (settlementCurrency !== String(invoice.currency || 'USD').toUpperCase()) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'SETTLEMENT_CURRENCY_MISMATCH',
+            message: 'Settlement currency must match the selected invoice currency',
+          },
+        });
+        return;
+      }
+
+      const settlementTotals = await Payment.aggregate([
+        {
+          $match: {
+            invoiceId: invoice._id,
+            type: 'SETTLEMENT',
+            status: { $ne: 'CANCELLED' },
+          },
+        },
+        { $group: { _id: '$invoiceId', total: { $sum: '$amount' } } },
+      ]);
+
+      const alreadySettled = Number(settlementTotals[0]?.total || 0);
+      if (alreadySettled + Number(amount) > Number(invoice.amount || 0) + 0.000001) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'SETTLEMENT_EXCEEDS_INVOICE',
+            message: 'Total settlements cannot exceed the selected invoice amount',
           },
         });
         return;
@@ -1048,12 +1201,17 @@ export class FinanceController {
 
       const record = await Payment.create({
         userId: null,
+        universityId,
+        batchId,
         payerType: 'ORGANIZATION',
         organizationId,
+        invoiceId,
+        settlementStudentCount: settlementStudentIds.length,
+        settlementStudentIds,
         type: 'SETTLEMENT',
         description,
         amount,
-        currency: String(req.body?.currency || 'USD').toUpperCase(),
+        currency: settlementCurrency,
         status: requestedStatus,
         paidAt: requestedStatus === 'PAID' ? parseDate(req.body?.paidAt) || new Date() : null,
         reference: String(req.body?.reference || '').trim() || nextReference('SETTLEMENT'),
@@ -1067,7 +1225,14 @@ export class FinanceController {
         action: 'finance.settlement.create',
         entityType: 'Payment',
         entityId: record._id,
-        after: record.toObject(),
+        after: {
+          ...record.toObject(),
+          universityId,
+          batchId,
+          invoiceId,
+          organizationId,
+          settlementStudentCount: settlementStudentIds.length,
+        },
       });
 
       res.status(201).json({ success: true, data: await populateFinanceRecord(record._id) });
