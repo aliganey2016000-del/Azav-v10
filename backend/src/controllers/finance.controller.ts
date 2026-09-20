@@ -362,12 +362,26 @@ export class FinanceController {
       );
 
       const filter: any = await FinanceController.scopedFilter(req);
+      const globalFinanceUser = isGlobalFinanceUser(req);
       const type = String(req.query.type || '').toUpperCase();
       const status = String(req.query.status || '').toUpperCase();
       const search = String(req.query.search || '').trim();
 
+      // Cancelled finance records remain available to AZAAM finance/admin users
+      // for audit purposes, but must never be exposed to the billed university,
+      // student or organization.
+      if (!globalFinanceUser) {
+        filter.status = { $ne: 'CANCELLED' };
+      }
+
       if (type && FINANCE_TYPES.includes(type as FinanceRecordType)) filter.type = type;
-      if (status && FINANCE_STATUSES.includes(status as FinanceRecordStatus)) filter.status = status;
+      if (status && FINANCE_STATUSES.includes(status as FinanceRecordStatus)) {
+        if (!globalFinanceUser && status === 'CANCELLED') {
+          res.json({ success: true, data: [] });
+          return;
+        }
+        filter.status = status;
+      }
 
       if (search) {
         const regex = new RegExp(escapeRegex(search), 'i');
