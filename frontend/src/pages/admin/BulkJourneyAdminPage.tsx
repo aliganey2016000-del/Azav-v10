@@ -322,8 +322,8 @@ export const BulkJourneyAdminPage: React.FC = () => {
         studentName(student),
         student.studentNumber,
         student.email,
-        student.program,
         student.specialty,
+        student.studyYear,
       ]
         .filter(Boolean)
         .join(' ')
