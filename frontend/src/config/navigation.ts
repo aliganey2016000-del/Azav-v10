@@ -114,6 +114,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.SUPER_ADMIN],
       },
       {
+        label: 'Bulk Journey',
+        path: '/admin/bulk-journey',
+        icon: CheckSquare,
+        roles: [UserRole.SUPER_ADMIN],
+      },
+      {
         label: 'Rotation Planner',
         path: '/admin/rotation-planner',
         icon: CalendarDays,
@@ -312,6 +318,12 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         label: 'Placements',
         path: '/admin/placements',
         icon: Building,
+        roles: [UserRole.AZAAM_STAFF],
+      },
+      {
+        label: 'Bulk Journey',
+        path: '/admin/bulk-journey',
+        icon: CheckSquare,
         roles: [UserRole.AZAAM_STAFF],
       },
       {
