@@ -587,6 +587,8 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     const defaultStatus =
       config.type === 'FEE' ? 'PENDING' : config.type === 'REFUND' ? 'REFUNDED' : 'PAID';
 
+    setError('');
+    setSuccess('');
     setForm({
       ...EMPTY_FORM,
       status: defaultStatus,
@@ -720,6 +722,34 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
   const batchStudentCount = Number(selectedBatch?.studentsCount || 0);
 
+  const alreadyInvoicedRuleIds = useMemo(() => {
+    if (form.payerType !== 'UNIVERSITY' || !form.universityId || !form.batchId) {
+      return new Set<string>();
+    }
+
+    const ids = new Set<string>();
+    invoices.forEach((invoice) => {
+      if (
+        invoice.type !== 'FEE' ||
+        invoice.status === 'CANCELLED' ||
+        asId(invoice.universityId) !== form.universityId ||
+        asId(invoice.batchId) !== form.batchId
+      ) {
+        return;
+      }
+
+      (Array.isArray(invoice.lineItems) ? invoice.lineItems : []).forEach((item: RecordObject) => {
+        const ruleId = asId(item.feeRuleId);
+        if (ruleId) ids.add(ruleId);
+      });
+    });
+
+    return ids;
+  }, [invoices, form.payerType, form.universityId, form.batchId]);
+
+  const isRuleAlreadyInvoiced = (feeRuleId: string) =>
+    alreadyInvoicedRuleIds.has(feeRuleId);
+
   const quantityForRule = (rule: RecordObject) =>
     form.payerType === 'UNIVERSITY' &&
     rule.billingBasis === 'PER_STUDENT' &&
@@ -728,7 +758,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       : 1;
 
   const toggleInvoiceRule = (feeRuleId: string) => {
-    if (!feeRuleId) return;
+    if (!feeRuleId || isRuleAlreadyInvoiced(feeRuleId)) return;
 
     setInvoiceItems((current) => {
       const exists = current.some((item) => item.feeRuleId === feeRuleId);
@@ -762,6 +792,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     setInvoiceItems(
       feeRules
         .filter((rule) => String(rule.currency || 'USD') === String(preferredCurrency))
+        .filter((rule) => !isRuleAlreadyInvoiced(asId(rule)))
         .map((rule) => ({ feeRuleId: asId(rule), quantity: quantityForRule(rule) }))
         .filter((item) => item.feeRuleId)
     );
@@ -881,7 +912,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       await loadRecords();
       setSuccess(wasEditing ? 'Finance record updated successfully.' : config.action + ' saved successfully.');
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.error?.message || 'Unable to save finance record.');
+      setError(
+        requestError?.response?.data?.error?.message ||
+          requestError?.response?.data?.message ||
+          'Unable to save finance record.'
+      );
     } finally {
       setSaving(false);
     }
@@ -2415,6 +2450,12 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
             </>
           }
         >
+          {error && (
+            <div className="mb-4 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+              {error}
+            </div>
+          )}
+
           {referenceLoading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm font-bold text-slate-500">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -2737,6 +2778,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                 {feeRules.map((rule) => {
                                   const ruleId = asId(rule);
                                   const selected = isInvoiceRuleSelected(ruleId);
+                                  const alreadyInvoiced = isRuleAlreadyInvoiced(ruleId);
                                   const item = invoiceItems.find((entry) => entry.feeRuleId === ruleId);
                                   const automaticBatchQuantity =
                                     form.payerType === 'UNIVERSITY' &&
@@ -2753,9 +2795,16 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                         <input
                                           type="checkbox"
                                           checked={selected}
+                                          disabled={alreadyInvoiced}
                                           onChange={() => toggleInvoiceRule(ruleId)}
-                                          aria-label={selected ? 'Remove pricing rule from invoice' : 'Add pricing rule to invoice'}
-                                          className="h-5 w-5 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600"
+                                          aria-label={
+                                            alreadyInvoiced
+                                              ? 'Pricing rule already invoiced for this batch'
+                                              : selected
+                                                ? 'Remove pricing rule from invoice'
+                                                : 'Add pricing rule to invoice'
+                                          }
+                                          className="h-5 w-5 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600 disabled:cursor-not-allowed disabled:opacity-40"
                                         />
                                       </td>
                                       <td className="px-4 py-3">
@@ -2765,6 +2814,9 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                           <span className={rule.pricingSource === 'UNIVERSITY' ? 'text-violet-600' : 'text-cyan-700'}>
                                             {rule.pricingSource === 'UNIVERSITY' ? 'University Price' : 'Global Price'}
                                           </span>
+                                          {alreadyInvoiced && (
+                                            <span className="font-black text-amber-600">Already invoiced</span>
+                                          )}
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 font-black text-slate-900">
@@ -2801,6 +2853,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                             {feeRules.map((rule) => {
                               const ruleId = asId(rule);
                               const selected = isInvoiceRuleSelected(ruleId);
+                              const alreadyInvoiced = isRuleAlreadyInvoiced(ruleId);
                               const item = invoiceItems.find((entry) => entry.feeRuleId === ruleId);
                               const automaticBatchQuantity =
                                 form.payerType === 'UNIVERSITY' &&
@@ -2824,13 +2877,23 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                       <p className="mt-1 text-[10px] font-semibold text-slate-500">
                                         {formatMoney(rule.amount, rule.currency)} · {String(rule.billingBasis || '').replace(/_/g, ' ')}
                                       </p>
+                                      {alreadyInvoiced && (
+                                        <p className="mt-1 text-[10px] font-black text-amber-600">Already invoiced for this batch</p>
+                                      )}
                                     </div>
                                     <input
                                       type="checkbox"
                                       checked={selected}
+                                      disabled={alreadyInvoiced}
                                       onChange={() => toggleInvoiceRule(ruleId)}
-                                      aria-label={selected ? 'Remove pricing rule from invoice' : 'Add pricing rule to invoice'}
-                                      className="h-5 w-5 shrink-0 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600"
+                                      aria-label={
+                                        alreadyInvoiced
+                                          ? 'Pricing rule already invoiced for this batch'
+                                          : selected
+                                            ? 'Remove pricing rule from invoice'
+                                            : 'Add pricing rule to invoice'
+                                      }
+                                      className="h-5 w-5 shrink-0 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600 disabled:cursor-not-allowed disabled:opacity-40"
                                     />
                                   </div>
 
