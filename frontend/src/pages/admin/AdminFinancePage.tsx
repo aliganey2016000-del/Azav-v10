@@ -264,6 +264,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const [typeFilter, setTypeFilter] = useState('');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
   const [paymentDateFilter, setPaymentDateFilter] = useState('');
+  const [expandedPaymentId, setExpandedPaymentId] = useState<string | null>(null);
 
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [rowMenuId, setRowMenuId] = useState<string | null>(null);
@@ -1109,8 +1110,10 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-3 xl:grid-cols-2">
               {filteredRecords.map((record) => {
+                const paymentId = asId(record);
+                const expanded = expandedPaymentId === paymentId;
                 const invoiceAmount = Number(record.invoiceAmount ?? record.invoiceId?.amount ?? 0);
                 const remainingBalance = Number(record.invoiceBalance ?? 0);
                 const batchLabel = record.batchId
@@ -1123,98 +1126,171 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
                 return (
                   <article
-                    key={asId(record)}
+                    key={paymentId}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setViewing(record)}
+                    aria-expanded={expanded}
+                    onClick={() =>
+                      setExpandedPaymentId((current) => (current === paymentId ? null : paymentId))
+                    }
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
-                        setViewing(record);
+                        setExpandedPaymentId((current) =>
+                          current === paymentId ? null : paymentId
+                        );
                       }
                     }}
-                    className="min-w-0 cursor-pointer overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-teal-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+                    className={
+                      'min-w-0 cursor-pointer overflow-hidden rounded-3xl border bg-white shadow-sm transition hover:border-teal-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-teal-500/10 ' +
+                      (expanded
+                        ? 'border-teal-200 xl:col-span-2'
+                        : 'border-slate-200')
+                    }
                   >
                     <div className="bg-gradient-to-r from-white via-teal-50/45 to-cyan-50/70 p-4 sm:p-5">
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
-                          <Building2 className="h-6 w-6" />
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 sm:h-12 sm:w-12">
+                          <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <h3 className="min-w-0 break-words text-base font-black text-slate-950">
+                            <h3 className="min-w-0 break-words text-sm font-black text-slate-950 sm:text-base">
                               {accountName(record)}
                             </h3>
                             <span className={'inline-flex shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ' + statusClass(record.status)}>
                               {record.status}
                             </span>
                           </div>
-                          <div className="mt-1 break-all font-mono text-[11px] font-black text-teal-700">
+                          <div className="mt-1 break-all font-mono text-[10px] font-black text-teal-700 sm:text-[11px]">
                             {referenceLabel(record)}
                           </div>
-                          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                            University · Payment
-                          </div>
+                          {!expanded && (
+                            <div className="mt-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                              {invoiceNumber}
+                            </div>
+                          )}
                         </div>
 
-                        <Eye className="mt-1 h-5 w-5 shrink-0 text-slate-400" />
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <PaymentMetric
-                          label="Invoice Amount"
-                          value={formatMoney(invoiceAmount, record.invoiceId?.currency || record.currency)}
-                          icon={<FileText className="h-4 w-4" />}
-                          tone="blue"
-                        />
-                        <PaymentMetric
-                          label="Amount Paid"
-                          value={formatMoney(record.amount, record.currency)}
-                          icon={<CreditCard className="h-4 w-4" />}
-                          tone="green"
-                        />
-                        <PaymentMetric
-                          label="Remaining"
-                          value={formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
-                          icon={<Clock3 className="h-4 w-4" />}
-                          tone="amber"
-                        />
-                        <PaymentMetric
-                          label="Payment Date"
-                          value={paymentDate}
-                          icon={<CalendarDays className="h-4 w-4" />}
-                          tone="violet"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="p-4 sm:p-5">
-                      <div className="grid gap-x-5 gap-y-3 text-xs sm:grid-cols-2">
-                        <PaymentDetailRow label="Payment Method" value={paymentMethod} />
-                        <PaymentDetailRow label="Invoice" value={invoiceNumber} />
-                        <PaymentDetailRow label="Batch" value={batchLabel} />
-                        <PaymentDetailRow
-                          label="Description"
-                          value={record.description || 'Payment received'}
-                        />
-                      </div>
-
-                      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="text-xs font-black text-emerald-800">
-                            Payment recorded successfully
-                          </div>
-                          <div className="mt-0.5 break-words text-[10px] font-semibold text-emerald-700/80">
-                            Linked to invoice {invoiceNumber}
+                        <div className="flex shrink-0 items-center gap-2">
+                          {!expanded && (
+                            <div className="hidden text-right sm:block">
+                              <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                                Paid
+                              </div>
+                              <div className="text-sm font-black text-emerald-700">
+                                {formatMoney(record.amount, record.currency)}
+                              </div>
+                            </div>
+                          )}
+                          <div className={'flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-transform ' + (expanded ? 'rotate-180' : '')}>
+                            <ChevronDown className="h-4 w-4" />
                           </div>
                         </div>
-                        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-black text-teal-700">
-                          <Eye className="h-4 w-4" />
-                          View Details
-                        </span>
                       </div>
+
+                      {!expanded && (
+                        <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="min-w-0 rounded-xl bg-white/90 p-2.5 shadow-sm">
+                            <div className="text-[8px] font-black uppercase tracking-wide text-slate-400">
+                              Paid
+                            </div>
+                            <div className="mt-1 break-words text-xs font-black text-emerald-700 sm:text-sm">
+                              {formatMoney(record.amount, record.currency)}
+                            </div>
+                          </div>
+                          <div className="min-w-0 rounded-xl bg-white/90 p-2.5 shadow-sm">
+                            <div className="text-[8px] font-black uppercase tracking-wide text-slate-400">
+                              Remaining
+                            </div>
+                            <div className="mt-1 break-words text-xs font-black text-amber-700 sm:text-sm">
+                              {formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
+                            </div>
+                          </div>
+                          <div className="min-w-0 rounded-xl bg-white/90 p-2.5 shadow-sm">
+                            <div className="text-[8px] font-black uppercase tracking-wide text-slate-400">
+                              Date
+                            </div>
+                            <div className="mt-1 break-words text-[10px] font-black leading-4 text-slate-800 sm:text-xs">
+                              {paymentDate}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {expanded && (
+                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <PaymentMetric
+                            label="Invoice Amount"
+                            value={formatMoney(invoiceAmount, record.invoiceId?.currency || record.currency)}
+                            icon={<FileText className="h-4 w-4" />}
+                            tone="blue"
+                          />
+                          <PaymentMetric
+                            label="Amount Paid"
+                            value={formatMoney(record.amount, record.currency)}
+                            icon={<CreditCard className="h-4 w-4" />}
+                            tone="green"
+                          />
+                          <PaymentMetric
+                            label="Remaining"
+                            value={formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
+                            icon={<Clock3 className="h-4 w-4" />}
+                            tone="amber"
+                          />
+                          <PaymentMetric
+                            label="Payment Date"
+                            value={paymentDate}
+                            icon={<CalendarDays className="h-4 w-4" />}
+                            tone="violet"
+                          />
+                        </div>
+                      )}
                     </div>
+
+                    {expanded && (
+                      <div className="p-4 sm:p-5">
+                        <div className="grid gap-x-5 gap-y-3 text-xs sm:grid-cols-2">
+                          <PaymentDetailRow label="Payment Method" value={paymentMethod} />
+                          <PaymentDetailRow label="Invoice" value={invoiceNumber} />
+                          <PaymentDetailRow label="Batch" value={batchLabel} />
+                          <PaymentDetailRow
+                            label="Description"
+                            value={record.description || 'Payment received'}
+                          />
+                        </div>
+
+                        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="text-xs font-black text-emerald-800">
+                              Payment recorded successfully
+                            </div>
+                            <div className="mt-0.5 break-words text-[10px] font-semibold text-emerald-700/80">
+                              Linked to invoice {invoiceNumber}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setViewing(record);
+                            }}
+                            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 text-xs font-black text-teal-700 shadow-sm"
+                          >
+                            <Eye className="h-4 w-4" />
+                            View Full Details
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {!expanded && (
+                      <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[10px] font-bold text-slate-500 sm:px-5">
+                        <span>Tap to expand payment</span>
+                        <span className="font-black text-teal-700">View details</span>
+                      </div>
+                    )}
                   </article>
                 );
               })}
