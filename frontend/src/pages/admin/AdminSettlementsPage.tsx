@@ -17,6 +17,7 @@ import {
   Pencil,
   RotateCcw,
   Search,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
@@ -624,6 +625,39 @@ export const AdminSettlementsPage: React.FC = () => {
       setError(
         requestError?.response?.data?.error?.message ||
           'Unable to cancel settlement.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteSettlement = async (record: RecordObject) => {
+    setRowMenuId(null);
+
+    const confirmed = window.confirm(
+      'Delete this settlement permanently? This will remove the card from the settlement register.'
+    );
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError('');
+    setFormError('');
+    setSuccess('');
+
+    try {
+      await api.delete('/finance/' + asId(record));
+      if (viewing && asId(viewing) === asId(record)) {
+        setViewing(null);
+      }
+      if (editing && asId(editing) === asId(record)) {
+        closeForm();
+      }
+      await loadRecords();
+      setSuccess('Settlement deleted successfully.');
+    } catch (requestError: any) {
+      setError(
+        requestError?.response?.data?.error?.message ||
+          'Unable to delete settlement.'
       );
     } finally {
       setSaving(false);
@@ -1327,6 +1361,12 @@ export const AdminSettlementsPage: React.FC = () => {
                               label="Edit Settlement"
                               onClick={() => void editSettlement(record)}
                             />
+                            <ActionButton
+                              danger
+                              icon={<Trash2 className="h-4 w-4" />}
+                              label="Delete Settlement"
+                              onClick={() => void deleteSettlement(record)}
+                            />
                             {record.status !== 'CANCELLED' && (
                               <ActionButton
                                 danger
@@ -1357,7 +1397,7 @@ export const AdminSettlementsPage: React.FC = () => {
                       setViewing(record);
                     }
                   }}
-                  className="group min-w-0 cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition active:scale-[0.995]"
+                  className="group relative min-w-0 cursor-pointer overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition active:scale-[0.995]"
                 >
                   <div className="bg-gradient-to-r from-white via-teal-50/30 to-cyan-50/55 p-3.5">
                     <div className="flex min-w-0 items-start gap-3">
@@ -1374,14 +1414,63 @@ export const AdminSettlementsPage: React.FC = () => {
                               {record.reference || '—'}
                             </div>
                           </div>
-                          <span
-                            className={
-                              'inline-flex shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ' +
-                              statusClass(record.status)
-                            }
+                          <div
+                            className="relative flex shrink-0 items-center gap-1.5"
+                            onClick={(event) => event.stopPropagation()}
                           >
-                            {record.status}
-                          </span>
+                            <span
+                              className={
+                                'inline-flex rounded-full px-2.5 py-1 text-[9px] font-black ' +
+                                statusClass(record.status)
+                              }
+                            >
+                              {record.status}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Settlement actions"
+                              onClick={() =>
+                                setRowMenuId((current) =>
+                                  current === asId(record) ? null : asId(record)
+                                )
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white/95 text-slate-500 shadow-sm"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+
+                            {rowMenuId === asId(record) && (
+                              <div className="absolute right-0 top-10 z-40 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-2xl">
+                                <ActionButton
+                                  icon={<Eye className="h-4 w-4" />}
+                                  label="View Details"
+                                  onClick={() => {
+                                    setRowMenuId(null);
+                                    setViewing(record);
+                                  }}
+                                />
+                                <ActionButton
+                                  icon={<Pencil className="h-4 w-4" />}
+                                  label="Edit Settlement"
+                                  onClick={() => void editSettlement(record)}
+                                />
+                                <ActionButton
+                                  danger
+                                  icon={<Trash2 className="h-4 w-4" />}
+                                  label="Delete Settlement"
+                                  onClick={() => void deleteSettlement(record)}
+                                />
+                                {record.status !== 'CANCELLED' && (
+                                  <ActionButton
+                                    danger
+                                    icon={<Ban className="h-4 w-4" />}
+                                    label="Void / Cancel"
+                                    onClick={() => void voidSettlement(record)}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         <p className="mt-1 truncate text-[10px] font-semibold text-slate-500">
@@ -1498,6 +1587,14 @@ export const AdminSettlementsPage: React.FC = () => {
                 className="min-h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-slate-600"
               >
                 Close
+              </button>
+              <button
+                type="button"
+                onClick={() => void deleteSettlement(viewing)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-5 text-sm font-black text-rose-700"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
               </button>
               <button
                 type="button"
