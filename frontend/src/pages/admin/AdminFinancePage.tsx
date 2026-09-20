@@ -7,6 +7,8 @@ import {
   Check,
   ChevronDown,
   CircleDollarSign,
+  Clock3,
+  CreditCard,
   Eye,
   FileText,
   Loader2,
@@ -238,6 +240,9 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     description: descriptionOverride || baseConfig.description,
   };
 
+  const isUniversityPaymentsView =
+    readOnly && mode === 'payments' && registerTitleOverride === 'Student Payments';
+
   const [records, setRecords] = useState<RecordObject[]>([]);
   const [users, setUsers] = useState<RecordObject[]>([]);
   const [universities, setUniversities] = useState<RecordObject[]>([]);
@@ -257,6 +262,8 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
+  const [paymentDateFilter, setPaymentDateFilter] = useState('');
 
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [rowMenuId, setRowMenuId] = useState<string | null>(null);
@@ -314,6 +321,41 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       if (statusFilter && record.status !== statusFilter) return false;
       if (typeFilter && record.type !== typeFilter) return false;
 
+      if (isUniversityPaymentsView && paymentMethodFilter) {
+        if (String(record.paymentMethod || '') !== paymentMethodFilter) return false;
+      }
+
+      if (isUniversityPaymentsView && paymentDateFilter) {
+        const value = record.paidAt || record.createdAt;
+        const recordDate = value ? new Date(value) : null;
+        if (!recordDate || Number.isNaN(recordDate.getTime())) return false;
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (paymentDateFilter === 'TODAY' && recordDate < todayStart) return false;
+
+        if (paymentDateFilter === '7_DAYS') {
+          const cutoff = new Date(todayStart);
+          cutoff.setDate(cutoff.getDate() - 6);
+          if (recordDate < cutoff) return false;
+        }
+
+        if (paymentDateFilter === '30_DAYS') {
+          const cutoff = new Date(todayStart);
+          cutoff.setDate(cutoff.getDate() - 29);
+          if (recordDate < cutoff) return false;
+        }
+
+        if (
+          paymentDateFilter === 'THIS_MONTH' &&
+          (recordDate.getFullYear() !== now.getFullYear() ||
+            recordDate.getMonth() !== now.getMonth())
+        ) {
+          return false;
+        }
+      }
+
       if (!query) return true;
 
       return [
@@ -323,13 +365,25 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         record.reference,
         record.description,
         record.organizationId?.name,
+        record.invoiceId?.invoiceNumber,
+        record.batchId?.batchNumber,
+        record.batchId?.name,
+        record.paymentMethod,
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
         .includes(query);
     });
-  }, [records, search, statusFilter, typeFilter]);
+  }, [
+    records,
+    search,
+    statusFilter,
+    typeFilter,
+    isUniversityPaymentsView,
+    paymentMethodFilter,
+    paymentDateFilter,
+  ]);
 
   const totalAmount = useMemo(
     () => filteredRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0),
@@ -353,6 +407,47 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
   const completedCount = filteredRecords.filter((record) =>
     ['PAID', 'REFUNDED'].includes(record.status)
   ).length;
+
+  const universityPaymentSummary = useMemo(() => {
+    const invoiceBalances = new Map<string, { balance: number; currency: string }>();
+    const linkedInvoiceIds = new Set<string>();
+
+    filteredRecords.forEach((record) => {
+      const invoiceId = asId(record.invoiceId);
+      if (!invoiceId) return;
+
+      linkedInvoiceIds.add(invoiceId);
+      invoiceBalances.set(invoiceId, {
+        balance: Number(record.invoiceBalance || 0),
+        currency: String(record.invoiceId?.currency || record.currency || 'USD'),
+      });
+    });
+
+    const paymentCurrencies = Array.from(
+      new Set(filteredRecords.map((record) => String(record.currency || 'USD')))
+    );
+    const balanceCurrencies = Array.from(
+      new Set(Array.from(invoiceBalances.values()).map((item) => item.currency))
+    );
+
+    const totalPaid = filteredRecords.reduce(
+      (sum, record) => sum + Number(record.amount || 0),
+      0
+    );
+    const remainingBalance = Array.from(invoiceBalances.values()).reduce(
+      (sum, item) => sum + Number(item.balance || 0),
+      0
+    );
+
+    return {
+      paymentCount: filteredRecords.length,
+      totalPaid,
+      totalPaidCurrency: paymentCurrencies.length === 1 ? paymentCurrencies[0] : '',
+      remainingBalance,
+      remainingCurrency: balanceCurrencies.length === 1 ? balanceCurrencies[0] : '',
+      linkedInvoices: linkedInvoiceIds.size,
+    };
+  }, [filteredRecords]);
 
   const loadTrainingBatches = async (universityId: string) => {
     if (!universityId) {
@@ -846,6 +941,341 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     if (editing && asId(invoice) === form.invoiceId) return true;
     return !['PAID', 'CANCELLED'].includes(invoice.status) && Number(invoice.balance ?? invoice.amount) > 0;
   });
+
+  if (isUniversityPaymentsView) {
+    const totalPaidLabel = universityPaymentSummary.totalPaidCurrency
+      ? formatMoney(universityPaymentSummary.totalPaid, universityPaymentSummary.totalPaidCurrency)
+      : 'Multiple currencies';
+    const remainingBalanceLabel = universityPaymentSummary.remainingCurrency
+      ? formatMoney(
+          universityPaymentSummary.remainingBalance,
+          universityPaymentSummary.remainingCurrency
+        )
+      : universityPaymentSummary.remainingBalance > 0
+        ? 'Multiple currencies'
+        : formatMoney(0, 'USD');
+
+    return (
+      <div className="space-y-5 pb-10">
+        <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-cyan-50/55 to-emerald-50/45 p-5 shadow-sm sm:p-6">
+          <div className="flex items-start gap-4 pr-14">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+              <CreditCard className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-700">
+                University Finance · Payments
+              </p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                {registerTitleOverride || 'Student Payments'}
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                View payments received against your university invoices and track the remaining balance still due.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            aria-label="Refresh payments"
+            onClick={() => void loadRecords()}
+            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white/90 text-slate-500 shadow-sm transition hover:text-teal-700 sm:right-6 sm:top-6"
+          >
+            <RefreshCw className="h-5 w-5" />
+          </button>
+        </section>
+
+        {error && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+            {error}
+          </div>
+        )}
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <PaymentSummaryCard
+            icon={<ReceiptText className="h-5 w-5" />}
+            label="Total Payments"
+            value={loading ? '—' : String(universityPaymentSummary.paymentCount)}
+            helper="Recorded receipts"
+            tone="blue"
+          />
+          <PaymentSummaryCard
+            icon={<CircleDollarSign className="h-5 w-5" />}
+            label="Total Paid"
+            value={loading ? '—' : totalPaidLabel}
+            helper="Amount received"
+            tone="green"
+          />
+          <PaymentSummaryCard
+            icon={<Clock3 className="h-5 w-5" />}
+            label="Remaining Balance"
+            value={loading ? '—' : remainingBalanceLabel}
+            helper="Outstanding on linked invoices"
+            tone="amber"
+          />
+          <PaymentSummaryCard
+            icon={<FileText className="h-5 w-5" />}
+            label="Linked Invoices"
+            value={loading ? '—' : String(universityPaymentSummary.linkedInvoices)}
+            helper="Invoices with payments"
+            tone="violet"
+          />
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search invoice, payment reference, batch..."
+              className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-semibold text-slate-700 outline-none focus:border-teal-500 focus:bg-white"
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-[180px_180px_190px_auto]">
+            <FilterSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              placeholder="All Status"
+              options={[
+                ['PAID', 'Paid'],
+                ['REFUNDED', 'Refunded'],
+                ['CANCELLED', 'Cancelled'],
+              ]}
+            />
+            <FilterSelect
+              value={paymentDateFilter}
+              onChange={setPaymentDateFilter}
+              placeholder="All Dates"
+              options={[
+                ['TODAY', 'Today'],
+                ['7_DAYS', 'Last 7 Days'],
+                ['30_DAYS', 'Last 30 Days'],
+                ['THIS_MONTH', 'This Month'],
+              ]}
+            />
+            <FilterSelect
+              value={paymentMethodFilter}
+              onChange={setPaymentMethodFilter}
+              placeholder="All Methods"
+              options={[
+                ['BANK_TRANSFER', 'Bank Transfer'],
+                ['MOBILE_MONEY', 'Mobile Money'],
+                ['CASH', 'Cash'],
+                ['CARD', 'Card'],
+                ['OTHER', 'Other'],
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('');
+                setPaymentDateFilter('');
+                setPaymentMethodFilter('');
+              }}
+              className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-slate-50"
+            >
+              Reset
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+            <div>
+              <h2 className="text-base font-black text-slate-950">
+                Payments ({filteredRecords.length})
+              </h2>
+              <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                Tap a payment to view its full details.
+              </p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white py-16 text-sm font-bold text-slate-500 shadow-sm">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading payments...
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="rounded-3xl border border-slate-200 bg-white px-5 py-16 text-center shadow-sm">
+              <CreditCard className="mx-auto h-10 w-10 text-slate-300" />
+              <p className="mt-3 text-sm font-black text-slate-700">No payments found</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Payment records will appear here when AZAAM records a payment against your invoice.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {filteredRecords.map((record) => {
+                const invoiceAmount = Number(record.invoiceAmount ?? record.invoiceId?.amount ?? 0);
+                const remainingBalance = Number(record.invoiceBalance ?? 0);
+                const batchLabel = record.batchId
+                  ? (record.batchId?.batchNumber || 'Batch') +
+                    (record.batchId?.name ? ' · ' + record.batchId.name : '')
+                  : '—';
+                const invoiceNumber = record.invoiceId?.invoiceNumber || '—';
+                const paymentDate = formatDate(record.paidAt || record.createdAt);
+                const paymentMethod = String(record.paymentMethod || 'Not specified').replace(/_/g, ' ');
+
+                return (
+                  <article
+                    key={asId(record)}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setViewing(record)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setViewing(record);
+                      }
+                    }}
+                    className="min-w-0 cursor-pointer overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-teal-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+                  >
+                    <div className="bg-gradient-to-r from-white via-teal-50/45 to-cyan-50/70 p-4 sm:p-5">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+                          <Building2 className="h-6 w-6" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <h3 className="min-w-0 break-words text-base font-black text-slate-950">
+                              {accountName(record)}
+                            </h3>
+                            <span className={'inline-flex shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ' + statusClass(record.status)}>
+                              {record.status}
+                            </span>
+                          </div>
+                          <div className="mt-1 break-all font-mono text-[11px] font-black text-teal-700">
+                            {referenceLabel(record)}
+                          </div>
+                          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                            University · Payment
+                          </div>
+                        </div>
+
+                        <Eye className="mt-1 h-5 w-5 shrink-0 text-slate-400" />
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <PaymentMetric
+                          label="Invoice Amount"
+                          value={formatMoney(invoiceAmount, record.invoiceId?.currency || record.currency)}
+                          icon={<FileText className="h-4 w-4" />}
+                          tone="blue"
+                        />
+                        <PaymentMetric
+                          label="Amount Paid"
+                          value={formatMoney(record.amount, record.currency)}
+                          icon={<CreditCard className="h-4 w-4" />}
+                          tone="green"
+                        />
+                        <PaymentMetric
+                          label="Remaining"
+                          value={formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
+                          icon={<Clock3 className="h-4 w-4" />}
+                          tone="amber"
+                        />
+                        <PaymentMetric
+                          label="Payment Date"
+                          value={paymentDate}
+                          icon={<CalendarDays className="h-4 w-4" />}
+                          tone="violet"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 sm:p-5">
+                      <div className="grid gap-x-5 gap-y-3 text-xs sm:grid-cols-2">
+                        <PaymentDetailRow label="Payment Method" value={paymentMethod} />
+                        <PaymentDetailRow label="Invoice" value={invoiceNumber} />
+                        <PaymentDetailRow label="Batch" value={batchLabel} />
+                        <PaymentDetailRow
+                          label="Description"
+                          value={record.description || 'Payment received'}
+                        />
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-emerald-800">
+                            Payment recorded successfully
+                          </div>
+                          <div className="mt-0.5 break-words text-[10px] font-semibold text-emerald-700/80">
+                            Linked to invoice {invoiceNumber}
+                          </div>
+                        </div>
+                        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-black text-teal-700">
+                          <Eye className="h-4 w-4" />
+                          View Details
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {viewing && (
+          <ModalShell
+            title="Payment Details"
+            eyebrow={referenceLabel(viewing)}
+            onClose={() => setViewing(null)}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DetailBox label="University" value={accountName(viewing)} />
+              <DetailBox label="Status" value={viewing.status || '—'} />
+              <DetailBox label="Payment Reference" value={referenceLabel(viewing)} />
+              <DetailBox label="Payment Date" value={formatDate(viewing.paidAt || viewing.createdAt)} />
+              <DetailBox
+                label="Payment Amount"
+                value={formatMoney(viewing.amount, viewing.currency)}
+              />
+              <DetailBox
+                label="Invoice Amount"
+                value={formatMoney(
+                  viewing.invoiceAmount ?? viewing.invoiceId?.amount ?? 0,
+                  viewing.invoiceId?.currency || viewing.currency
+                )}
+              />
+              <DetailBox
+                label="Remaining Balance"
+                value={formatMoney(
+                  viewing.invoiceBalance || 0,
+                  viewing.invoiceId?.currency || viewing.currency
+                )}
+              />
+              <DetailBox
+                label="Linked Invoice"
+                value={viewing.invoiceId?.invoiceNumber || '—'}
+              />
+              <DetailBox
+                label="Payment Method"
+                value={String(viewing.paymentMethod || 'Not specified').replace(/_/g, ' ')}
+              />
+              <DetailBox
+                label="Batch"
+                value={
+                  viewing.batchId
+                    ? (viewing.batchId?.batchNumber || 'Batch') +
+                      (viewing.batchId?.name ? ' · ' + viewing.batchId.name : '')
+                    : '—'
+                }
+              />
+              <DetailBox label="Description" value={viewing.description || '—'} />
+              <DetailBox label="Created" value={formatDate(viewing.createdAt)} />
+            </div>
+          </ModalShell>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 pb-10">
@@ -2163,6 +2593,76 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     </div>
   );
 };
+
+const PaymentSummaryCard: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  helper: string;
+  tone: 'blue' | 'green' | 'amber' | 'violet';
+}> = ({ icon, label, value, helper, tone }) => {
+  const tones = {
+    blue: 'border-blue-100 bg-blue-50/55 text-blue-700',
+    green: 'border-emerald-100 bg-emerald-50/60 text-emerald-700',
+    amber: 'border-amber-100 bg-amber-50/70 text-amber-700',
+    violet: 'border-violet-100 bg-violet-50/60 text-violet-700',
+  } as const;
+
+  return (
+    <article className={'min-w-0 rounded-2xl border p-4 shadow-sm sm:p-5 ' + tones[tone]}>
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-sm">
+        {icon}
+      </div>
+      <div className="mt-4 break-words text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
+        {value}
+      </div>
+      <div className="mt-1 text-[10px] font-black uppercase tracking-wide text-slate-500 sm:text-xs">
+        {label}
+      </div>
+      <div className="mt-1 text-[10px] font-semibold text-slate-400">{helper}</div>
+    </article>
+  );
+};
+
+const PaymentMetric: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone: 'blue' | 'green' | 'amber' | 'violet';
+}> = ({ icon, label, value, tone }) => {
+  const tones = {
+    blue: 'bg-blue-50 text-blue-700',
+    green: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    violet: 'bg-violet-50 text-violet-700',
+  } as const;
+
+  return (
+    <div className="min-w-0 rounded-2xl bg-white/90 p-3 shadow-sm">
+      <div className={'flex h-8 w-8 items-center justify-center rounded-xl ' + tones[tone]}>
+        {icon}
+      </div>
+      <div className="mt-2 text-[9px] font-black uppercase tracking-wide text-slate-400">
+        {label}
+      </div>
+      <div
+        className={
+          'mt-1 break-words text-sm font-black leading-5 ' +
+          (tone === 'amber' ? 'text-amber-700' : tone === 'green' ? 'text-emerald-700' : 'text-slate-900')
+        }
+      >
+        {value}
+      </div>
+    </div>
+  );
+};
+
+const PaymentDetailRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="grid min-w-0 grid-cols-[120px_minmax(0,1fr)] gap-3 border-b border-slate-100 pb-2 last:border-b-0 sm:grid-cols-[130px_minmax(0,1fr)]">
+    <span className="text-[10px] font-bold text-slate-500">{label}</span>
+    <span className="min-w-0 break-words text-xs font-black text-slate-800">{value}</span>
+  </div>
+);
 
 const FinanceStat: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({
   icon,
