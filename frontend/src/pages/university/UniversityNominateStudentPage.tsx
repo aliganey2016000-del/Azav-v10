@@ -242,8 +242,8 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const approved = students.filter(s => s.applicationStatus === 'ACCEPTED').length;
   const rejected = students.filter(s => s.applicationStatus === 'REJECTED').length;
 
-  const closeImport = () => {
-    if (importing || readingImportZip) return;
+  const closeImport = (force = false) => {
+    if (!force && (importing || readingImportZip)) return;
     setImportOpen(false);
     setImportFileName('');
     setImportZipFileName('');
@@ -517,7 +517,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
     );
 
     setImporting(false);
-    closeImport();
+    closeImport(true);
     setSuccessMessage(
       importedCount +
         ' student(s) imported successfully' +
