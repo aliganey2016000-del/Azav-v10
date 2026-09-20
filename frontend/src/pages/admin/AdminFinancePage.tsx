@@ -1252,7 +1252,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                     {expanded && (
                       <div className="p-4 sm:p-5">
                         <div className="grid gap-x-5 gap-y-3 text-xs sm:grid-cols-2">
-                          <PaymentDetailRow label="Payment Method" value={paymentMethod} />
                           <PaymentDetailRow label="Invoice" value={invoiceNumber} />
                           <PaymentDetailRow label="Batch" value={batchLabel} />
                           <PaymentDetailRow
@@ -1309,10 +1308,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               <DetailBox
                 label="Linked Invoice"
                 value={viewing.invoiceId?.invoiceNumber || '—'}
-              />
-              <DetailBox
-                label="Payment Method"
-                value={String(viewing.paymentMethod || 'Not specified').replace(/_/g, ' ')}
               />
               <DetailBox
                 label="Batch"
