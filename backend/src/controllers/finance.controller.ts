@@ -1145,11 +1145,12 @@ export class FinanceController {
         .lean();
 
       if (existingSettlement) {
-        res.status(409).json({
-          success: false,
-          error: {
-            code: 'SETTLEMENT_ALREADY_EXISTS',
-            message: 'This batch has already been settled once for the selected hospital and invoice',
+        res.status(200).json({
+          success: true,
+          data: await populateFinanceRecord(existingSettlement._id),
+          meta: {
+            alreadyExists: true,
+            message: 'This batch hospital settlement was already recorded.',
           },
         });
         return;
