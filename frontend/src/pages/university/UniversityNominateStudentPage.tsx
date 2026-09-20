@@ -689,7 +689,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={closeImport}
+                  onClick={() => closeImport()}
                   disabled={importing}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-40 dark:bg-slate-800 dark:text-slate-300"
                 >
@@ -873,7 +873,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                 <button
                   type="button"
                   disabled={importing}
-                  onClick={closeImport}
+                  onClick={() => closeImport()}
                   className="min-h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-slate-600 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
                 >
                   Cancel
