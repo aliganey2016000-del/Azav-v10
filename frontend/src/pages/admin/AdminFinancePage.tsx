@@ -9,6 +9,7 @@ import {
   CircleDollarSign,
   Clock3,
   CreditCard,
+  Download,
   Eye,
   FileText,
   Loader2,
@@ -242,8 +243,10 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
 
   const isUniversityPaymentsView =
     readOnly && mode === 'payments' && registerTitleOverride === 'Student Payments';
+  const isAdminPaymentsView = !readOnly && mode === 'payments';
 
   const [records, setRecords] = useState<RecordObject[]>([]);
+  const [paymentRefundRecords, setPaymentRefundRecords] = useState<RecordObject[]>([]);
   const [users, setUsers] = useState<RecordObject[]>([]);
   const [universities, setUniversities] = useState<RecordObject[]>([]);
   const [organizations, setOrganizations] = useState<RecordObject[]>([]);
@@ -282,8 +285,19 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     try {
       const params: Record<string, string> = {};
       if (config.type) params.type = config.type;
-      const response = await api.get('/finance', { params });
-      setRecords(asArray(response));
+
+      if (isAdminPaymentsView) {
+        const [paymentResponse, refundResponse] = await Promise.all([
+          api.get('/finance', { params }),
+          api.get('/finance', { params: { type: 'REFUND' } }),
+        ]);
+        setRecords(asArray(paymentResponse));
+        setPaymentRefundRecords(asArray(refundResponse));
+      } else {
+        const response = await api.get('/finance', { params });
+        setRecords(asArray(response));
+        setPaymentRefundRecords([]);
+      }
     } catch (requestError: any) {
       setError(requestError?.response?.data?.error?.message || 'Unable to load finance records.');
     } finally {
@@ -322,11 +336,11 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
       if (statusFilter && record.status !== statusFilter) return false;
       if (typeFilter && record.type !== typeFilter) return false;
 
-      if (isUniversityPaymentsView && paymentMethodFilter) {
+      if ((isUniversityPaymentsView || isAdminPaymentsView) && paymentMethodFilter) {
         if (String(record.paymentMethod || '') !== paymentMethodFilter) return false;
       }
 
-      if (isUniversityPaymentsView && paymentDateFilter) {
+      if ((isUniversityPaymentsView || isAdminPaymentsView) && paymentDateFilter) {
         const value = record.paidAt || record.createdAt;
         const recordDate = value ? new Date(value) : null;
         if (!recordDate || Number.isNaN(recordDate.getTime())) return false;
@@ -382,6 +396,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     statusFilter,
     typeFilter,
     isUniversityPaymentsView,
+    isAdminPaymentsView,
     paymentMethodFilter,
     paymentDateFilter,
   ]);
@@ -933,6 +948,82 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     }
   };
 
+  const adminPaymentSummary = useMemo(() => {
+    const paymentCurrencies = Array.from(
+      new Set(filteredRecords.map((record) => String(record.currency || 'USD')))
+    );
+    const refundCurrencies = Array.from(
+      new Set(paymentRefundRecords.map((record) => String(record.currency || 'USD')))
+    );
+
+    const totalCollected = filteredRecords
+      .filter((record) => record.status !== 'CANCELLED')
+      .reduce((sum, record) => sum + Number(record.amount || 0), 0);
+
+    const pendingReview = filteredRecords.filter((record) =>
+      ['PENDING', 'PARTIAL', 'OVERDUE'].includes(String(record.status || ''))
+    ).length;
+
+    const refundedAmount = paymentRefundRecords
+      .filter((record) => record.status !== 'CANCELLED')
+      .reduce((sum, record) => sum + Number(record.amount || 0), 0);
+
+    return {
+      records: filteredRecords.length,
+      totalCollected,
+      totalCollectedCurrency: paymentCurrencies.length === 1 ? paymentCurrencies[0] : '',
+      pendingReview,
+      refundedAmount,
+      refundedCurrency: refundCurrencies.length === 1 ? refundCurrencies[0] : '',
+    };
+  }, [filteredRecords, paymentRefundRecords]);
+
+  const exportPaymentsCsv = () => {
+    const headers = [
+      'University / Account',
+      'Payment Reference',
+      'Invoice Number',
+      'Status',
+      'Amount Paid',
+      'Currency',
+      'Remaining Balance',
+      'Payment Date',
+      'Payment Method',
+      'Batch',
+    ];
+
+    const rows = filteredRecords.map((record) => [
+      accountName(record),
+      referenceLabel(record),
+      record.invoiceId?.invoiceNumber || '',
+      record.status || '',
+      Number(record.amount || 0).toFixed(2),
+      record.currency || 'USD',
+      Number(record.invoiceBalance || 0).toFixed(2),
+      formatDate(record.paidAt || record.createdAt),
+      String(record.paymentMethod || '').replace(/_/g, ' '),
+      record.batchId?.batchNumber || '',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) =>
+        row
+          .map((value) => '"' + String(value ?? '').replace(/"/g, '""') + '"')
+          .join(',')
+      )
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'azaam-payments-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const referenceLabel = (record: RecordObject) =>
     record.invoiceNumber || record.reference || '—';
 
@@ -942,6 +1033,353 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     if (editing && asId(invoice) === form.invoiceId) return true;
     return !['PAID', 'CANCELLED'].includes(invoice.status) && Number(invoice.balance ?? invoice.amount) > 0;
   });
+
+  if (isAdminPaymentsView) {
+    const totalCollectedLabel = adminPaymentSummary.totalCollectedCurrency
+      ? formatMoney(adminPaymentSummary.totalCollected, adminPaymentSummary.totalCollectedCurrency)
+      : adminPaymentSummary.totalCollected > 0
+        ? 'Multiple currencies'
+        : formatMoney(0, 'USD');
+
+    const refundedLabel = adminPaymentSummary.refundedCurrency
+      ? formatMoney(adminPaymentSummary.refundedAmount, adminPaymentSummary.refundedCurrency)
+      : adminPaymentSummary.refundedAmount > 0
+        ? 'Multiple currencies'
+        : formatMoney(0, 'USD');
+
+    return (
+      <div className="space-y-5 pb-10">
+        <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-cyan-50/55 to-emerald-50/45 p-5 shadow-sm sm:p-6">
+          <div className="pr-28 sm:pr-40">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-700">
+              Finance · Payments
+            </p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+              Payments Register
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+              Track university payment records, remaining balances and linked invoices.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={exportPaymentsCsv}
+            disabled={filteredRecords.length === 0}
+            className="absolute right-4 top-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-500 px-4 text-xs font-black text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 sm:right-6 sm:top-6 sm:px-5"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+        </section>
+
+        {error && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+            {success}
+          </div>
+        )}
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <PaymentSummaryCard
+            icon={<ReceiptText className="h-5 w-5" />}
+            label="Records"
+            value={loading ? '—' : String(adminPaymentSummary.records)}
+            helper="Payment records"
+            tone="blue"
+          />
+          <PaymentSummaryCard
+            icon={<CircleDollarSign className="h-5 w-5" />}
+            label="Total Collected"
+            value={loading ? '—' : totalCollectedLabel}
+            helper="Received payments"
+            tone="green"
+          />
+          <PaymentSummaryCard
+            icon={<Clock3 className="h-5 w-5" />}
+            label="Pending Review"
+            value={loading ? '—' : String(adminPaymentSummary.pendingReview)}
+            helper="Needs attention"
+            tone="amber"
+          />
+          <PaymentSummaryCard
+            icon={<RotateCcw className="h-5 w-5" />}
+            label="Refunded"
+            value={loading ? '—' : refundedLabel}
+            helper="Refunds recorded"
+            tone="violet"
+          />
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by university, reference or invoice number..."
+              className="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500 focus:bg-white"
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-[190px_190px_190px_auto]">
+            <FilterSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              placeholder="All Statuses"
+              options={[
+                ['PAID', 'Paid'],
+                ['PENDING', 'Pending'],
+                ['PARTIAL', 'Partial'],
+                ['OVERDUE', 'Overdue'],
+                ['REFUNDED', 'Refunded'],
+                ['CANCELLED', 'Cancelled'],
+              ]}
+            />
+            <FilterSelect
+              value={paymentMethodFilter}
+              onChange={setPaymentMethodFilter}
+              placeholder="All Methods"
+              options={[
+                ['BANK_TRANSFER', 'Bank Transfer'],
+                ['MOBILE_MONEY', 'Mobile Money'],
+                ['CASH', 'Cash'],
+                ['CARD', 'Card'],
+                ['OTHER', 'Other'],
+              ]}
+            />
+            <FilterSelect
+              value={paymentDateFilter}
+              onChange={setPaymentDateFilter}
+              placeholder="All Dates"
+              options={[
+                ['TODAY', 'Today'],
+                ['7_DAYS', 'Last 7 Days'],
+                ['30_DAYS', 'Last 30 Days'],
+                ['THIS_MONTH', 'This Month'],
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('');
+                setPaymentMethodFilter('');
+                setPaymentDateFilter('');
+              }}
+              className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-slate-50"
+            >
+              Reset Filters
+            </button>
+          </div>
+
+          <div className="mt-3 flex items-center justify-end text-[10px] font-semibold text-slate-500">
+            {filteredRecords.length} result{filteredRecords.length === 1 ? '' : 's'} shown
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+            <h2 className="text-base font-black text-slate-950 sm:text-lg">
+              Recent Payments
+            </h2>
+            <div className="inline-flex items-center gap-2 text-[10px] font-bold text-slate-500 sm:text-xs">
+              Sort by: <span className="font-black text-slate-700">Newest</span>
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white py-16 text-sm font-bold text-slate-500 shadow-sm">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading payments...
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="rounded-3xl border border-slate-200 bg-white px-5 py-16 text-center shadow-sm">
+              <CreditCard className="mx-auto h-10 w-10 text-slate-300" />
+              <p className="mt-3 text-sm font-black text-slate-700">No payments found</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Try changing your search or filters.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredRecords.map((record) => {
+                const invoiceNumber = record.invoiceId?.invoiceNumber || '—';
+                const remainingBalance = Number(record.invoiceBalance || 0);
+                const paymentDate = formatDate(record.paidAt || record.createdAt);
+
+                return (
+                  <article
+                    key={asId(record)}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setViewing(record)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setViewing(record);
+                      }
+                    }}
+                    className="group relative min-w-0 cursor-pointer overflow-visible rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-teal-200 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-teal-500/10"
+                  >
+                    <div className="grid min-w-0 gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1.45fr)_auto_minmax(140px,.65fr)_minmax(140px,.65fr)_auto] md:items-center">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+                          <Building2 className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-black text-slate-950 sm:text-base">
+                            {accountName(record)}
+                          </h3>
+                          <div className="mt-1 truncate font-mono text-[10px] font-black text-teal-700 sm:text-[11px]">
+                            {referenceLabel(record)}
+                          </div>
+                          <div className="mt-0.5 truncate text-[10px] font-semibold text-slate-400">
+                            {invoiceNumber}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 md:block">
+                        <span className={'inline-flex rounded-full px-2.5 py-1 text-[9px] font-black ' + statusClass(record.status)}>
+                          {record.status}
+                        </span>
+                        <span className="ml-auto text-[10px] font-semibold text-slate-500 md:hidden">
+                          {paymentDate}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 md:block">
+                        <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                          Amount Paid
+                        </div>
+                        <div className="mt-1 text-sm font-black text-emerald-700">
+                          {formatMoney(record.amount, record.currency)}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 md:block">
+                        <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                          Remaining
+                        </div>
+                        <div className="mt-1 text-sm font-black text-amber-700">
+                          {formatMoney(remainingBalance, record.invoiceId?.currency || record.currency)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 md:justify-end">
+                        <span className="hidden text-[10px] font-semibold text-slate-500 md:block">
+                          {paymentDate}
+                        </span>
+
+                        <div
+                          className="relative"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            aria-label="Payment actions"
+                            onClick={() =>
+                              setRowMenuId((current) => current === asId(record) ? null : asId(record))
+                            }
+                            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+
+                          {rowMenuId === asId(record) && (
+                            <div className="absolute right-0 top-11 z-20 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
+                              <ActionItem
+                                icon={<Eye className="h-4 w-4" />}
+                                label="View Details"
+                                onClick={() => {
+                                  setRowMenuId(null);
+                                  setViewing(record);
+                                }}
+                              />
+                              <ActionItem
+                                icon={<Pencil className="h-4 w-4" />}
+                                label="Edit Record"
+                                onClick={() => void openEdit(record)}
+                              />
+                              {record.status !== 'REFUNDED' && (
+                                <ActionItem
+                                  icon={<RotateCcw className="h-4 w-4" />}
+                                  label="Create Refund"
+                                  onClick={() => void refundPayment(record)}
+                                />
+                              )}
+                              {record.status !== 'CANCELLED' && (
+                                <ActionItem
+                                  danger
+                                  icon={<Ban className="h-4 w-4" />}
+                                  label="Void / Cancel"
+                                  onClick={() => void voidRecord(record)}
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {viewing && (
+          <ModalShell
+            title="Payment Details"
+            eyebrow={referenceLabel(viewing)}
+            onClose={() => setViewing(null)}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DetailBox label="Account / University" value={accountName(viewing)} />
+              <DetailBox label="Status" value={viewing.status || '—'} />
+              <DetailBox label="Payment Reference" value={referenceLabel(viewing)} />
+              <DetailBox label="Payment Date" value={formatDate(viewing.paidAt || viewing.createdAt)} />
+              <DetailBox label="Amount Paid" value={formatMoney(viewing.amount, viewing.currency)} />
+              <DetailBox
+                label="Remaining Balance"
+                value={formatMoney(
+                  viewing.invoiceBalance || 0,
+                  viewing.invoiceId?.currency || viewing.currency
+                )}
+              />
+              <DetailBox
+                label="Linked Invoice"
+                value={viewing.invoiceId?.invoiceNumber || '—'}
+              />
+              <DetailBox
+                label="Payment Method"
+                value={String(viewing.paymentMethod || 'Not specified').replace(/_/g, ' ')}
+              />
+              <DetailBox
+                label="Batch"
+                value={
+                  viewing.batchId
+                    ? (viewing.batchId?.batchNumber || 'Batch') +
+                      (viewing.batchId?.name ? ' · ' + viewing.batchId.name : '')
+                    : '—'
+                }
+              />
+              <DetailBox label="Description" value={viewing.description || '—'} />
+              <DetailBox label="Created" value={formatDate(viewing.createdAt)} />
+            </div>
+          </ModalShell>
+        )}
+      </div>
+    );
+  }
 
   if (isUniversityPaymentsView) {
     const totalPaidLabel = universityPaymentSummary.totalPaidCurrency
