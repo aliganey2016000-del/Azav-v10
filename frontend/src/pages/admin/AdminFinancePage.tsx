@@ -1093,15 +1093,25 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={exportPaymentsCsv}
-              disabled={filteredRecords.length === 0}
-              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-500 px-4 text-xs font-black text-white shadow-lg transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 sm:px-5"
-            >
-              <Download className="h-4 w-4" />
-              <span>Export</span>
-            </button>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => void openCreate()}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-teal-600 px-4 text-xs font-black text-white shadow-lg transition hover:bg-teal-700 hover:shadow-xl sm:px-5"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Record Payment</span>
+              </button>
+              <button
+                type="button"
+                onClick={exportPaymentsCsv}
+                disabled={filteredRecords.length === 0}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-5"
+              >
+                <Download className="h-4 w-4" />
+                <span>Export</span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -1483,6 +1493,189 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               <DetailBox label="Description" value={viewing.description || '—'} />
               <DetailBox label="Created" value={formatDate(viewing.createdAt)} />
             </div>
+          </ModalShell>
+        )}
+
+        {formOpen && (
+          <ModalShell
+            title={editing ? 'Edit Payment' : 'Record Payment'}
+            eyebrow="Finance · Payment"
+            onClose={closeForm}
+            footer={
+              <>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={closeForm}
+                  className="min-h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-slate-600 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    saving ||
+                    referenceLoading ||
+                    !form.invoiceId ||
+                    !form.description.trim() ||
+                    !form.amount
+                  }
+                  onClick={() => void saveRecord()}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-500 px-5 text-sm font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Banknote className="h-4 w-4" />}
+                  {saving ? 'Saving...' : editing ? 'Save Changes' : 'Save Payment'}
+                </button>
+              </>
+            }
+          >
+            {error && (
+              <div className="mb-4 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+                {error}
+              </div>
+            )}
+
+            {referenceLoading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm font-bold text-slate-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Loading invoices...
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Select
+                  label="Invoice *"
+                  value={form.invoiceId}
+                  onChange={(value) => {
+                    const invoice = invoices.find((item) => asId(item) === value);
+                    setForm((current) => ({
+                      ...current,
+                      invoiceId: value,
+                      userId: asId(invoice?.userId),
+                      currency: invoice?.currency || current.currency,
+                      description: invoice
+                        ? 'Payment for ' + (invoice.invoiceNumber || invoice.description || 'invoice')
+                        : '',
+                      amount: invoice?.balance != null ? String(invoice.balance) : '',
+                    }));
+                  }}
+                  disabled={Boolean(editing)}
+                >
+                  <option value="">Select unpaid invoice</option>
+                  {openInvoices.map((invoice) => (
+                    <option key={asId(invoice)} value={asId(invoice)}>
+                      {invoice.invoiceNumber || 'Invoice'} · {accountName(invoice)} · Balance {formatMoney(invoice.balance ?? invoice.amount, invoice.currency)}
+                    </option>
+                  ))}
+                </Select>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                    Invoice Account
+                  </div>
+                  <div className="mt-1 text-sm font-black text-slate-800">
+                    {selectedInvoice ? accountName(selectedInvoice) : 'Select an invoice'}
+                  </div>
+                  {selectedInvoice && (
+                    <>
+                      <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                        {selectedInvoice.batchId?.batchNumber
+                          ? 'Batch ' + selectedInvoice.batchId.batchNumber + ' · '
+                          : ''}
+                        Remaining {formatMoney(selectedInvoice.balance ?? selectedInvoice.amount, selectedInvoice.currency)}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <label>
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                    Amount Received *
+                  </span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    max={selectedInvoice ? Number(selectedInvoice.balance ?? selectedInvoice.amount) : undefined}
+                    step="0.01"
+                    value={form.amount}
+                    disabled={Boolean(editing)}
+                    onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+                    placeholder="0.00"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-500 disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </label>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                    Currency
+                  </div>
+                  <div className="mt-1 text-sm font-black text-slate-800">
+                    {selectedInvoice?.currency || form.currency || 'USD'}
+                  </div>
+                </div>
+
+                <Select
+                  label="Payment Method *"
+                  value={form.paymentMethod}
+                  onChange={(value) => setForm((current) => ({ ...current, paymentMethod: value }))}
+                >
+                  <option value="">Select payment method</option>
+                  <option value="CASH">Cash</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="MOBILE_MONEY">Mobile Money</option>
+                  <option value="CARD">Card</option>
+                  <option value="OTHER">Other</option>
+                </Select>
+
+                <label>
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                    Payment Date
+                  </span>
+                  <input
+                    type="date"
+                    value={form.paidAt}
+                    onChange={(event) => setForm((current) => ({ ...current, paidAt: event.target.value }))}
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-teal-500"
+                  />
+                </label>
+
+                <label className="sm:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                    Payment Reference
+                  </span>
+                  <input
+                    value={form.reference}
+                    onChange={(event) => setForm((current) => ({ ...current, reference: event.target.value }))}
+                    placeholder="Auto-generated if blank"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-teal-500"
+                  />
+                </label>
+
+                <label className="sm:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                    Description *
+                  </span>
+                  <input
+                    value={form.description}
+                    onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                    placeholder="Payment for selected invoice"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-teal-500"
+                  />
+                </label>
+
+                <label className="sm:col-span-2">
+                  <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                    Notes
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={form.notes}
+                    onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                    placeholder="Optional internal finance notes"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-teal-500"
+                  />
+                </label>
+              </div>
+            )}
           </ModalShell>
         )}
       </div>
