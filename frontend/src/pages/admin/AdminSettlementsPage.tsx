@@ -5,10 +5,10 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
-  CircleDollarSign,
-  Clock3,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
+  Clock3,
   Download,
   Eye,
   FileText,
@@ -17,6 +17,7 @@ import {
   Pencil,
   RotateCcw,
   Search,
+  Users,
   X,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -24,6 +25,9 @@ import api from '../../services/api';
 type RecordObject = Record<string, any>;
 
 type SettlementForm = {
+  universityId: string;
+  batchId: string;
+  invoiceId: string;
   organizationId: string;
   amount: string;
   description: string;
@@ -51,6 +55,9 @@ const inputDateToday = () => {
 };
 
 const emptyForm = (): SettlementForm => ({
+  universityId: '',
+  batchId: '',
+  invoiceId: '',
   organizationId: '',
   amount: '',
   description: '',
@@ -105,16 +112,13 @@ const statusClass = (status?: string) => {
   }
 };
 
-const loadAllOrganizations = async () => {
+const loadAllAdminPages = async (endpoint: string) => {
   const collected: RecordObject[] = [];
   let page = 1;
 
   while (page <= 25) {
-    const response = await api.get('/admin/organizations', {
-      params: { page, limit: 100 },
-    });
+    const response = await api.get(endpoint, { params: { page, limit: 100 } });
     collected.push(...asArray(response));
-
     const pagination = response?.data?.pagination;
     if (!pagination?.totalPages || page >= Number(pagination.totalPages)) break;
     page += 1;
@@ -125,7 +129,13 @@ const loadAllOrganizations = async () => {
 
 export const AdminSettlementsPage: React.FC = () => {
   const [records, setRecords] = useState<RecordObject[]>([]);
+  const [universities, setUniversities] = useState<RecordObject[]>([]);
   const [organizations, setOrganizations] = useState<RecordObject[]>([]);
+  const [batches, setBatches] = useState<RecordObject[]>([]);
+  const [contextInvoices, setContextInvoices] = useState<RecordObject[]>([]);
+  const [hospitalOptions, setHospitalOptions] = useState<RecordObject[]>([]);
+  const [settlementContext, setSettlementContext] = useState<RecordObject | null>(null);
+
   const [form, setForm] = useState<SettlementForm>(() => emptyForm());
   const [editing, setEditing] = useState<RecordObject | null>(null);
   const [viewing, setViewing] = useState<RecordObject | null>(null);
@@ -138,7 +148,9 @@ export const AdminSettlementsPage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('');
 
   const [loading, setLoading] = useState(true);
-  const [organizationsLoading, setOrganizationsLoading] = useState(true);
+  const [referencesLoading, setReferencesLoading] = useState(true);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [contextLoading, setContextLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -159,23 +171,96 @@ export const AdminSettlementsPage: React.FC = () => {
     }
   };
 
-  const loadOrganizations = async () => {
-    setOrganizationsLoading(true);
+  const loadReferences = async () => {
+    setReferencesLoading(true);
     try {
-      setOrganizations(await loadAllOrganizations());
+      const [nextUniversities, nextOrganizations] = await Promise.all([
+        loadAllAdminPages('/admin/universities'),
+        loadAllAdminPages('/admin/organizations'),
+      ]);
+      setUniversities(nextUniversities);
+      setOrganizations(nextOrganizations);
     } catch (requestError: any) {
       setError(
         requestError?.response?.data?.error?.message ||
-          'Unable to load beneficiary organizations.'
+          'Unable to load settlement reference data.'
       );
     } finally {
-      setOrganizationsLoading(false);
+      setReferencesLoading(false);
+    }
+  };
+
+  const loadBatches = async (universityId: string) => {
+    if (!universityId) {
+      setBatches([]);
+      return [];
+    }
+
+    setBatchLoading(true);
+    try {
+      const response = await api.get('/admin/training-batches', {
+        params: { universityId },
+      });
+      const next = asArray(response);
+      setBatches(next);
+      return next;
+    } catch (requestError: any) {
+      setBatches([]);
+      setError(
+        requestError?.response?.data?.error?.message ||
+          'Unable to load batches for this university.'
+      );
+      return [];
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const loadContext = async (
+    batchId: string,
+    invoiceId = '',
+    universityId = form.universityId
+  ) => {
+    if (!batchId) {
+      setContextInvoices([]);
+      setHospitalOptions([]);
+      setSettlementContext(null);
+      return null;
+    }
+
+    setContextLoading(true);
+    try {
+      const response = await api.get('/finance/settlement-context', {
+        params: {
+          batchId,
+          universityId: universityId || undefined,
+          invoiceId: invoiceId || undefined,
+        },
+      });
+      const data = response?.data?.data ?? response?.data ?? {};
+      const invoices = Array.isArray(data?.invoices) ? data.invoices : [];
+      const hospitals = Array.isArray(data?.hospitals) ? data.hospitals : [];
+      setContextInvoices(invoices);
+      setHospitalOptions(hospitals);
+      setSettlementContext(data);
+      return data;
+    } catch (requestError: any) {
+      setContextInvoices([]);
+      setHospitalOptions([]);
+      setSettlementContext(null);
+      setError(
+        requestError?.response?.data?.error?.message ||
+          'Unable to load hospitals and invoices for this batch.'
+      );
+      return null;
+    } finally {
+      setContextLoading(false);
     }
   };
 
   useEffect(() => {
     void loadRecords();
-    void loadOrganizations();
+    void loadReferences();
   }, []);
 
   const filteredRecords = useMemo(() => {
@@ -219,7 +304,9 @@ export const AdminSettlementsPage: React.FC = () => {
 
       return [
         record.organizationId?.name,
-        record.organizationId?.code,
+        record.universityId?.name,
+        record.batchId?.batchNumber,
+        record.invoiceId?.invoiceNumber,
         record.reference,
         record.description,
         record.currency,
@@ -233,8 +320,7 @@ export const AdminSettlementsPage: React.FC = () => {
   }, [records, search, statusFilter, dateFilter]);
 
   const settlementSummary = useMemo(() => {
-    const active = records.filter((record) => record.status !== 'CANCELLED');
-    const paid = active.filter((record) => record.status === 'PAID');
+    const paid = records.filter((record) => record.status === 'PAID');
     const currencies = Array.from(
       new Set(paid.map((record) => String(record.currency || 'USD')))
     );
@@ -252,13 +338,33 @@ export const AdminSettlementsPage: React.FC = () => {
     };
   }, [records]);
 
-  const selectedOrganization =
-    organizations.find((organization) => asId(organization) === form.organizationId) ||
+  const selectedUniversity =
+    universities.find((item) => asId(item) === form.universityId) || null;
+  const selectedBatch =
+    batches.find((item) => asId(item) === form.batchId) ||
+    settlementContext?.batch ||
     null;
+  const selectedInvoice =
+    contextInvoices.find((item) => asId(item) === form.invoiceId) ||
+    settlementContext?.selectedInvoice ||
+    null;
+  const selectedHospital =
+    hospitalOptions.find((item) => asId(item.organizationId) === form.organizationId) ||
+    null;
+  const selectedOrganization =
+    organizations.find((item) => asId(item) === form.organizationId) || null;
+
+  const isLegacyEditing = Boolean(
+    editing && (!form.universityId || !form.batchId || !form.invoiceId)
+  );
 
   const resetForm = () => {
     setEditing(null);
     setForm(emptyForm());
+    setBatches([]);
+    setContextInvoices([]);
+    setHospitalOptions([]);
+    setSettlementContext(null);
     setRowMenuId(null);
   };
 
@@ -281,13 +387,100 @@ export const AdminSettlementsPage: React.FC = () => {
     });
   };
 
-  const saveSettlement = async () => {
-    const amount = Number(form.amount);
+  const handleUniversityChange = async (universityId: string) => {
+    setError('');
+    setForm((current) => ({
+      ...current,
+      universityId,
+      batchId: '',
+      invoiceId: '',
+      organizationId: '',
+      amount: '',
+      description: '',
+      currency: 'USD',
+    }));
+    setContextInvoices([]);
+    setHospitalOptions([]);
+    setSettlementContext(null);
+    await loadBatches(universityId);
+  };
 
-    if (!form.organizationId) {
-      setError('Select a beneficiary organization.');
+  const handleBatchChange = async (batchId: string) => {
+    setError('');
+    setForm((current) => ({
+      ...current,
+      batchId,
+      invoiceId: '',
+      organizationId: '',
+      amount: '',
+      description: '',
+      currency: 'USD',
+    }));
+    setContextInvoices([]);
+    setHospitalOptions([]);
+    setSettlementContext(null);
+
+    if (!batchId) return;
+
+    const data = await loadContext(batchId, '', form.universityId);
+    const invoices = Array.isArray(data?.invoices) ? data.invoices : [];
+
+    if (invoices.length === 1) {
+      const invoice = invoices[0];
+      const invoiceId = asId(invoice);
+      setForm((current) => ({
+        ...current,
+        invoiceId,
+        currency: invoice.currency || 'USD',
+      }));
+      await loadContext(batchId, invoiceId, form.universityId);
+    }
+  };
+
+  const handleInvoiceChange = async (invoiceId: string) => {
+    const invoice = contextInvoices.find((item) => asId(item) === invoiceId);
+    setError('');
+    setForm((current) => ({
+      ...current,
+      invoiceId,
+      organizationId: '',
+      amount: '',
+      description: '',
+      currency: invoice?.currency || current.currency || 'USD',
+    }));
+
+    if (!invoiceId) {
+      await loadContext(form.batchId, '', form.universityId);
       return;
     }
+
+    await loadContext(form.batchId, invoiceId, form.universityId);
+  };
+
+  const handleHospitalChange = (organizationId: string) => {
+    const hospital = hospitalOptions.find(
+      (item) => asId(item.organizationId) === organizationId
+    );
+
+    setForm((current) => ({
+      ...current,
+      organizationId,
+      amount:
+        hospital && Number(hospital.suggestedAmount || 0) > 0
+          ? String(Number(hospital.suggestedAmount).toFixed(2))
+          : '',
+      description: hospital
+        ? [
+            selectedBatch?.batchNumber || 'Batch',
+            hospital.name,
+            hospital.studentCount + ' student' + (hospital.studentCount === 1 ? '' : 's'),
+          ].join(' · ') + ' settlement'
+        : '',
+    }));
+  };
+
+  const saveSettlement = async () => {
+    const amount = Number(form.amount);
 
     if (!Number.isFinite(amount) || amount <= 0) {
       setError('Enter a valid settlement amount.');
@@ -299,12 +492,21 @@ export const AdminSettlementsPage: React.FC = () => {
       return;
     }
 
+    if (!editing && (!form.universityId || !form.batchId || !form.invoiceId || !form.organizationId)) {
+      setError('Select the university, batch, invoice and hospital before recording the settlement.');
+      return;
+    }
+
+    if (editing && isLegacyEditing && !form.organizationId) {
+      setError('Select a beneficiary organization.');
+      return;
+    }
+
     setSaving(true);
     setError('');
     setSuccess('');
 
-    const payload = {
-      organizationId: form.organizationId,
+    const editablePayload = {
       description: form.description.trim(),
       amount,
       currency: form.currency || 'USD',
@@ -315,11 +517,21 @@ export const AdminSettlementsPage: React.FC = () => {
 
     try {
       if (editing) {
-        await api.patch('/finance/' + asId(editing), payload);
+        await api.patch('/finance/' + asId(editing), {
+          ...editablePayload,
+          organizationId: isLegacyEditing ? form.organizationId : undefined,
+        });
         setSuccess('Settlement updated successfully.');
       } else {
-        await api.post('/finance', { type: 'SETTLEMENT', ...payload });
-        setSuccess('Settlement recorded successfully.');
+        await api.post('/finance', {
+          type: 'SETTLEMENT',
+          universityId: form.universityId,
+          batchId: form.batchId,
+          invoiceId: form.invoiceId,
+          organizationId: form.organizationId,
+          ...editablePayload,
+        });
+        setSuccess('Batch hospital settlement recorded successfully.');
       }
 
       resetForm();
@@ -335,7 +547,11 @@ export const AdminSettlementsPage: React.FC = () => {
     }
   };
 
-  const editSettlement = (record: RecordObject) => {
+  const editSettlement = async (record: RecordObject) => {
+    const universityId = asId(record.universityId);
+    const batchId = asId(record.batchId);
+    const invoiceId = asId(record.invoiceId);
+
     setEditing(record);
     setViewing(null);
     setRowMenuId(null);
@@ -343,6 +559,9 @@ export const AdminSettlementsPage: React.FC = () => {
     setError('');
     setFormVisible(true);
     setForm({
+      universityId,
+      batchId,
+      invoiceId,
       organizationId: asId(record.organizationId),
       amount: record.amount == null ? '' : String(record.amount),
       description: record.description || '',
@@ -351,7 +570,20 @@ export const AdminSettlementsPage: React.FC = () => {
       reference: record.reference || '',
       paidAt: toInputDate(record.paidAt || record.createdAt),
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (universityId) {
+      await loadBatches(universityId);
+    }
+    if (batchId) {
+      await loadContext(batchId, invoiceId, universityId);
+    }
+
+    window.requestAnimationFrame(() => {
+      document.getElementById('settlement-form-card')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
   };
 
   const voidSettlement = async (record: RecordObject) => {
@@ -385,7 +617,11 @@ export const AdminSettlementsPage: React.FC = () => {
 
   const exportCsv = () => {
     const headers = [
+      'University',
+      'Batch',
       'Beneficiary Organization',
+      'Invoice',
+      'Students',
       'Reference',
       'Description',
       'Amount',
@@ -395,7 +631,11 @@ export const AdminSettlementsPage: React.FC = () => {
     ];
 
     const rows = filteredRecords.map((record) => [
+      record.universityId?.name || '',
+      record.batchId?.batchNumber || '',
       record.organizationId?.name || '',
+      record.invoiceId?.invoiceNumber || '',
+      record.settlementStudentCount || '',
       record.reference || '',
       record.description || '',
       Number(record.amount || 0).toFixed(2),
@@ -422,6 +662,19 @@ export const AdminSettlementsPage: React.FC = () => {
     anchor.remove();
     URL.revokeObjectURL(url);
   };
+
+  const totalSettledLabel = loading
+    ? '—'
+    : settlementSummary.totalSettledCurrency
+      ? formatMoney(
+          settlementSummary.totalSettled,
+          settlementSummary.totalSettledCurrency
+        )
+      : settlementSummary.totalSettled > 0
+        ? 'Multiple currencies'
+        : formatMoney(0, 'USD');
+
+  const contextLocked = Boolean(editing && !isLegacyEditing);
 
   return (
     <div className="space-y-5 pb-10">
@@ -485,19 +738,8 @@ export const AdminSettlementsPage: React.FC = () => {
         <SettlementMetric
           icon={<CircleDollarSign className="h-5 w-5" />}
           label="Total Settled"
-          value={
-            loading
-              ? '—'
-              : settlementSummary.totalSettledCurrency
-                ? formatMoney(
-                    settlementSummary.totalSettled,
-                    settlementSummary.totalSettledCurrency
-                  )
-                : settlementSummary.totalSettled > 0
-                  ? 'Multiple currencies'
-                  : formatMoney(0, 'USD')
-          }
-          helper="All time"
+          value={totalSettledLabel}
+          helper="Paid settlements"
           tone="green"
         />
         <SettlementMetric
@@ -524,143 +766,251 @@ export const AdminSettlementsPage: React.FC = () => {
       </section>
 
       {formVisible && (
-      <section id="settlement-form-card" className="scroll-mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-gradient-to-r from-white via-teal-50/35 to-cyan-50/40 p-4 sm:p-6">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-black text-slate-950">
-                {editing ? 'Edit Settlement Details' : 'Settlement Details'}
-              </h2>
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                Enter the beneficiary, amount and settlement information below.
-              </p>
+        <section
+          id="settlement-form-card"
+          className="scroll-mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+        >
+          <div className="border-b border-slate-100 bg-gradient-to-r from-white via-teal-50/35 to-cyan-50/40 p-4 sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-black text-slate-950">
+                  {editing ? 'Edit Settlement' : 'Create Batch Settlement'}
+                </h2>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  {isLegacyEditing
+                    ? 'Legacy settlement record. Update the beneficiary and payment details below.'
+                    : 'Select University → Batch → Invoice → Hospital. The hospital list comes directly from student placements.'}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="p-4 sm:p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label>
-              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                Beneficiary Organization *
-              </span>
-              <div className="relative mt-1.5">
-                <Building2 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <select
+          <div className="p-4 sm:p-6">
+            {!isLegacyEditing && (
+              <>
+                <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[
+                    ['1', 'University'],
+                    ['2', 'Batch'],
+                    ['3', 'Invoice'],
+                    ['4', 'Hospital'],
+                  ].map(([step, label]) => (
+                    <div
+                      key={step}
+                      className="rounded-2xl border border-teal-100 bg-teal-50/55 p-3"
+                    >
+                      <div className="text-[9px] font-black uppercase tracking-[0.15em] text-teal-700">
+                        Step {step}
+                      </div>
+                      <div className="mt-1 text-xs font-black text-slate-800">
+                        {label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SelectField
+                    label="University *"
+                    value={form.universityId}
+                    disabled={referencesLoading || saving || contextLocked}
+                    onChange={(value) => void handleUniversityChange(value)}
+                  >
+                    <option value="">
+                      {referencesLoading ? 'Loading universities...' : 'Select university'}
+                    </option>
+                    {universities.map((university) => (
+                      <option key={asId(university)} value={asId(university)}>
+                        {university.name}
+                      </option>
+                    ))}
+                  </SelectField>
+
+                  <SelectField
+                    label="Batch *"
+                    value={form.batchId}
+                    disabled={!form.universityId || batchLoading || saving || contextLocked}
+                    onChange={(value) => void handleBatchChange(value)}
+                  >
+                    <option value="">
+                      {batchLoading ? 'Loading batches...' : 'Select batch'}
+                    </option>
+                    {batches.map((batch) => (
+                      <option key={asId(batch)} value={asId(batch)}>
+                        {batch.batchNumber} · {batch.name}
+                      </option>
+                    ))}
+                  </SelectField>
+
+                  <SelectField
+                    label="Batch Invoice *"
+                    value={form.invoiceId}
+                    disabled={!form.batchId || contextLoading || saving || contextLocked}
+                    onChange={(value) => void handleInvoiceChange(value)}
+                  >
+                    <option value="">
+                      {contextLoading ? 'Loading invoices...' : 'Select invoice'}
+                    </option>
+                    {contextInvoices.map((invoice) => (
+                      <option key={asId(invoice)} value={asId(invoice)}>
+                        {invoice.invoiceNumber || 'Invoice'} · {formatMoney(invoice.amount, invoice.currency)}
+                      </option>
+                    ))}
+                  </SelectField>
+
+                  <SelectField
+                    label="Hospital / Beneficiary *"
+                    value={form.organizationId}
+                    disabled={!form.invoiceId || contextLoading || saving || contextLocked}
+                    onChange={handleHospitalChange}
+                  >
+                    <option value="">
+                      {contextLoading ? 'Loading hospitals...' : 'Select hospital'}
+                    </option>
+                    {hospitalOptions.map((hospital) => (
+                      <option
+                        key={asId(hospital.organizationId)}
+                        value={asId(hospital.organizationId)}
+                        disabled={Boolean(hospital.alreadySettled)}
+                      >
+                        {hospital.name} · {hospital.studentCount} student
+                        {hospital.studentCount === 1 ? '' : 's'}
+                        {hospital.alreadySettled ? ' · Already settled' : ''}
+                      </option>
+                    ))}
+                  </SelectField>
+                </div>
+
+                {form.batchId && !contextLoading && contextInvoices.length === 0 && (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-800">
+                    No active invoice was found for this batch. Create the batch invoice before recording a hospital settlement.
+                  </div>
+                )}
+
+                {form.invoiceId && !contextLoading && hospitalOptions.length === 0 && (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-bold text-amber-800">
+                    No hospital placements were found for students in this batch.
+                  </div>
+                )}
+
+                {(selectedInvoice || selectedHospital) && (
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <ContextBox
+                      label="Batch Students"
+                      value={String(selectedBatch?.studentsCount ?? '—')}
+                    />
+                    <ContextBox
+                      label="Hospital Students"
+                      value={selectedHospital ? String(selectedHospital.studentCount || 0) : '—'}
+                    />
+                    <ContextBox
+                      label="Invoice Amount"
+                      value={
+                        selectedInvoice
+                          ? formatMoney(selectedInvoice.amount, selectedInvoice.currency)
+                          : '—'
+                      }
+                    />
+                    <ContextBox
+                      label="Suggested Settlement"
+                      value={
+                        selectedHospital && selectedInvoice
+                          ? formatMoney(
+                              selectedHospital.suggestedAmount || 0,
+                              selectedInvoice.currency
+                            )
+                          : '—'
+                      }
+                    />
+                  </div>
+                )}
+
+                {selectedHospital?.students?.length > 0 && (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-teal-700" />
+                      <div className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                        Students at {selectedHospital.name}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedHospital.students.map((student: RecordObject) => (
+                        <span
+                          key={student.studentId}
+                          className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-700"
+                        >
+                          {student.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {isLegacyEditing && (
+              <div className="mb-4">
+                <SelectField
+                  label="Beneficiary Organization *"
                   value={form.organizationId}
-                  disabled={organizationsLoading || saving}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      organizationId: event.target.value,
-                    }))
+                  disabled={referencesLoading || saving}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, organizationId: value }))
                   }
-                  className="min-h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-10 pr-10 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100"
                 >
-                  <option value="">
-                    {organizationsLoading
-                      ? 'Loading organizations...'
-                      : 'Select beneficiary organization'}
-                  </option>
+                  <option value="">Select beneficiary organization</option>
                   {organizations.map((organization) => (
                     <option key={asId(organization)} value={asId(organization)}>
                       {organization.name}
                     </option>
                   ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                </SelectField>
               </div>
-            </label>
+            )}
 
-            <label>
-              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                Amount *
-              </span>
-              <div className="mt-1.5 flex min-h-12 overflow-hidden rounded-2xl border border-slate-200 bg-white transition focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10">
-                <div className="flex w-12 shrink-0 items-center justify-center border-r border-slate-200 bg-slate-50 text-sm font-black text-slate-500">
-                  {form.currency === 'USD' ? '$' : form.currency}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label>
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                  Settlement Amount *
+                </span>
+                <div className="mt-1.5 flex min-h-12 overflow-hidden rounded-2xl border border-slate-200 bg-white transition focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10">
+                  <div className="flex w-12 shrink-0 items-center justify-center border-r border-slate-200 bg-slate-50 text-sm font-black text-slate-500">
+                    {form.currency === 'USD' ? '$' : form.currency}
+                  </div>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={form.amount}
+                    disabled={saving}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, amount: event.target.value }))
+                    }
+                    placeholder="0.00"
+                    className="min-w-0 flex-1 bg-transparent px-4 text-sm font-black text-slate-900 outline-none disabled:bg-slate-100"
+                  />
                 </div>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={form.amount}
-                  disabled={saving}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      amount: event.target.value,
-                    }))
-                  }
-                  placeholder="0.00"
-                  className="min-w-0 flex-1 bg-transparent px-4 text-sm font-black text-slate-900 outline-none disabled:bg-slate-100"
-                />
-              </div>
-            </label>
+              </label>
 
-            <label>
-              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                Currency
-              </span>
-              <div className="relative mt-1.5">
-                <select
-                  value={form.currency}
-                  disabled={saving}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      currency: event.target.value,
-                    }))
-                  }
-                  className="min-h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 pr-10 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
-                >
-                  <option value="USD">USD · US Dollar</option>
-                  <option value="SOS">SOS · Somali Shilling</option>
-                  <option value="EUR">EUR · Euro</option>
-                  <option value="GBP">GBP · Pound Sterling</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              </div>
-            </label>
+              <SelectField
+                label="Status"
+                value={form.status}
+                disabled={saving}
+                onChange={(value) =>
+                  setForm((current) => ({ ...current, status: value }))
+                }
+              >
+                <option value="PAID">Paid</option>
+                <option value="PENDING">Pending</option>
+              </SelectField>
 
-            <label>
-              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                Status
-              </span>
-              <div className="relative mt-1.5">
-                <span
-                  className={
-                    'pointer-events-none absolute left-4 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full ' +
-                    (form.status === 'PAID' ? 'bg-emerald-500' : 'bg-amber-500')
-                  }
-                />
-                <select
-                  value={form.status}
-                  disabled={saving}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      status: event.target.value,
-                    }))
-                  }
-                  className="min-h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-9 pr-10 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
-                >
-                  <option value="PAID">Paid</option>
-                  <option value="PENDING">Pending</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              </div>
-            </label>
-
-            <label className="sm:col-span-2">
-              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                Description *
-              </span>
-              <div className="relative mt-1.5">
-                <FileText className="pointer-events-none absolute left-3.5 top-4 h-4 w-4 text-slate-400" />
+              <label className="sm:col-span-2">
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                  Description *
+                </span>
                 <textarea
                   rows={3}
                   maxLength={250}
@@ -672,105 +1022,94 @@ export const AdminSettlementsPage: React.FC = () => {
                       description: event.target.value,
                     }))
                   }
-                  placeholder="Clinical training settlement or beneficiary payment..."
-                  className="w-full resize-none rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-semibold leading-6 text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100"
+                  placeholder="Batch hospital settlement description..."
+                  className="mt-1.5 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100"
                 />
-                <span className="absolute bottom-2.5 right-3 text-[9px] font-bold text-slate-400">
+                <div className="mt-1 text-right text-[9px] font-bold text-slate-400">
                   {form.description.length}/250
+                </div>
+              </label>
+
+              <label>
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                  Reference
                 </span>
-              </div>
-            </label>
-
-            <label>
-              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                Reference
-              </span>
-              <input
-                value={form.reference}
-                disabled={saving}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    reference: event.target.value,
-                  }))
-                }
-                placeholder="Auto-generated if blank"
-                className="mt-1.5 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100"
-              />
-            </label>
-
-            <label>
-              <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                Settlement Date
-              </span>
-              <div className="relative mt-1.5">
-                <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="date"
-                  value={form.paidAt}
-                  disabled={saving || form.status !== 'PAID'}
+                  value={form.reference}
+                  disabled={saving}
                   onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      paidAt: event.target.value,
-                    }))
+                    setForm((current) => ({ ...current, reference: event.target.value }))
                   }
-                  className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100 disabled:text-slate-400"
+                  placeholder="Auto-generated if blank"
+                  className="mt-1.5 min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100"
                 />
-              </div>
-            </label>
-          </div>
+              </label>
 
-          <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
-                <Building2 className="h-4 w-4" />
+              <label>
+                <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                  Settlement Date
+                </span>
+                <div className="relative mt-1.5">
+                  <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="date"
+                    value={form.paidAt}
+                    disabled={saving || form.status !== 'PAID'}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, paidAt: event.target.value }))
+                    }
+                    className="min-h-12 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:bg-slate-100 disabled:text-slate-400"
+                  />
+                </div>
+              </label>
+            </div>
+
+            {!isLegacyEditing && selectedHospital && (
+              <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs font-semibold leading-5 text-slate-600">
+                This records one settlement for <strong>{selectedHospital.name}</strong> against{' '}
+                <strong>{selectedBatch?.batchNumber || 'the selected batch'}</strong>. The current placement snapshot contains{' '}
+                <strong>{selectedHospital.studentCount} student{selectedHospital.studentCount === 1 ? '' : 's'}</strong>. The same hospital, batch and invoice cannot be settled again unless this settlement is cancelled first.
               </div>
-              <p className="text-xs font-semibold leading-5 text-slate-600">
-                {selectedOrganization
-                  ? 'This settlement will be recorded against ' +
-                    selectedOrganization.name +
-                    ' and kept in the finance ledger with a permanent reference.'
-                  : 'Select the beneficiary organization. The settlement will be kept in the finance ledger with a permanent reference.'}
-              </p>
+            )}
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={closeForm}
+                className="min-h-12 rounded-2xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  saving ||
+                  (!editing &&
+                    (!form.universityId ||
+                      !form.batchId ||
+                      !form.invoiceId ||
+                      !form.organizationId)) ||
+                  !form.description.trim() ||
+                  !form.amount
+                }
+                onClick={() => void saveSettlement()}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-500 px-6 text-sm font-black text-white shadow-lg shadow-teal-500/15 transition hover:from-teal-700 hover:to-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Banknote className="h-4 w-4" />
+                )}
+                {saving
+                  ? 'Saving...'
+                  : editing
+                    ? 'Save Changes'
+                    : 'Record Batch Settlement'}
+              </button>
             </div>
           </div>
-
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={closeForm}
-              className="min-h-12 rounded-2xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={
-                saving ||
-                organizationsLoading ||
-                !form.organizationId ||
-                !form.description.trim() ||
-                !form.amount
-              }
-              onClick={() => void saveSettlement()}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-500 px-6 text-sm font-black text-white shadow-lg shadow-teal-500/15 transition hover:from-teal-700 hover:to-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Banknote className="h-4 w-4" />
-              )}
-              {saving
-                ? 'Saving...'
-                : editing
-                  ? 'Save Changes'
-                  : 'Record Settlement'}
-            </button>
-          </div>
-        </div>
-      </section>
+        </section>
       )}
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -781,21 +1120,19 @@ export const AdminSettlementsPage: React.FC = () => {
                 Recent Settlements
               </h2>
               <p className="mt-1 hidden text-xs font-semibold text-slate-500 sm:block">
-                Manage and track payments made to partner organizations.
+                Batch payments made to hospitals and partner organizations.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={exportCsv}
-                disabled={filteredRecords.length === 0}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={filteredRecords.length === 0}
+              className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-40 sm:px-4"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </button>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
@@ -805,7 +1142,7 @@ export const AdminSettlementsPage: React.FC = () => {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search organization, reference or description..."
+                placeholder="Search hospital, batch, invoice or reference..."
                 className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-teal-500 focus:bg-white"
               />
             </div>
@@ -845,6 +1182,7 @@ export const AdminSettlementsPage: React.FC = () => {
               Reset Filters
             </button>
           </div>
+
           <div className="mt-3 text-right text-[10px] font-bold text-slate-500 sm:text-xs">
             {filteredRecords.length} result{filteredRecords.length === 1 ? '' : 's'} shown
           </div>
@@ -862,17 +1200,18 @@ export const AdminSettlementsPage: React.FC = () => {
               No settlements found
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Recorded beneficiary transfers will appear here.
+              Batch hospital settlements will appear here.
             </p>
           </div>
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[820px] text-left text-xs">
+              <table className="w-full min-w-[900px] text-left text-xs">
                 <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
                   <tr>
-                    <th className="px-5 py-3.5">Organization</th>
+                    <th className="px-5 py-3.5">Hospital / Batch</th>
                     <th className="px-4 py-3.5">Reference</th>
+                    <th className="px-4 py-3.5">Students</th>
                     <th className="px-4 py-3.5">Amount</th>
                     <th className="px-4 py-3.5">Date</th>
                     <th className="px-4 py-3.5">Status</th>
@@ -900,17 +1239,21 @@ export const AdminSettlementsPage: React.FC = () => {
                             <Building2 className="h-5 w-5" />
                           </div>
                           <div className="min-w-0">
-                            <div className="max-w-[220px] truncate font-black text-slate-900">
+                            <div className="max-w-[240px] truncate font-black text-slate-900">
                               {record.organizationId?.name || 'Beneficiary Organization'}
                             </div>
-                            <div className="mt-0.5 max-w-[220px] truncate text-[10px] font-semibold text-slate-500">
-                              {record.description || 'Settlement'}
+                            <div className="mt-0.5 max-w-[260px] truncate text-[10px] font-semibold text-slate-500">
+                              {record.universityId?.name || 'Legacy settlement'}
+                              {record.batchId?.batchNumber ? ' · ' + record.batchId.batchNumber : ''}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 font-mono text-[11px] font-black text-teal-700">
                         {record.reference || '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 font-black text-slate-700">
+                        {record.settlementStudentCount || '—'}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 font-black text-slate-900">
                         {formatMoney(record.amount, record.currency)}
@@ -958,7 +1301,7 @@ export const AdminSettlementsPage: React.FC = () => {
                             <ActionButton
                               icon={<Pencil className="h-4 w-4" />}
                               label="Edit Settlement"
-                              onClick={() => editSettlement(record)}
+                              onClick={() => void editSettlement(record)}
                             />
                             {record.status !== 'CANCELLED' && (
                               <ActionButton
@@ -1016,9 +1359,18 @@ export const AdminSettlementsPage: React.FC = () => {
                             {record.status}
                           </span>
                         </div>
-                        <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-slate-500">
-                          {record.description || 'Settlement'}
+
+                        <p className="mt-1 truncate text-[10px] font-semibold text-slate-500">
+                          {record.batchId?.batchNumber
+                            ? (record.universityId?.name || 'University') +
+                              ' · ' +
+                              record.batchId.batchNumber +
+                              ' · ' +
+                              (record.settlementStudentCount || 0) +
+                              ' students'
+                            : record.description || 'Settlement'}
                         </p>
+
                         <div className="mt-2 flex items-center justify-between gap-3">
                           <div className="text-sm font-black text-emerald-700">
                             {formatMoney(record.amount, record.currency)}
@@ -1047,7 +1399,7 @@ export const AdminSettlementsPage: React.FC = () => {
             className="absolute inset-0 cursor-default"
             onClick={() => setViewing(null)}
           />
-          <div className="relative z-10 max-h-[94vh] w-full overflow-y-auto rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-xl sm:rounded-3xl">
+          <div className="relative z-10 max-h-[94vh] w-full overflow-y-auto rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-w-2xl sm:rounded-3xl">
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">
@@ -1068,8 +1420,33 @@ export const AdminSettlementsPage: React.FC = () => {
 
             <div className="grid gap-3 p-5 sm:grid-cols-2">
               <DetailBox
-                label="Beneficiary"
+                label="University"
+                value={viewing.universityId?.name || 'Legacy settlement'}
+              />
+              <DetailBox
+                label="Batch"
+                value={
+                  viewing.batchId
+                    ? (viewing.batchId.batchNumber || 'Batch') +
+                      (viewing.batchId.name ? ' · ' + viewing.batchId.name : '')
+                    : '—'
+                }
+              />
+              <DetailBox
+                label="Hospital / Beneficiary"
                 value={viewing.organizationId?.name || '—'}
+              />
+              <DetailBox
+                label="Batch Invoice"
+                value={viewing.invoiceId?.invoiceNumber || '—'}
+              />
+              <DetailBox
+                label="Students"
+                value={
+                  viewing.settlementStudentCount != null
+                    ? String(viewing.settlementStudentCount)
+                    : '—'
+                }
               />
               <DetailBox label="Status" value={viewing.status || '—'} />
               <DetailBox
@@ -1100,7 +1477,7 @@ export const AdminSettlementsPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => editSettlement(viewing)}
+                onClick={() => void editSettlement(viewing)}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 text-sm font-black text-white"
               >
                 <Pencil className="h-4 w-4" />
@@ -1145,6 +1522,42 @@ const SettlementMetric: React.FC<{
     </article>
   );
 };
+
+const ContextBox: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+      {label}
+    </div>
+    <div className="mt-1 break-words text-sm font-black text-slate-900">
+      {value}
+    </div>
+  </div>
+);
+
+const SelectField: React.FC<{
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+}> = ({ label, value, onChange, children, disabled = false }) => (
+  <label>
+    <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+      {label}
+    </span>
+    <div className="relative mt-1.5">
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 pr-10 text-sm font-bold text-slate-800 outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+      >
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    </div>
+  </label>
+);
 
 const FilterSelect: React.FC<{
   value: string;
