@@ -1261,27 +1261,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                           />
                         </div>
 
-                        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="text-xs font-black text-emerald-800">
-                              Payment recorded successfully
-                            </div>
-                            <div className="mt-0.5 break-words text-[10px] font-semibold text-emerald-700/80">
-                              Linked to invoice {invoiceNumber}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setViewing(record);
-                            }}
-                            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 text-xs font-black text-teal-700 shadow-sm"
-                          >
-                            <Eye className="h-4 w-4" />
-                            View Full Details
-                          </button>
-                        </div>
                       </div>
                     )}
 
