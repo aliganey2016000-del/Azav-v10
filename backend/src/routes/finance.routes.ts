@@ -33,6 +33,12 @@ financeRouter.patch(
   FinancePricingController.toggleStatus
 );
 
+financeRouter.get(
+  '/settlement-context',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  FinanceController.settlementContext
+);
+
 financeRouter.get('/', FinanceController.list);
 
 financeRouter.post(
