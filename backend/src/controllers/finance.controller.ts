@@ -1365,6 +1365,27 @@ export class FinanceController {
         if (req.body?.notes !== undefined) record.notes = String(req.body.notes || '').trim() || undefined;
         await record.save();
       } else {
+        const contextualSettlement = Boolean(
+          record.universityId && record.batchId && record.invoiceId
+        );
+
+        if (
+          contextualSettlement &&
+          (req.body?.universityId !== undefined ||
+            req.body?.batchId !== undefined ||
+            req.body?.invoiceId !== undefined ||
+            req.body?.organizationId !== undefined)
+        ) {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: 'SETTLEMENT_CONTEXT_LOCKED',
+              message: 'University, batch, invoice and hospital are locked after a settlement is created; void and recreate it to change the context',
+            },
+          });
+          return;
+        }
+
         if (req.body?.amount !== undefined) {
           const amount = positiveAmount(req.body.amount);
           if (!amount) {
@@ -1374,11 +1395,68 @@ export class FinanceController {
             });
             return;
           }
+
+          if (contextualSettlement && record.invoiceId) {
+            const invoice = await Payment.findOne({
+              _id: record.invoiceId,
+              type: 'FEE',
+              status: { $ne: 'CANCELLED' },
+            }).lean();
+
+            if (!invoice) {
+              res.status(400).json({
+                success: false,
+                error: { code: 'INVALID_INVOICE', message: 'The linked batch invoice is unavailable' },
+              });
+              return;
+            }
+
+            const otherTotals = await Payment.aggregate([
+              {
+                $match: {
+                  _id: { $ne: record._id },
+                  invoiceId: record.invoiceId,
+                  type: 'SETTLEMENT',
+                  status: { $ne: 'CANCELLED' },
+                },
+              },
+              { $group: { _id: '$invoiceId', total: { $sum: '$amount' } } },
+            ]);
+
+            const otherSettled = Number(otherTotals[0]?.total || 0);
+            if (otherSettled + amount > Number(invoice.amount || 0) + 0.000001) {
+              res.status(400).json({
+                success: false,
+                error: {
+                  code: 'SETTLEMENT_EXCEEDS_INVOICE',
+                  message: 'Total settlements cannot exceed the selected invoice amount',
+                },
+              });
+              return;
+            }
+          }
+
           record.amount = amount;
         }
 
         if (req.body?.currency !== undefined) {
-          record.currency = String(req.body.currency || record.currency).toUpperCase();
+          const currency = String(req.body.currency || record.currency).toUpperCase();
+
+          if (contextualSettlement && record.invoiceId) {
+            const invoice = await Payment.findById(record.invoiceId).select('currency').lean();
+            if (invoice && currency !== String(invoice.currency || 'USD').toUpperCase()) {
+              res.status(400).json({
+                success: false,
+                error: {
+                  code: 'SETTLEMENT_CURRENCY_MISMATCH',
+                  message: 'Settlement currency must match the linked invoice currency',
+                },
+              });
+              return;
+            }
+          }
+
+          record.currency = currency;
         }
 
         if (req.body?.status !== undefined) {
@@ -1396,7 +1474,7 @@ export class FinanceController {
           record.status = status;
         }
 
-        if (req.body?.organizationId !== undefined) {
+        if (!contextualSettlement && req.body?.organizationId !== undefined) {
           const organizationId = String(req.body.organizationId || '');
           if (!mongoose.Types.ObjectId.isValid(organizationId)) {
             res.status(400).json({
