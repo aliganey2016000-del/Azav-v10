@@ -98,6 +98,7 @@ export class ApplicationService {
     return Application.find(filters)
       .populate({ path: 'studentId', populate: { path: 'userId', select: 'firstName lastName email phone' } })
       .populate('universityId')
+      .populate('batchId', 'batchNumber name intakeDate status universityId')
       .populate('programmeId')
       .populate('specialtyId')
       .sort({ createdAt: -1 });
@@ -107,6 +108,7 @@ export class ApplicationService {
     const application = await Application.findById(id)
       .populate({ path: 'studentId', populate: { path: 'userId', select: 'firstName lastName email phone' } })
       .populate('universityId')
+      .populate('batchId', 'batchNumber name intakeDate status universityId')
       .populate('programmeId')
       .populate('specialtyId');
 
