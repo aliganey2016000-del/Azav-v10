@@ -8,6 +8,7 @@ import { University } from '../models/University.js';
 import { TrainingBatch } from '../models/TrainingBatch.js';
 import { Application } from '../models/Application.js';
 import { Organization } from '../models/Organization.js';
+import { Placement } from '../models/Placement.js';
 import { AuditLog } from '../models/Notification.js';
 import { UserRole } from '../types/index.js';
 import { deriveInvoiceStatus, isFinanceStatusAllowed } from '../services/financeRules.js';
@@ -161,7 +162,7 @@ const populateFinanceRecord = (id: mongoose.Types.ObjectId | string) =>
     .populate('batchId', 'batchNumber name intakeDate status universityId')
     .populate('applicationId', 'status programmeText specialtyText')
     .populate('organizationId', 'name code city country')
-    .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId universityId payerType')
+    .populate('invoiceId', 'invoiceNumber amount currency status description dueDate userId universityId batchId payerType')
     .populate('originalPaymentId', 'invoiceId invoiceNumber reference amount type status')
     .lean();
 
@@ -409,6 +410,224 @@ export class FinanceController {
 
       const decorated = await FinanceController.decorateInvoiceBalances(records);
       res.json({ success: true, data: decorated });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async settlementContext(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user || !isGlobalFinanceUser(req)) {
+        res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Finance management requires AZAAM finance access' },
+        });
+        return;
+      }
+
+      const batchId = String(req.query.batchId || '');
+      const invoiceId = String(req.query.invoiceId || '');
+      const requestedUniversityId = String(req.query.universityId || '');
+
+      if (!mongoose.Types.ObjectId.isValid(batchId)) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'BATCH_REQUIRED', message: 'Select a valid batch' },
+        });
+        return;
+      }
+
+      const batch = await TrainingBatch.findById(batchId).lean();
+      if (!batch) {
+        res.status(404).json({
+          success: false,
+          error: { code: 'BATCH_NOT_FOUND', message: 'Training batch not found' },
+        });
+        return;
+      }
+
+      const universityId = String(batch.universityId || '');
+      if (
+        requestedUniversityId &&
+        requestedUniversityId !== universityId
+      ) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'BATCH_UNIVERSITY_MISMATCH', message: 'The selected batch does not belong to this university' },
+        });
+        return;
+      }
+
+      const university = await University.findById(universityId)
+        .select('_id name code')
+        .lean();
+
+      const rawInvoices = await Payment.find({
+        type: 'FEE',
+        universityId: batch.universityId,
+        batchId: batch._id,
+        status: { $ne: 'CANCELLED' },
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const invoices = await FinanceController.decorateInvoiceBalances(rawInvoices);
+
+      let selectedInvoice: any = null;
+      if (invoiceId) {
+        if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
+          res.status(400).json({
+            success: false,
+            error: { code: 'INVALID_INVOICE', message: 'Select a valid batch invoice' },
+          });
+          return;
+        }
+
+        selectedInvoice = invoices.find((invoice: any) => String(invoice._id) === invoiceId) || null;
+        if (!selectedInvoice) {
+          res.status(400).json({
+            success: false,
+            error: { code: 'INVOICE_BATCH_MISMATCH', message: 'The selected invoice does not belong to this batch' },
+          });
+          return;
+        }
+      }
+
+      const applications = await Application.find({ batchId: batch._id })
+        .select('_id studentId')
+        .lean();
+      const applicationIds = applications.map((application) => application._id);
+      const batchStudentIds = Array.from(
+        new Set(applications.map((application) => String(application.studentId)).filter(Boolean))
+      );
+
+      const placements = applicationIds.length
+        ? await Placement.find({
+            applicationId: { $in: applicationIds },
+            status: { $ne: 'CANCELLED' },
+          })
+            .populate('organizationId', 'name code city country')
+            .populate({
+              path: 'studentId',
+              populate: { path: 'userId', select: 'firstName lastName email' },
+            })
+            .lean()
+        : [];
+
+      const hospitalMap = new Map<string, any>();
+
+      placements.forEach((placement: any) => {
+        const organization = placement.organizationId;
+        const organizationId = String(organization?._id || organization || '');
+        const studentId = String(placement.studentId?._id || placement.studentId || '');
+        if (!organizationId || !studentId) return;
+
+        if (!hospitalMap.has(organizationId)) {
+          hospitalMap.set(organizationId, {
+            organizationId,
+            name: organization?.name || 'Hospital / Organization',
+            code: organization?.code || '',
+            city: organization?.city || '',
+            studentIds: new Set<string>(),
+            students: [],
+          });
+        }
+
+        const hospital = hospitalMap.get(organizationId);
+        if (!hospital.studentIds.has(studentId)) {
+          hospital.studentIds.add(studentId);
+          const user = placement.studentId?.userId;
+          hospital.students.push({
+            studentId,
+            name:
+              [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+              user?.email ||
+              'Student',
+            email: user?.email || '',
+          });
+        }
+      });
+
+      const settlementFilter: any = {
+        type: 'SETTLEMENT',
+        batchId: batch._id,
+        status: { $ne: 'CANCELLED' },
+      };
+      if (selectedInvoice?._id) settlementFilter.invoiceId = selectedInvoice._id;
+
+      const existingSettlements = await Payment.find(settlementFilter)
+        .select('_id invoiceId organizationId amount currency status reference settlementStudentCount')
+        .lean();
+
+      const settlementByOrganization = new Map<string, any>();
+      existingSettlements.forEach((settlement: any) => {
+        const key = String(settlement.organizationId || '');
+        if (!key) return;
+        const existing = settlementByOrganization.get(key);
+        if (!existing) {
+          settlementByOrganization.set(key, {
+            amount: Number(settlement.amount || 0),
+            count: 1,
+            latest: settlement,
+          });
+        } else {
+          existing.amount += Number(settlement.amount || 0);
+          existing.count += 1;
+          existing.latest = settlement;
+        }
+      });
+
+      const totalBatchStudents = batchStudentIds.length;
+      const hospitals = Array.from(hospitalMap.values())
+        .map((hospital: any) => {
+          const studentIds = Array.from(hospital.studentIds) as string[];
+          const existing = settlementByOrganization.get(hospital.organizationId);
+          const suggestedAmount =
+            selectedInvoice && totalBatchStudents > 0
+              ? Math.round(
+                  (Number(selectedInvoice.amount || 0) * studentIds.length / totalBatchStudents) * 100
+                ) / 100
+              : 0;
+
+          return {
+            organizationId: hospital.organizationId,
+            name: hospital.name,
+            code: hospital.code,
+            city: hospital.city,
+            studentCount: studentIds.length,
+            students: hospital.students,
+            suggestedAmount,
+            alreadySettled: Boolean(existing),
+            settledAmount: Number(existing?.amount || 0),
+            existingSettlement: existing?.latest || null,
+          };
+        })
+        .sort((a: any, b: any) => String(a.name).localeCompare(String(b.name)));
+
+      const totalSettledForInvoice = selectedInvoice
+        ? existingSettlements.reduce(
+            (sum: number, settlement: any) => sum + Number(settlement.amount || 0),
+            0
+          )
+        : 0;
+
+      res.json({
+        success: true,
+        data: {
+          university: university || { _id: batch.universityId },
+          batch: {
+            ...batch,
+            studentsCount: totalBatchStudents,
+          },
+          invoices,
+          selectedInvoice,
+          hospitals,
+          totalSettledForInvoice,
+          remainingInvoiceSettlementCapacity: selectedInvoice
+            ? Math.max(0, Number(selectedInvoice.amount || 0) - totalSettledForInvoice)
+            : 0,
+        },
+      });
     } catch (error) {
       next(error);
     }
