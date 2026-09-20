@@ -17,8 +17,6 @@ type StudentImportRow = {
   phone: string;
   program: string;
   academicLevel: string;
-  specialty: string;
-  durationWeeks: number;
   error?: string;
 };
 
@@ -215,13 +213,11 @@ export const UniversityNominateStudentPage: React.FC = () => {
     const headers = [
       'Full Name',
       'Student ID',
+      'Phone Number',
       'Login Email',
       'Login Password',
-      'Phone Number',
       'Program',
       'Academic Level',
-      'Specialty',
-      'Duration Weeks',
     ];
 
     const csv = headers.map((value) => '"' + value.replace(/"/g, '""') + '"').join(',') + '\n';
@@ -263,13 +259,11 @@ export const UniversityNominateStudentPage: React.FC = () => {
       const indexes = {
         fullName: headerIndex(['Full Name', 'Name']),
         studentId: headerIndex(['Student ID', 'Student Number']),
+        phone: headerIndex(['Phone Number', 'Phone']),
         email: headerIndex(['Login Email', 'Email']),
         password: headerIndex(['Login Password', 'Password']),
-        phone: headerIndex(['Phone Number', 'Phone']),
         program: headerIndex(['Program', 'Programme']),
         academicLevel: headerIndex(['Academic Level', 'Study Year', 'Year']),
-        specialty: headerIndex(['Specialty', 'Requested Specialty']),
-        durationWeeks: headerIndex(['Duration Weeks', 'Requested Duration Weeks']),
       };
 
       const missing = [
@@ -292,14 +286,11 @@ export const UniversityNominateStudentPage: React.FC = () => {
       const parsed = rows.slice(1).map((row, index): StudentImportRow => {
         const fullName = valueAt(row, indexes.fullName);
         const studentId = valueAt(row, indexes.studentId);
+        const phone = valueAt(row, indexes.phone);
         const email = valueAt(row, indexes.email).toLowerCase();
         const password = valueAt(row, indexes.password);
-        const phone = valueAt(row, indexes.phone);
         const program = valueAt(row, indexes.program);
         const academicLevel = valueAt(row, indexes.academicLevel) || 'Year 5';
-        const specialty = valueAt(row, indexes.specialty) || program;
-        const durationRaw = valueAt(row, indexes.durationWeeks);
-        const durationWeeks = durationRaw ? Number(durationRaw) : 8;
 
         const errors: string[] = [];
         if (!fullName) errors.push('Full Name required');
@@ -307,19 +298,16 @@ export const UniversityNominateStudentPage: React.FC = () => {
         if (!email || !email.includes('@')) errors.push('Valid email required');
         if (password.length < 8) errors.push('Password must be at least 8 characters');
         if (!program) errors.push('Program required');
-        if (!Number.isFinite(durationWeeks) || durationWeeks <= 0) errors.push('Duration Weeks must be greater than 0');
 
         return {
           rowNumber: index + 2,
           fullName,
           studentId,
+          phone,
           email,
           password,
-          phone,
           program,
           academicLevel,
-          specialty,
-          durationWeeks: Number.isFinite(durationWeeks) && durationWeeks > 0 ? durationWeeks : 8,
           error: errors.length ? errors.join(' · ') : undefined,
         };
       });
@@ -345,13 +333,13 @@ export const UniversityNominateStudentPage: React.FC = () => {
         await AdminApiService.nominateStudent({
           fullName: row.fullName,
           studentNumber: row.studentId,
+          phone: row.phone || undefined,
           email: row.email,
           password: row.password,
-          phone: row.phone || undefined,
           program: row.program,
-          specialty: row.specialty || row.program,
+          specialty: row.program,
           academicLevel: row.academicLevel || 'Year 5',
-          durationWeeks: row.durationWeeks || 8,
+          durationWeeks: 8,
         });
         importedCount += 1;
       } catch (error: any) {
@@ -593,7 +581,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                     <div>
                       <div className="text-sm font-black text-slate-900 dark:text-white">2. Upload Completed File</div>
                       <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                        CSV only. Required: Full Name, Student ID, Login Email, Login Password and Program.
+                        CSV columns match Add Student: Full Name, Student ID, Phone Number, Login Email, Login Password, Program and Academic Level.
                       </p>
                     </div>
                   </div>
@@ -699,7 +687,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
             {submitError && <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-700">{submitError}</div>}
 
             {step === 1 && (
-              <Panel title="Student Information" subtitle="Only the details needed to identify the student and create portal access" tone="blue">
+              <Panel title="Student Information" subtitle={editingId ? 'Same student details used when adding a nomination' : 'Core student details used by Add, Edit and Import'} tone="blue">
                 <Grid>
                   <Field label="Full Name *"><Input value={form.fullName} onChange={v=>change('fullName',v)} placeholder="Enter full name"/></Field>
                   <Field label="Student ID *"><Input value={form.studentId} onChange={v=>change('studentId',v)} placeholder="Enter student ID"/></Field>
