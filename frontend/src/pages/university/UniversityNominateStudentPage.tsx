@@ -1,12 +1,76 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, CheckCircle2, ChevronRight, Clock3, Eye, FileText, GraduationCap, Loader2, Pencil, Plus, Search, Trash2, Upload, UserPlus, Users, X, XCircle } from 'lucide-react';
+import { Award, CheckCircle2, ChevronRight, Clock3, Download, Eye, FileSpreadsheet, FileText, GraduationCap, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, Upload, UserPlus, Users, X, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminApiService } from '../../services/admin.service';
 import { AdminStudent } from '../../types/admin.types';
 import { NOMINATION_DOCUMENT_TYPES } from '../../utils/documentTypes';
 
 type PendingDoc = { docType: string; name: string; mimeType: string; base64Data: string };
+
+type StudentImportRow = {
+  rowNumber: number;
+  fullName: string;
+  studentId: string;
+  email: string;
+  password: string;
+  phone: string;
+  program: string;
+  academicLevel: string;
+  specialty: string;
+  durationWeeks: number;
+  error?: string;
+};
+
+const normalizeCsvHeader = (value: string) =>
+  value
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+const parseCsvRows = (text: string): string[][] => {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"') {
+      if (quoted && next === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if (char === ',' && !quoted) {
+      row.push(cell.trim());
+      cell = '';
+      continue;
+    }
+
+    if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && next === '\n') index += 1;
+      row.push(cell.trim());
+      cell = '';
+      if (row.some((value) => value !== '')) rows.push(row);
+      row = [];
+      continue;
+    }
+
+    cell += char;
+  }
+
+  row.push(cell.trim());
+  if (row.some((value) => value !== '')) rows.push(row);
+  return rows;
+};
 
 type FormState = {
   fullName: string; studentId: string; gender: string; dateOfBirth: string; nationality: string;
@@ -50,6 +114,12 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importRows, setImportRows] = useState<StudentImportRow[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const loadStudents = () => {
     setLoading(true);
@@ -118,6 +188,190 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const pending = students.filter(s => s.applicationStatus === 'SUBMITTED' || s.applicationStatus === 'UNDER_REVIEW' || s.applicationStatus === 'CORRECTION_REQUESTED').length;
   const approved = students.filter(s => s.applicationStatus === 'ACCEPTED').length;
   const rejected = students.filter(s => s.applicationStatus === 'REJECTED').length;
+
+  const closeImport = () => {
+    if (importing) return;
+    setImportOpen(false);
+    setImportFileName('');
+    setImportRows([]);
+    setImportError(null);
+  };
+
+  const downloadImportTemplate = () => {
+    const headers = [
+      'Full Name',
+      'Student ID',
+      'Login Email',
+      'Login Password',
+      'Phone Number',
+      'Program',
+      'Academic Level',
+      'Specialty',
+      'Duration Weeks',
+    ];
+
+    const csv = headers.map((value) => '"' + value.replace(/"/g, '""') + '"').join(',') + '\n';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'azaam-student-import-template.csv';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const readImportFile = async (file: File | null) => {
+    if (!file) return;
+
+    setImportError(null);
+    setImportRows([]);
+    setImportFileName(file.name);
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setImportError('Please upload the completed CSV template.');
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const rows = parseCsvRows(text);
+      if (rows.length < 2) {
+        setImportError('The file has no student rows. Add students below the template header and upload it again.');
+        return;
+      }
+
+      const headers = rows[0].map(normalizeCsvHeader);
+      const headerIndex = (aliases: string[]) =>
+        headers.findIndex((header) => aliases.some((alias) => normalizeCsvHeader(alias) === header));
+
+      const indexes = {
+        fullName: headerIndex(['Full Name', 'Name']),
+        studentId: headerIndex(['Student ID', 'Student Number']),
+        email: headerIndex(['Login Email', 'Email']),
+        password: headerIndex(['Login Password', 'Password']),
+        phone: headerIndex(['Phone Number', 'Phone']),
+        program: headerIndex(['Program', 'Programme']),
+        academicLevel: headerIndex(['Academic Level', 'Study Year', 'Year']),
+        specialty: headerIndex(['Specialty', 'Requested Specialty']),
+        durationWeeks: headerIndex(['Duration Weeks', 'Requested Duration Weeks']),
+      };
+
+      const missing = [
+        ['Full Name', indexes.fullName],
+        ['Student ID', indexes.studentId],
+        ['Login Email', indexes.email],
+        ['Login Password', indexes.password],
+        ['Program', indexes.program],
+      ]
+        .filter(([, index]) => Number(index) < 0)
+        .map(([label]) => String(label));
+
+      if (missing.length) {
+        setImportError('Missing required column(s): ' + missing.join(', ') + '. Please use the downloaded template.');
+        return;
+      }
+
+      const valueAt = (row: string[], index: number) => (index >= 0 ? String(row[index] || '').trim() : '');
+
+      const parsed = rows.slice(1).map((row, index): StudentImportRow => {
+        const fullName = valueAt(row, indexes.fullName);
+        const studentId = valueAt(row, indexes.studentId);
+        const email = valueAt(row, indexes.email).toLowerCase();
+        const password = valueAt(row, indexes.password);
+        const phone = valueAt(row, indexes.phone);
+        const program = valueAt(row, indexes.program);
+        const academicLevel = valueAt(row, indexes.academicLevel) || 'Year 5';
+        const specialty = valueAt(row, indexes.specialty) || program;
+        const durationRaw = valueAt(row, indexes.durationWeeks);
+        const durationWeeks = durationRaw ? Number(durationRaw) : 8;
+
+        const errors: string[] = [];
+        if (!fullName) errors.push('Full Name required');
+        if (!studentId) errors.push('Student ID required');
+        if (!email || !email.includes('@')) errors.push('Valid email required');
+        if (password.length < 8) errors.push('Password must be at least 8 characters');
+        if (!program) errors.push('Program required');
+        if (!Number.isFinite(durationWeeks) || durationWeeks <= 0) errors.push('Duration Weeks must be greater than 0');
+
+        return {
+          rowNumber: index + 2,
+          fullName,
+          studentId,
+          email,
+          password,
+          phone,
+          program,
+          academicLevel,
+          specialty,
+          durationWeeks: Number.isFinite(durationWeeks) && durationWeeks > 0 ? durationWeeks : 8,
+          error: errors.length ? errors.join(' · ') : undefined,
+        };
+      });
+
+      setImportRows(parsed);
+    } catch {
+      setImportError('Unable to read this CSV file. Please download a fresh template and try again.');
+    }
+  };
+
+  const importStudents = async () => {
+    const validRows = importRows.filter((row) => !row.error);
+    if (!validRows.length || validRows.length !== importRows.length) return;
+
+    setImporting(true);
+    setImportError(null);
+
+    let importedCount = 0;
+    const failures: string[] = [];
+
+    for (const row of validRows) {
+      try {
+        await AdminApiService.nominateStudent({
+          fullName: row.fullName,
+          studentNumber: row.studentId,
+          email: row.email,
+          password: row.password,
+          phone: row.phone || undefined,
+          program: row.program,
+          specialty: row.specialty || row.program,
+          academicLevel: row.academicLevel || 'Year 5',
+          durationWeeks: row.durationWeeks || 8,
+        });
+        importedCount += 1;
+      } catch (error: any) {
+        failures.push(
+          'Row ' +
+            row.rowNumber +
+            ' (' +
+            row.studentId +
+            '): ' +
+            (error?.response?.data?.error?.message || error?.message || 'Import failed')
+        );
+      }
+    }
+
+    if (failures.length) {
+      setImportError(
+        importedCount +
+          ' student(s) imported. ' +
+          failures.length +
+          ' failed: ' +
+          failures.slice(0, 3).join(' | ') +
+          (failures.length > 3 ? ' | +' + (failures.length - 3) + ' more' : '')
+      );
+      setImporting(false);
+      if (importedCount > 0) loadStudents();
+      return;
+    }
+
+    setImporting(false);
+    closeImport();
+    setSuccessMessage(importedCount + ' student(s) imported and nominated successfully.');
+    window.setTimeout(() => setSuccessMessage(null), 4500);
+    loadStudents();
+  };
 
   const submit = async () => {
     if (!form.fullName.trim() || !form.studentId.trim() || !form.email.trim()) return;
@@ -196,7 +450,44 @@ export const UniversityNominateStudentPage: React.FC = () => {
       <section className="overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900 via-blue-700 to-teal-500 p-6 text-white shadow-lg sm:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div><div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-100"><GraduationCap className="h-4 w-4" /> {universityName}</div><h1 className="text-2xl font-black sm:text-3xl">Student Nomination</h1><p className="mt-1 max-w-2xl text-sm text-blue-100">Nominate eligible students for clinical training and track every submission from one workspace.</p></div>
-          <button onClick={openAdd} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-blue-700 shadow-lg transition hover:-translate-y-0.5"><Plus className="h-4 w-4" /> Nominate New Student</button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Nomination actions"
+                onClick={() => setHeaderMenuOpen((current) => !current)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-white shadow-sm transition hover:bg-white/20"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </button>
+
+              {headerMenuOpen && (
+                <div className="absolute right-0 top-12 z-30 w-56 rounded-2xl border border-slate-200 bg-white p-2 text-left shadow-2xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeaderMenuOpen(false);
+                      setImportOpen(true);
+                      setImportFileName('');
+                      setImportRows([]);
+                      setImportError(null);
+                    }}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-extrabold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                      <Upload className="h-4 w-4" />
+                    </span>
+                    <span>
+                      <span className="block">Import Students</span>
+                      <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">Bulk nomination from CSV</span>
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button onClick={openAdd} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-blue-700 shadow-lg transition hover:-translate-y-0.5"><Plus className="h-4 w-4" /> Nominate New Student</button>
+          </div>
         </div>
       </section>
 
@@ -217,6 +508,173 @@ export const UniversityNominateStudentPage: React.FC = () => {
         filtered.length === 0 ? <div className="p-12 text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><UserPlus className="h-7 w-7"/></div><h3 className="mt-4 font-extrabold text-slate-900">No nominations yet</h3><p className="mt-1 text-xs text-slate-500">Use “Nominate New Student” to add your first student.</p></div> :
         <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-xs"><thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Student</th><th className="px-5 py-3">Student ID</th><th className="px-5 py-3">Program / Specialty</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{filtered.map((s, i) => <tr key={s._id} className="hover:bg-slate-50"><td className="px-5 py-4"><div className="flex items-center gap-3"><div className={`flex h-9 w-9 items-center justify-center rounded-xl font-black ${['bg-blue-100 text-blue-700','bg-emerald-100 text-emerald-700','bg-violet-100 text-violet-700','bg-amber-100 text-amber-700'][i%4]}`}>{s.firstName.charAt(0).toUpperCase()}</div><div><div className="font-extrabold text-slate-900">{s.firstName} {s.lastName}</div><div className="text-[10px] text-slate-500">{s.email}</div></div></div></td><td className="px-5 py-4 font-mono text-slate-600">{s.studentNumber}</td><td className="px-5 py-4 font-semibold text-slate-700">{s.specialty}</td><td className="px-5 py-4"><Status status={s.applicationStatus}/></td><td className="px-5 py-4"><div className="flex justify-end gap-2"><Link to={`/university/students/${s._id}`} title="View Journey" className="rounded-lg p-2 text-blue-600 hover:bg-blue-50"><Eye className="h-4 w-4"/></Link><button title="Edit" onClick={() => openEdit(s)} className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-50"><Pencil className="h-4 w-4"/></button></div></td></tr>)}</tbody></table></div>}
       </section>
+
+      {importOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-[2px] sm:p-6"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeImport();
+          }}
+        >
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-[#0f1b2d]">
+            <div className="sticky top-0 z-10 border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0f1b2d] sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    <FileSpreadsheet className="h-6 w-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-black text-slate-950 dark:text-white">Import Students</h2>
+                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                      Bulk nominate students for clinical training using the AZAAM CSV template.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeImport}
+                  disabled={importing}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 disabled:opacity-40 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4 p-5 sm:p-6">
+              {importError && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold leading-5 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+                  {importError}
+                </div>
+              )}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-500/20 dark:bg-blue-500/10">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                      <Download className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">1. Download Template</div>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                        Use the official columns so the import can validate each student correctly.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={downloadImportTemplate}
+                    className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 text-xs font-black text-white hover:bg-blue-700"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download CSV Template
+                  </button>
+                </div>
+
+                <label className="cursor-pointer rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/60 p-4 transition hover:bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">2. Upload Completed File</div>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                        CSV only. Required: Full Name, Student ID, Login Email, Login Password and Program.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex min-h-10 items-center justify-center rounded-xl border border-emerald-200 bg-white px-3 text-xs font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-slate-900 dark:text-emerald-300">
+                    {importFileName || 'Choose CSV File'}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    disabled={importing}
+                    onChange={(event) => void readImportFile(event.target.files?.[0] || null)}
+                  />
+                </label>
+              </div>
+
+              {importRows.length > 0 && (
+                <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">Import Preview</div>
+                      <div className="mt-0.5 text-[10px] font-semibold text-slate-500">
+                        {importRows.length} row{importRows.length === 1 ? '' : 's'} · {importRows.filter((row) => !row.error).length} ready · {importRows.filter((row) => row.error).length} need attention
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="max-h-64 overflow-auto">
+                    <table className="min-w-[650px] w-full text-left text-xs">
+                      <thead className="sticky top-0 bg-white text-[9px] font-black uppercase tracking-wide text-slate-400 dark:bg-[#0f1b2d]">
+                        <tr>
+                          <th className="px-4 py-3">Row</th>
+                          <th className="px-4 py-3">Student</th>
+                          <th className="px-4 py-3">Student ID</th>
+                          <th className="px-4 py-3">Program</th>
+                          <th className="px-4 py-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {importRows.slice(0, 25).map((row) => (
+                          <tr key={row.rowNumber}>
+                            <td className="px-4 py-3 font-mono text-slate-500">{row.rowNumber}</td>
+                            <td className="px-4 py-3">
+                              <div className="font-black text-slate-900 dark:text-white">{row.fullName || '—'}</div>
+                              <div className="mt-0.5 text-[10px] text-slate-500">{row.email || '—'}</div>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-300">{row.studentId || '—'}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">{row.program || '—'}</td>
+                            <td className="px-4 py-3">
+                              {row.error ? (
+                                <span className="text-[10px] font-bold text-rose-600">{row.error}</span>
+                              ) : (
+                                <span className="inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black text-emerald-700">Ready</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {importRows.length > 25 && (
+                    <div className="border-t border-slate-100 px-4 py-2 text-[10px] font-semibold text-slate-500 dark:border-slate-800">
+                      Showing first 25 of {importRows.length} rows.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  disabled={importing}
+                  onClick={closeImport}
+                  className="min-h-11 rounded-xl border border-slate-200 px-5 text-sm font-black text-slate-600 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    importing ||
+                    importRows.length === 0 ||
+                    importRows.some((row) => Boolean(row.error))
+                  }
+                  onClick={() => void importStudents()}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 text-sm font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {importing ? 'Importing...' : 'Import ' + importRows.length + ' Student' + (importRows.length === 1 ? '' : 's')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[2px] sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget) reset(); }}>
         <div className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
