@@ -17,7 +17,8 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-router-dom": "^7.18.2",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
