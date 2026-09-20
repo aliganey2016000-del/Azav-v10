@@ -13,7 +13,6 @@ import {
   Loader2,
   MoreVertical,
   Pencil,
-  RefreshCw,
   Search,
   X,
 } from 'lucide-react';
@@ -392,20 +391,8 @@ export const AdminSettlementsPage: React.FC = () => {
             <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
               Record Settlement
             </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-              Record payments made to hospitals and other beneficiary organizations.
-            </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          aria-label="Refresh settlements"
-          onClick={() => void loadRecords()}
-          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white/90 text-slate-500 shadow-sm transition hover:border-teal-200 hover:text-teal-700 sm:right-6 sm:top-6"
-        >
-          <RefreshCw className={'h-5 w-5 ' + (loading ? 'animate-spin' : '')} />
-        </button>
       </section>
 
       {error && (
