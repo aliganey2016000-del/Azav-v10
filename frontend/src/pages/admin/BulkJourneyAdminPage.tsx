@@ -236,7 +236,6 @@ export const BulkJourneyAdminPage: React.FC = () => {
 
     setLoadingStudents(true);
     setError('');
-    setResults([]);
 
     try {
       const first = await AdminApiService.getStudents({
