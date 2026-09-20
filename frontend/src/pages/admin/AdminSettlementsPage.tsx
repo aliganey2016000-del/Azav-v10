@@ -127,6 +127,7 @@ export const AdminSettlementsPage: React.FC = () => {
   const [editing, setEditing] = useState<RecordObject | null>(null);
   const [viewing, setViewing] = useState<RecordObject | null>(null);
   const [rowMenuId, setRowMenuId] = useState<string | null>(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -235,6 +236,19 @@ export const AdminSettlementsPage: React.FC = () => {
     setEditing(null);
     setForm(emptyForm());
     setRowMenuId(null);
+  };
+
+  const openCreateSettlement = () => {
+    resetForm();
+    setSuccess('');
+    setError('');
+    setHeaderMenuOpen(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById('settlement-form-card')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
   };
 
   const saveSettlement = async () => {
@@ -379,8 +393,8 @@ export const AdminSettlementsPage: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-10">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-cyan-50/45 to-emerald-50/45 p-5 shadow-sm sm:p-6">
-        <div className="flex items-start gap-4 pr-14">
+      <section className="relative overflow-visible rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-cyan-50/45 to-emerald-50/45 p-5 shadow-sm sm:p-6">
+        <div className="flex items-start gap-4 pr-16">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 shadow-sm">
             <Banknote className="h-6 w-6" />
           </div>
@@ -392,6 +406,33 @@ export const AdminSettlementsPage: React.FC = () => {
               Record Settlement
             </h1>
           </div>
+        </div>
+
+        <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+          <button
+            type="button"
+            aria-label="Settlement actions"
+            aria-expanded={headerMenuOpen}
+            onClick={() => setHeaderMenuOpen((current) => !current)}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white/95 text-slate-500 shadow-sm transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700"
+          >
+            <MoreVertical className="h-5 w-5" />
+          </button>
+
+          {headerMenuOpen && (
+            <div className="absolute right-0 top-12 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl">
+              <button
+                type="button"
+                onClick={openCreateSettlement}
+                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-black text-teal-700 transition hover:bg-teal-50"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50">
+                  <Banknote className="h-4 w-4" />
+                </span>
+                Create Settlement
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -408,7 +449,7 @@ export const AdminSettlementsPage: React.FC = () => {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section id="settlement-form-card" className="scroll-mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-gradient-to-r from-white via-teal-50/35 to-cyan-50/40 p-4 sm:p-6">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
