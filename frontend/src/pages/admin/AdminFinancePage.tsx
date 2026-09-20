@@ -4,7 +4,6 @@ import {
   Ban,
   Building2,
   CalendarDays,
-  Check,
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
