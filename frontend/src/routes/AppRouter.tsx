@@ -32,6 +32,7 @@ import { OrganizationDetailPage } from '../pages/admin/OrganizationDetailPage';
 import { SupervisorsPage } from '../pages/admin/SupervisorsPage';
 import { SupervisorDetailPage } from '../pages/admin/SupervisorDetailPage';
 import { StudentsManagementPage } from '../pages/admin/StudentsManagementPage';
+import { BulkJourneyAdminPage } from '../pages/admin/BulkJourneyAdminPage';
 import { StudentJourneyAdminPage } from '../pages/admin/StudentJourneyAdminPage';
 import { JourneyChatPage } from '../pages/shared/JourneyChatPage';
 import { AuditLogsPage } from '../pages/admin/AuditLogsPage';
@@ -70,6 +71,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<UsersManagementPage />} />
           <Route path="/admin/students" element={<StudentsManagementPage />} />
+          <Route path="/admin/bulk-journey" element={<BulkJourneyAdminPage />} />
           <Route path="/admin/students/:id" element={<StudentJourneyAdminPage />} />
           <Route path="/admin/students/:id/chat" element={<JourneyChatPage portal="admin" />} />
           <Route path="/admin/universities" element={<UniversitiesPage />} />
