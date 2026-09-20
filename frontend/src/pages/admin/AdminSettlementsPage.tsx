@@ -128,6 +128,7 @@ export const AdminSettlementsPage: React.FC = () => {
   const [viewing, setViewing] = useState<RecordObject | null>(null);
   const [rowMenuId, setRowMenuId] = useState<string | null>(null);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [formVisible, setFormVisible] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -238,11 +239,17 @@ export const AdminSettlementsPage: React.FC = () => {
     setRowMenuId(null);
   };
 
+  const closeForm = () => {
+    resetForm();
+    setFormVisible(false);
+  };
+
   const openCreateSettlement = () => {
     resetForm();
     setSuccess('');
     setError('');
     setHeaderMenuOpen(false);
+    setFormVisible(true);
     window.requestAnimationFrame(() => {
       document.getElementById('settlement-form-card')?.scrollIntoView({
         behavior: 'smooth',
@@ -293,6 +300,7 @@ export const AdminSettlementsPage: React.FC = () => {
       }
 
       resetForm();
+      setFormVisible(false);
       await loadRecords();
     } catch (requestError: any) {
       setError(
@@ -310,6 +318,7 @@ export const AdminSettlementsPage: React.FC = () => {
     setRowMenuId(null);
     setSuccess('');
     setError('');
+    setFormVisible(true);
     setForm({
       organizationId: asId(record.organizationId),
       amount: record.amount == null ? '' : String(record.amount),
@@ -449,6 +458,7 @@ export const AdminSettlementsPage: React.FC = () => {
         </div>
       )}
 
+      {formVisible && (
       <section id="settlement-form-card" className="scroll-mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-gradient-to-r from-white via-teal-50/35 to-cyan-50/40 p-4 sm:p-6">
           <div className="flex items-start gap-3">
@@ -665,7 +675,7 @@ export const AdminSettlementsPage: React.FC = () => {
             <button
               type="button"
               disabled={saving}
-              onClick={resetForm}
+              onClick={closeForm}
               className="min-h-12 rounded-2xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
             >
               Cancel
@@ -696,6 +706,7 @@ export const AdminSettlementsPage: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-4 sm:p-5">
