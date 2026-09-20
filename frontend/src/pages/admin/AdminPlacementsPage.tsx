@@ -192,11 +192,23 @@ export const AdminPlacementsPage: React.FC = () => {
   }, [applications]);
 
   const appForPlacement = (placement: RecordObject) => {
+    const embedded =
+      placement.applicationId && typeof placement.applicationId === 'object'
+        ? placement.applicationId
+        : undefined;
     const fromMap = applicationMap.get(asId(placement.applicationId));
-    if (fromMap) return fromMap;
-    return placement.applicationId && typeof placement.applicationId === 'object'
-      ? placement.applicationId
-      : undefined;
+
+    if (!embedded) return fromMap;
+
+    // /placements returns applicationId with batchId populated. Preserve that richer
+    // relation while allowing the application list to fill any missing fields.
+    return {
+      ...(fromMap || {}),
+      ...embedded,
+      batchId: embedded.batchId || fromMap?.batchId,
+      universityId: embedded.universityId || fromMap?.universityId,
+      programmeId: embedded.programmeId || fromMap?.programmeId,
+    };
   };
 
   const universityName = (placement: RecordObject) => {
@@ -210,10 +222,27 @@ export const AdminPlacementsPage: React.FC = () => {
   };
 
   const batchInfo = (placement: RecordObject) => {
-    const batch = appForPlacement(placement)?.batchId;
+    const application = appForPlacement(placement);
+    const embeddedApplication =
+      placement.applicationId && typeof placement.applicationId === 'object'
+        ? placement.applicationId
+        : undefined;
+    const batch =
+      embeddedApplication?.batchId && typeof embeddedApplication.batchId === 'object'
+        ? embeddedApplication.batchId
+        : application?.batchId;
+
     return {
-      number: batch?.batchNumber || 'Legacy / No Batch',
-      name: batch?.name || '',
+      number:
+        (batch && typeof batch === 'object' ? batch.batchNumber : '') ||
+        application?.batchNumber ||
+        placement.batchId?.batchNumber ||
+        'No Batch',
+      name:
+        (batch && typeof batch === 'object' ? batch.name : '') ||
+        application?.batchName ||
+        placement.batchId?.name ||
+        '',
     };
   };
 
@@ -882,11 +911,12 @@ export const AdminPlacementsPage: React.FC = () => {
         ) : (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="min-w-[1020px] w-full text-left text-xs">
+              <table className="min-w-[1160px] w-full text-left text-xs">
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-black">#</th>
                     <th className="px-4 py-3 font-black">Student</th>
+                    <th className="px-4 py-3 font-black">University</th>
                     <th className="px-4 py-3 font-black">Batch</th>
                     <th className="px-4 py-3 font-black">Programme</th>
                     <th className="px-4 py-3 font-black">Hospital</th>
@@ -916,6 +946,11 @@ export const AdminPlacementsPage: React.FC = () => {
                                 {placement.studentId?.studentNumber || user?.email || '-'}
                               </div>
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="max-w-[180px] font-extrabold text-slate-800">
+                            {universityName(placement)}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -1386,6 +1421,7 @@ export const AdminPlacementsPage: React.FC = () => {
             <div className="grid gap-4 p-5 text-sm sm:grid-cols-2">
               {[
                 ['University', universityName(viewingPlacement)],
+                ['Batch', batchInfo(viewingPlacement).number],
                 ['Programme', programmeName(viewingPlacement)],
                 ['Hospital', hospitalName(viewingPlacement)],
                 ['Status', statusLabel(viewingPlacement.status)],
