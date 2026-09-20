@@ -261,7 +261,6 @@ export const AdminSettlementsPage: React.FC = () => {
     setSuccess('');
 
     const payload = {
-      type: 'SETTLEMENT',
       organizationId: form.organizationId,
       description: form.description.trim(),
       amount,
@@ -276,7 +275,7 @@ export const AdminSettlementsPage: React.FC = () => {
         await api.patch('/finance/' + asId(editing), payload);
         setSuccess('Settlement updated successfully.');
       } else {
-        await api.post('/finance', payload);
+        await api.post('/finance', { type: 'SETTLEMENT', ...payload });
         setSuccess('Settlement recorded successfully.');
       }
 
@@ -840,7 +839,7 @@ export const AdminSettlementsPage: React.FC = () => {
                         </button>
 
                         {rowMenuId === asId(record) && (
-                          <div className="absolute right-5 top-13 z-30 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
+                          <div className="absolute right-5 top-12 z-30 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">
                             <ActionButton
                               icon={<Eye className="h-4 w-4" />}
                               label="View Details"
