@@ -39,6 +39,7 @@ import { AdminPlacementsPage } from '../pages/admin/AdminPlacementsPage';
 import { AdminRotationsPage } from '../pages/admin/AdminRotationsPage';
 import { AdminRotationTemplatesPage } from '../pages/admin/AdminRotationTemplatesPage';
 import { AdminFinancePage } from '../pages/admin/AdminFinancePage';
+import { AdminSettlementsPage } from '../pages/admin/AdminSettlementsPage';
 import { FinancePricingPage } from '../pages/admin/FinancePricingPage';
 import { StudentApplicationPage } from '../pages/student/StudentApplicationPage';
 import { StudentPlacementPage } from '../pages/student/StudentPlacementPage';
@@ -85,7 +86,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/finance/fees" element={<AdminFinancePage mode="fees" />} />
           <Route path="/admin/finance/payments" element={<AdminFinancePage mode="payments" />} />
           <Route path="/admin/finance/transactions" element={<AdminFinancePage mode="transactions" />} />
-          <Route path="/admin/finance/settlements" element={<AdminFinancePage mode="settlements" />} />
+          <Route path="/admin/finance/settlements" element={<AdminSettlementsPage />} />
           <Route path="/admin/finance/refunds" element={<AdminFinancePage mode="refunds" />} />
           <Route path="/admin/rotations" element={<Navigate to="/admin/rotation-planner" replace />} />
           <Route path="/admin/clinical-training" element={<Navigate to="/admin/placements" replace />} />
