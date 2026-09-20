@@ -522,11 +522,8 @@ export const FinancePricingPage: React.FC = () => {
             Finance Configuration
           </div>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-            Service Pricing & Fee Rules
+            Service Pricing
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Set the price, billing basis and default payer for every AZAAM service. University-specific prices automatically override global defaults.
-          </p>
         </div>
 
         <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
