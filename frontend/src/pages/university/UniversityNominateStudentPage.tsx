@@ -80,8 +80,6 @@ type FormState = {
   password: string;
   program: string;
   academicLevel: string;
-  requestedSpecialty: string;
-  requestedDuration: string;
   documents: Record<string, PendingDoc>;
 };
 
@@ -93,8 +91,6 @@ const emptyForm: FormState = {
   password: '',
   program: '',
   academicLevel: 'Year 5',
-  requestedSpecialty: '',
-  requestedDuration: '8 weeks',
   documents: {},
 };
 
@@ -110,8 +106,6 @@ const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve,
   reader.onerror = reject;
   reader.readAsDataURL(file);
 });
-
-const durationToWeeks = (text: string) => parseInt(text, 10) || 8;
 
 export const UniversityNominateStudentPage: React.FC = () => {
   const { user } = useAuth();
@@ -171,8 +165,6 @@ export const UniversityNominateStudentPage: React.FC = () => {
       password: '',
       program: s.specialty || '',
       academicLevel: s.studyYear || 'Year 5',
-      requestedSpecialty: s.specialty || '',
-      requestedDuration: s.durationWeeks ? `${s.durationWeeks} weeks` : '8 weeks',
       documents: {},
     });
     setStep(1);
@@ -416,9 +408,9 @@ export const UniversityNominateStudentPage: React.FC = () => {
         email: form.email.trim(),
         phone: form.phone,
         program: form.program,
-        specialty: form.requestedSpecialty || form.program,
+        specialty: form.program,
         academicLevel: form.academicLevel,
-        durationWeeks: durationToWeeks(form.requestedDuration),
+        durationWeeks: 8,
       };
 
       const studentId = editingId
@@ -724,12 +716,10 @@ export const UniversityNominateStudentPage: React.FC = () => {
             )}
 
             {step === 2 && (
-              <Panel title="Academic & Training" subtitle="The essential academic and clinical placement information" tone="emerald">
+              <Panel title="Academic & Training" subtitle="Essential academic information" tone="emerald">
                 <Grid>
                   <Field label="Program *"><Input value={form.program} onChange={v=>change('program',v)} placeholder="e.g. Medicine"/></Field>
                   <Field label="Academic Level"><Select value={form.academicLevel} onChange={v=>change('academicLevel',v)} options={['Year 1','Year 2','Year 3','Year 4','Year 5','Intern']}/></Field>
-                  <Field label="Clinical Specialty"><Input value={form.requestedSpecialty} onChange={v=>change('requestedSpecialty',v)} placeholder="e.g. Internship / General Surgery"/></Field>
-                  <Field label="Duration"><Input value={form.requestedDuration} onChange={v=>change('requestedDuration',v)} placeholder="e.g. 8 weeks"/></Field>
                 </Grid>
               </Panel>
             )}
@@ -774,8 +764,6 @@ export const UniversityNominateStudentPage: React.FC = () => {
                     <Review label="University" value={universityName}/>
                     <Review label="Program" value={form.program}/>
                     <Review label="Academic Level" value={form.academicLevel}/>
-                    <Review label="Specialty" value={form.requestedSpecialty || form.program}/>
-                    <Review label="Duration" value={form.requestedDuration}/>
                   </div>
                 </Panel>
               </div>
