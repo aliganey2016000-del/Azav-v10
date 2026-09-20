@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import JSZip from 'jszip';
 import { Award, CheckCircle2, ChevronRight, Clock3, Download, Eye, FileSpreadsheet, FileText, GraduationCap, Loader2, MoreVertical, Pencil, Plus, Search, Trash2, Upload, UserPlus, Users, X, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminApiService } from '../../services/admin.service';
@@ -96,7 +97,43 @@ const ESSENTIAL_NOMINATION_DOCUMENT_TYPES = NOMINATION_DOCUMENT_TYPES.filter(({ 
   ['NOMINATION_LETTER', 'ACADEMIC_TRANSCRIPT', 'STUDENT_ID', 'PASSPORT_COPY'].includes(key)
 );
 
+const IMPORT_DOCUMENT_KEYS = ESSENTIAL_NOMINATION_DOCUMENT_TYPES.map(({ key }) => key);
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ZIP_BYTES = 100 * 1024 * 1024;
+
+const normalizeStudentImportKey = (value: string) => value.trim().toLowerCase();
+
+const mimeTypeForFileName = (fileName: string) => {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'pdf': return 'application/pdf';
+    case 'png': return 'image/png';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'doc': return 'application/msword';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    default: return 'application/octet-stream';
+  }
+};
+
+const parseImportDocumentFileName = (fileName: string) => {
+  const baseName = fileName.split('/').pop() || '';
+  const dotIndex = baseName.lastIndexOf('.');
+  if (dotIndex <= 0) return null;
+
+  const stem = baseName.slice(0, dotIndex);
+  const upperStem = stem.toUpperCase();
+  const docType = IMPORT_DOCUMENT_KEYS.find((key) => upperStem.endsWith('_' + key));
+  if (!docType) return null;
+
+  const studentId = stem.slice(0, -(docType.length + 1)).trim();
+  if (!studentId) return null;
+
+  return {
+    studentKey: normalizeStudentImportKey(studentId),
+    docType,
+  };
+};
 
 const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -125,6 +162,10 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importFileName, setImportFileName] = useState('');
+  const [importZipFileName, setImportZipFileName] = useState('');
+  const [importDocuments, setImportDocuments] = useState<Record<string, PendingDoc[]>>({});
+  const [importZipWarnings, setImportZipWarnings] = useState<string[]>([]);
+  const [readingImportZip, setReadingImportZip] = useState(false);
   const [importRows, setImportRows] = useState<StudentImportRow[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
@@ -202,9 +243,12 @@ export const UniversityNominateStudentPage: React.FC = () => {
   const rejected = students.filter(s => s.applicationStatus === 'REJECTED').length;
 
   const closeImport = () => {
-    if (importing) return;
+    if (importing || readingImportZip) return;
     setImportOpen(false);
     setImportFileName('');
+    setImportZipFileName('');
+    setImportDocuments({});
+    setImportZipWarnings([]);
     setImportRows([]);
     setImportError(null);
   };
@@ -318,6 +362,94 @@ export const UniversityNominateStudentPage: React.FC = () => {
     }
   };
 
+  const documentsForImportRow = (studentId: string) =>
+    importDocuments[normalizeStudentImportKey(studentId)] || [];
+
+  const readImportDocumentsZip = async (file: File | null) => {
+    if (!file) return;
+
+    setImportError(null);
+    setImportZipWarnings([]);
+    setImportDocuments({});
+    setImportZipFileName(file.name);
+
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      setImportError('Please upload a ZIP file containing the student documents.');
+      return;
+    }
+
+    if (file.size > MAX_IMPORT_ZIP_BYTES) {
+      setImportError('The documents ZIP exceeds the 100MB upload limit.');
+      return;
+    }
+
+    setReadingImportZip(true);
+
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const nextDocuments: Record<string, PendingDoc[]> = {};
+      const warnings: string[] = [];
+      const entries = Object.values(zip.files).filter((entry) => !entry.dir);
+
+      for (const entry of entries) {
+        const parsed = parseImportDocumentFileName(entry.name);
+        if (!parsed) {
+          warnings.push('Skipped "' + entry.name + '" because its name does not match StudentID_DOCUMENTTYPE.ext.');
+          continue;
+        }
+
+        const bytes = await entry.async('uint8array');
+        if (bytes.byteLength > MAX_FILE_BYTES) {
+          warnings.push('Skipped "' + entry.name + '" because it exceeds 5MB.');
+          continue;
+        }
+
+        const baseName = entry.name.split('/').pop() || entry.name;
+        const mimeType = mimeTypeForFileName(baseName);
+        const base64 = await entry.async('base64');
+        const doc: PendingDoc = {
+          docType: parsed.docType,
+          name: baseName,
+          mimeType,
+          base64Data: 'data:' + mimeType + ';base64,' + base64,
+        };
+
+        const current = nextDocuments[parsed.studentKey] || [];
+        const withoutDuplicate = current.filter((item) => item.docType !== parsed.docType);
+        if (withoutDuplicate.length !== current.length) {
+          warnings.push('Duplicate ' + parsed.docType + ' for student ' + parsed.studentKey + '; the last file was used.');
+        }
+        nextDocuments[parsed.studentKey] = [...withoutDuplicate, doc];
+      }
+
+      if (Object.keys(nextDocuments).length === 0) {
+        setImportError(
+          'No documents could be matched. Use names such as 123456_NOMINATION_LETTER.pdf, 123456_ACADEMIC_TRANSCRIPT.pdf, 123456_STUDENT_ID.pdf and 123456_PASSPORT_COPY.pdf.'
+        );
+        setImportDocuments({});
+        setImportZipWarnings(warnings);
+        return;
+      }
+
+      if (importRows.length > 0) {
+        const csvStudentIds = new Set(importRows.map((row) => normalizeStudentImportKey(row.studentId)));
+        Object.keys(nextDocuments).forEach((studentKey) => {
+          if (!csvStudentIds.has(studentKey)) {
+            warnings.push('Documents found for student ID "' + studentKey + '" but that student is not in the CSV file.');
+          }
+        });
+      }
+
+      setImportDocuments(nextDocuments);
+      setImportZipWarnings(warnings.slice(0, 20));
+    } catch {
+      setImportError('Unable to read this ZIP file. Please create a standard ZIP archive and try again.');
+      setImportDocuments({});
+    } finally {
+      setReadingImportZip(false);
+    }
+  };
+
   const importStudents = async () => {
     const validRows = importRows.filter((row) => !row.error);
     if (!validRows.length || validRows.length !== importRows.length) return;
@@ -330,7 +462,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
 
     for (const row of validRows) {
       try {
-        await AdminApiService.nominateStudent({
+        const importedStudent = await AdminApiService.nominateStudent({
           fullName: row.fullName,
           studentNumber: row.studentId,
           phone: row.phone || undefined,
@@ -341,6 +473,17 @@ export const UniversityNominateStudentPage: React.FC = () => {
           academicLevel: row.academicLevel || 'Year 5',
           durationWeeks: 8,
         });
+
+        const rowDocuments = documentsForImportRow(row.studentId);
+        for (const doc of rowDocuments) {
+          await AdminApiService.uploadStudentDocument(importedStudent._id, {
+            originalName: doc.name,
+            mimeType: doc.mimeType,
+            base64Data: doc.base64Data,
+            type: doc.docType,
+          });
+        }
+
         importedCount += 1;
       } catch (error: any) {
         failures.push(
@@ -368,9 +511,18 @@ export const UniversityNominateStudentPage: React.FC = () => {
       return;
     }
 
+    const uploadedDocumentCount = validRows.reduce(
+      (sum, row) => sum + documentsForImportRow(row.studentId).length,
+      0
+    );
+
     setImporting(false);
     closeImport();
-    setSuccessMessage(importedCount + ' student(s) imported and nominated successfully.');
+    setSuccessMessage(
+      importedCount +
+        ' student(s) imported successfully' +
+        (uploadedDocumentCount ? ' with ' + uploadedDocumentCount + ' document(s).' : '.')
+    );
     window.setTimeout(() => setSuccessMessage(null), 4500);
     loadStudents();
   };
@@ -471,6 +623,9 @@ export const UniversityNominateStudentPage: React.FC = () => {
                       setHeaderMenuOpen(false);
                       setImportOpen(true);
                       setImportFileName('');
+                      setImportZipFileName('');
+                      setImportDocuments({});
+                      setImportZipWarnings([]);
                       setImportRows([]);
                       setImportError(null);
                     }}
@@ -481,7 +636,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                     </span>
                     <span>
                       <span className="block">Import Students</span>
-                      <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">Bulk nomination from CSV</span>
+                      <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">Bulk nomination from CSV + ZIP documents</span>
                     </span>
                   </button>
                 </div>
@@ -518,7 +673,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
             if (event.target === event.currentTarget) closeImport();
           }}
         >
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-[#0f1b2d]">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-[#0f1b2d]">
             <div className="sticky top-0 z-10 border-b border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0f1b2d] sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
@@ -528,7 +683,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                   <div className="min-w-0">
                     <h2 className="text-xl font-black text-slate-950 dark:text-white">Import Students</h2>
                     <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                      Bulk nominate students for clinical training using the AZAAM CSV template.
+                      Bulk nominate students with a CSV file and automatically attach documents from a ZIP archive.
                     </p>
                   </div>
                 </div>
@@ -550,7 +705,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-500/20 dark:bg-blue-500/10">
                   <div className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
@@ -559,7 +714,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                     <div>
                       <div className="text-sm font-black text-slate-900 dark:text-white">1. Download Template</div>
                       <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                        Use the official columns so the import can validate each student correctly.
+                        Fill the same student fields used by Add and Edit.
                       </p>
                     </div>
                   </div>
@@ -576,27 +731,72 @@ export const UniversityNominateStudentPage: React.FC = () => {
                 <label className="cursor-pointer rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/60 p-4 transition hover:bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10">
                   <div className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                      <Upload className="h-4 w-4" />
+                      <FileSpreadsheet className="h-4 w-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-black text-slate-900 dark:text-white">2. Upload Completed File</div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">2. Upload Student CSV</div>
                       <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                        CSV columns match Add Student: Full Name, Student ID, Phone Number, Login Email, Login Password, Program and Academic Level.
+                        Full Name, Student ID, Phone, Email, Password, Program and Academic Level.
                       </p>
                     </div>
                   </div>
-                  <div className="mt-4 flex min-h-10 items-center justify-center rounded-xl border border-emerald-200 bg-white px-3 text-xs font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-slate-900 dark:text-emerald-300">
+                  <div className="mt-4 flex min-h-10 items-center justify-center rounded-xl border border-emerald-200 bg-white px-3 text-center text-xs font-black text-emerald-700 dark:border-emerald-500/20 dark:bg-slate-900 dark:text-emerald-300">
                     {importFileName || 'Choose CSV File'}
                   </div>
                   <input
                     type="file"
                     accept=".csv,text/csv"
                     className="hidden"
-                    disabled={importing}
+                    disabled={importing || readingImportZip}
                     onChange={(event) => void readImportFile(event.target.files?.[0] || null)}
                   />
                 </label>
+
+                <label className="cursor-pointer rounded-2xl border border-dashed border-violet-300 bg-violet-50/60 p-4 transition hover:bg-violet-50 dark:border-violet-500/30 dark:bg-violet-500/10">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">3. Upload Documents ZIP</div>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                        Optional if documents are not ready. Maximum ZIP size 100MB.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex min-h-10 items-center justify-center rounded-xl border border-violet-200 bg-white px-3 text-center text-xs font-black text-violet-700 dark:border-violet-500/20 dark:bg-slate-900 dark:text-violet-300">
+                    {readingImportZip ? 'Reading ZIP...' : importZipFileName || 'Choose Documents ZIP'}
+                  </div>
+                  <input
+                    type="file"
+                    accept=".zip,application/zip"
+                    className="hidden"
+                    disabled={importing || readingImportZip}
+                    onChange={(event) => void readImportDocumentsZip(event.target.files?.[0] || null)}
+                  />
+                </label>
               </div>
+
+              <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-4 text-[11px] leading-5 text-slate-600 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-slate-300">
+                <div className="font-black text-slate-800 dark:text-white">Document file naming</div>
+                <p className="mt-1">
+                  Name each file with the Student ID from the CSV, then the document type. Example:
+                  <span className="font-mono font-bold"> 123456_NOMINATION_LETTER.pdf</span>,
+                  <span className="font-mono font-bold"> 123456_ACADEMIC_TRANSCRIPT.pdf</span>,
+                  <span className="font-mono font-bold"> 123456_STUDENT_ID.pdf</span>,
+                  <span className="font-mono font-bold"> 123456_PASSPORT_COPY.pdf</span>.
+                </p>
+              </div>
+
+              {importZipWarnings.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-[11px] leading-5 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                  <div className="font-black">ZIP warnings</div>
+                  <ul className="mt-1 list-disc space-y-1 pl-4">
+                    {importZipWarnings.slice(0, 6).map((warning, index) => <li key={index}>{warning}</li>)}
+                  </ul>
+                  {importZipWarnings.length > 6 && <div className="mt-1 font-bold">+{importZipWarnings.length - 6} more warning(s)</div>}
+                </div>
+              )}
 
               {importRows.length > 0 && (
                 <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -610,13 +810,14 @@ export const UniversityNominateStudentPage: React.FC = () => {
                   </div>
 
                   <div className="max-h-64 overflow-auto">
-                    <table className="min-w-[650px] w-full text-left text-xs">
+                    <table className="min-w-[780px] w-full text-left text-xs">
                       <thead className="sticky top-0 bg-white text-[9px] font-black uppercase tracking-wide text-slate-400 dark:bg-[#0f1b2d]">
                         <tr>
                           <th className="px-4 py-3">Row</th>
                           <th className="px-4 py-3">Student</th>
                           <th className="px-4 py-3">Student ID</th>
                           <th className="px-4 py-3">Program</th>
+                          <th className="px-4 py-3">Documents</th>
                           <th className="px-4 py-3">Status</th>
                         </tr>
                       </thead>
@@ -630,6 +831,24 @@ export const UniversityNominateStudentPage: React.FC = () => {
                             </td>
                             <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-300">{row.studentId || '—'}</td>
                             <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">{row.program || '—'}</td>
+                            <td className="px-4 py-3">
+                              {(() => {
+                                const docs = documentsForImportRow(row.studentId);
+                                const requiredCount = ESSENTIAL_NOMINATION_DOCUMENT_TYPES.length;
+                                return (
+                                  <div>
+                                    <div className={`text-[10px] font-black ${docs.length === requiredCount ? 'text-emerald-700' : docs.length > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
+                                      {docs.length}/{requiredCount} attached
+                                    </div>
+                                    {docs.length > 0 && (
+                                      <div className="mt-1 max-w-[190px] truncate text-[9px] text-slate-400">
+                                        {docs.map((doc) => doc.docType.replace(/_/g, ' ')).join(', ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </td>
                             <td className="px-4 py-3">
                               {row.error ? (
                                 <span className="text-[10px] font-bold text-rose-600">{row.error}</span>
@@ -663,6 +882,7 @@ export const UniversityNominateStudentPage: React.FC = () => {
                   type="button"
                   disabled={
                     importing ||
+                    readingImportZip ||
                     importRows.length === 0 ||
                     importRows.some((row) => Boolean(row.error))
                   }
