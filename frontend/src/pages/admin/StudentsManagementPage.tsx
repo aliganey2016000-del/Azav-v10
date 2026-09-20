@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Award,
   Building2,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -120,9 +121,18 @@ export const StudentsManagementPage: React.FC = () => {
         title="Student Trainees Management"
         description="Comprehensive super admin monitoring for medical students, university nominations, hospital rotations, and lifecycle journeys."
         action={
-          <span className="inline-flex min-h-9 items-center rounded-xl border border-teal-200 bg-teal-50 px-3 text-xs font-extrabold text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300">
-            Total Enrolled: {total}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/admin/bulk-journey"
+              className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-500 px-3 text-xs font-extrabold text-white shadow-sm"
+            >
+              <CheckSquare className="h-4 w-4" />
+              Bulk Journey
+            </Link>
+            <span className="inline-flex min-h-9 items-center rounded-xl border border-teal-200 bg-teal-50 px-3 text-xs font-extrabold text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300">
+              Total Enrolled: {total}
+            </span>
+          </div>
         }
       />
 
