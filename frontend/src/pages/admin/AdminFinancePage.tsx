@@ -941,7 +941,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
         />
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="max-w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -1142,73 +1142,189 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
               </table>
             </div>
 
-            <div className="grid gap-3 p-3 md:hidden">
-              {filteredRecords.map((record) => (
-                <article key={asId(record)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black text-slate-950">{accountName(record)}</h3>
-                      <p className="mt-1 truncate text-xs font-bold text-teal-700">{record.description}</p>
+            <div className="grid min-w-0 gap-3 p-3 md:hidden">
+              {filteredRecords.map((record) => {
+                const services = Array.isArray(record.lineItems) ? record.lineItems : [];
+                const batchLabel = record.batchId
+                  ? (record.batchId?.batchNumber || 'Batch') +
+                    (record.batchId?.name ? ' · ' + record.batchId.name : '')
+                  : '—';
+                const payerType = String(
+                  record.payerType ||
+                    (record.universityId
+                      ? 'UNIVERSITY'
+                      : record.organizationId && !record.userId
+                        ? 'ORGANIZATION'
+                        : 'STUDENT')
+                ).replace(/_/g, ' ');
+
+                return (
+                  <article
+                    key={asId(record)}
+                    className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                  >
+                    <div className="border-b border-slate-100 bg-gradient-to-r from-white via-teal-50/40 to-cyan-50/70 p-4">
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <h3 className="min-w-0 break-words text-base font-black text-slate-950">
+                              {accountName(record)}
+                            </h3>
+                            <span className={'inline-flex shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ' + statusClass(record.status)}>
+                              {record.status}
+                            </span>
+                          </div>
+
+                          <div className="mt-2 break-all font-mono text-[11px] font-black text-teal-700">
+                            {referenceLabel(record)}
+                          </div>
+                          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                            {payerType} · {record.type}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          aria-label="Finance record actions"
+                          onClick={() =>
+                            setRowMenuId((current) => current === asId(record) ? null : asId(record))
+                          }
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="mt-4 flex min-w-0 items-end justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                            Total Amount
+                          </div>
+                          <div className="mt-0.5 break-words text-2xl font-black tracking-tight text-slate-950">
+                            {formatMoney(record.amount, record.currency)}
+                          </div>
+                        </div>
+
+                        {record.type === 'FEE' && (
+                          <div className="shrink-0 text-right">
+                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                              Balance
+                            </div>
+                            <div className="mt-0.5 text-sm font-black text-amber-700">
+                              {formatMoney(record.balance || 0, record.currency)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setRowMenuId((current) => current === asId(record) ? null : asId(record))
-                      }
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </div>
+                    {rowMenuId === asId(record) && (
+                      <div className="m-3 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+                        <ActionItem
+                          icon={<Eye className="h-4 w-4" />}
+                          label="View Details"
+                          onClick={() => {
+                            setRowMenuId(null);
+                            setViewing(record);
+                          }}
+                        />
+                        {!readOnly && (
+                          <ActionItem
+                            icon={<Pencil className="h-4 w-4" />}
+                            label="Edit Record"
+                            onClick={() => void openEdit(record)}
+                          />
+                        )}
+                        {!readOnly && record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
+                          <ActionItem
+                            icon={<RotateCcw className="h-4 w-4" />}
+                            label="Create Refund"
+                            onClick={() => void refundPayment(record)}
+                          />
+                        )}
+                        {!readOnly && record.status !== 'CANCELLED' && (
+                          <ActionItem
+                            danger
+                            icon={<Ban className="h-4 w-4" />}
+                            label="Void / Cancel"
+                            onClick={() => void voidRecord(record)}
+                          />
+                        )}
+                      </div>
+                    )}
 
-                  {rowMenuId === asId(record) && (
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-                      <ActionItem
-                        icon={<Eye className="h-4 w-4" />}
-                        label="View Details"
-                        onClick={() => {
-                          setRowMenuId(null);
-                          setViewing(record);
-                        }}
-                      />
-                      {!readOnly && (
-                        <ActionItem
-                          icon={<Pencil className="h-4 w-4" />}
-                          label="Edit Record"
-                          onClick={() => void openEdit(record)}
-                        />
+                    <div className="space-y-3 p-4">
+                      {record.description && (
+                        <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+                          <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                            Description
+                          </div>
+                          <div className="mt-1 break-words text-xs font-bold leading-5 text-slate-700">
+                            {record.description}
+                          </div>
+                        </div>
                       )}
-                      {!readOnly && record.type === 'PAYMENT' && record.status !== 'REFUNDED' && (
-                        <ActionItem
-                          icon={<RotateCcw className="h-4 w-4" />}
-                          label="Create Refund"
-                          onClick={() => void refundPayment(record)}
-                        />
+
+                      <div className="grid min-w-0 grid-cols-2 gap-2">
+                        {record.type === 'FEE' && (
+                          <MobileInfo
+                            label="Paid"
+                            value={formatMoney(record.paidAmount || 0, record.currency)}
+                          />
+                        )}
+                        <MobileInfo label="Batch" value={batchLabel} />
+                        <MobileInfo label="Due Date" value={formatDate(record.dueDate)} />
+                        <MobileInfo label="Created" value={formatDate(record.createdAt)} />
+                      </div>
+
+                      {record.type === 'FEE' && services.length > 0 && (
+                        <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">
+                              Invoice Services
+                            </div>
+                            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[9px] font-black text-slate-500">
+                              {services.length} service{services.length === 1 ? '' : 's'}
+                            </span>
+                          </div>
+
+                          <div className="mt-2 space-y-2">
+                            {services.map((item: RecordObject, index: number) => (
+                              <div
+                                key={String(item.feeRuleId || index)}
+                                className="min-w-0 rounded-xl border border-slate-100 bg-white p-3"
+                              >
+                                <div className="flex min-w-0 items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="break-words text-xs font-black text-slate-800">
+                                      {item.serviceName || 'Service'}
+                                    </div>
+                                    <div className="mt-1 break-words text-[10px] font-semibold text-slate-500">
+                                      {String(item.billingBasis || '').replace(/_/g, ' ') || 'Service'} · Qty {item.quantity || 1} × {formatMoney(item.unitPrice || 0, record.currency)}
+                                    </div>
+                                  </div>
+                                  <div className="shrink-0 text-xs font-black text-slate-900">
+                                    {formatMoney(item.amount || 0, record.currency)}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                      {!readOnly && record.status !== 'CANCELLED' && (
-                        <ActionItem
-                          danger
-                          icon={<Ban className="h-4 w-4" />}
-                          label="Void / Cancel"
-                          onClick={() => void voidRecord(record)}
-                        />
-                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setViewing(record)}
+                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 text-xs font-black text-white shadow-sm"
+                      >
+                        <Eye className="h-4 w-4" />
+                        View Full Invoice
+                      </button>
                     </div>
-                  )}
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <MobileInfo label="Reference" value={referenceLabel(record)} />
-                    <MobileInfo label="Amount" value={formatMoney(record.amount, record.currency)} />
-                    <MobileInfo label="Type" value={record.type} />
-                    <MobileInfo label="Status" value={record.status} />
-                  </div>
-
-                  <div className="mt-3 text-[10px] font-semibold text-slate-500">
-                    {formatDate(record.paidAt || record.dueDate || record.createdAt)}
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           </>
         )}
@@ -2141,9 +2257,9 @@ const DetailBox: React.FC<{ label: string; value: string }> = ({ label, value })
 );
 
 const MobileInfo: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-xl bg-slate-50 p-3">
+  <div className="min-w-0 rounded-xl bg-slate-50 p-3">
     <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{label}</div>
-    <div className="mt-1 truncate text-xs font-black text-slate-800">{value}</div>
+    <div className="mt-1 break-words text-xs font-black leading-5 text-slate-800">{value}</div>
   </div>
 );
 
