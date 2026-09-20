@@ -1611,6 +1611,63 @@ export class FinanceController {
     }
   }
 
+  static async deleteSettlement(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user || !isGlobalFinanceUser(req)) {
+        res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Finance management requires AZAAM finance access' },
+        });
+        return;
+      }
+
+      const record = await Payment.findById(req.params.id);
+      if (!record) {
+        res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Settlement record not found' },
+        });
+        return;
+      }
+
+      if (record.type !== 'SETTLEMENT') {
+        res.status(400).json({
+          success: false,
+          error: { code: 'SETTLEMENT_ONLY', message: 'Only settlement records can be deleted from this page' },
+        });
+        return;
+      }
+
+      const before = record.toObject();
+
+      await AuditLog.create({
+        actorUserId: req.user.userId,
+        actorId: req.user.userId,
+        actorEmail: req.user.email,
+        action: 'finance.settlement.delete',
+        entityType: 'Payment',
+        entityId: record._id,
+        before,
+        after: {
+          deleted: true,
+          deletedAt: new Date(),
+        },
+      });
+
+      await Payment.deleteOne({ _id: record._id });
+
+      res.json({
+        success: true,
+        data: {
+          id: String(record._id),
+          deleted: true,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async refund(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       if (!req.user || !isGlobalFinanceUser(req)) {
