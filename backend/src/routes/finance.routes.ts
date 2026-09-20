@@ -53,6 +53,12 @@ financeRouter.patch(
   FinanceController.update
 );
 
+financeRouter.delete(
+  '/:id',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  FinanceController.deleteSettlement
+);
+
 financeRouter.post(
   '/:id/refund',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
