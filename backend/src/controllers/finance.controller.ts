@@ -253,9 +253,26 @@ export class FinanceController {
   }
 
   private static async decorateInvoiceBalances(records: any[]) {
-    const invoiceIds = records
-      .filter((record) => record.type === 'FEE')
-      .map((record) => record._id as mongoose.Types.ObjectId);
+    const invoiceIdSet = new Set<string>();
+
+    records.forEach((record) => {
+      if (record.type === 'FEE' && record._id) {
+        invoiceIdSet.add(String(record._id));
+      }
+
+      const linkedInvoiceId =
+        typeof record.invoiceId === 'object' && record.invoiceId
+          ? String(record.invoiceId._id || record.invoiceId.id || '')
+          : String(record.invoiceId || '');
+
+      if (linkedInvoiceId && mongoose.Types.ObjectId.isValid(linkedInvoiceId)) {
+        invoiceIdSet.add(linkedInvoiceId);
+      }
+    });
+
+    const invoiceIds = Array.from(invoiceIdSet).map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
 
     if (!invoiceIds.length) return records;
 
@@ -286,17 +303,49 @@ export class FinanceController {
     const refunds = new Map(refundTotals.map((item) => [String(item._id), Number(item.total || 0)]));
 
     return records.map((record) => {
-      if (record.type !== 'FEE') return record;
-      const id = String(record._id);
-      const grossPaid = payments.get(id) || 0;
-      const refundedAmount = refunds.get(id) || 0;
-      const paidAmount = Math.max(0, grossPaid - refundedAmount);
-      return {
-        ...record,
-        paidAmount,
-        refundedAmount,
-        balance: Math.max(0, Number(record.amount || 0) - paidAmount),
-      };
+      if (record.type === 'FEE') {
+        const id = String(record._id);
+        const grossPaid = payments.get(id) || 0;
+        const refundedAmount = refunds.get(id) || 0;
+        const paidAmount = Math.max(0, grossPaid - refundedAmount);
+
+        return {
+          ...record,
+          paidAmount,
+          refundedAmount,
+          balance: Math.max(0, Number(record.amount || 0) - paidAmount),
+        };
+      }
+
+      if (record.type === 'PAYMENT' || record.type === 'REFUND') {
+        const linkedInvoice =
+          typeof record.invoiceId === 'object' && record.invoiceId
+            ? record.invoiceId
+            : null;
+        const linkedInvoiceId = linkedInvoice
+          ? String(linkedInvoice._id || linkedInvoice.id || '')
+          : String(record.invoiceId || '');
+
+        if (!linkedInvoiceId || !mongoose.Types.ObjectId.isValid(linkedInvoiceId)) {
+          return record;
+        }
+
+        const grossPaid = payments.get(linkedInvoiceId) || 0;
+        const refundedAmount = refunds.get(linkedInvoiceId) || 0;
+        const invoicePaidAmount = Math.max(0, grossPaid - refundedAmount);
+        const invoiceAmount = Number(linkedInvoice?.amount || 0);
+        const invoiceBalance = Math.max(0, invoiceAmount - invoicePaidAmount);
+
+        return {
+          ...record,
+          invoiceAmount,
+          invoicePaidAmount,
+          invoiceRefundedAmount: refundedAmount,
+          invoiceBalance,
+        };
+      }
+
+      return record;
     });
   }
 
