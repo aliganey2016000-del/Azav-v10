@@ -16,6 +16,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [sessionError, setSessionError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const handleSessionExpired = () => {
@@ -24,25 +26,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
 
+    const controller = new AbortController();
+    let active = true;
     const initAuth = async () => {
+      setIsLoading(true);
+      setSessionError(false);
       try {
-        const res = await api.get('/auth/me');
+        const res = await api.get('/auth/me', { timeout: 15000, signal: controller.signal });
+        if (!active) return;
         if (res.data?.success && res.data?.data?.user) {
           setUser(res.data.data.user);
         } else {
           setUser(null);
         }
-      } catch {
+      } catch (error: any) {
+        if (!active) return;
         setUser(null);
+        setSessionError(error?.response?.status !== 401);
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
 
     initAuth();
 
-    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
-  }, []);
+    return () => {
+      active = false;
+      controller.abort();
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    };
+  }, [attempt]);
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
@@ -67,7 +80,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{ user, token: null, isLoading, login, register, logout }}>
-      {children}
+      {sessionError ? (
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-slate-800">
+          <div role="alert" className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-sm">
+            <h1 className="text-lg font-bold">Unable to connect</h1>
+            <p className="mt-2 text-sm">Check your connection and try again to restore your session.</p>
+            <button type="button" onClick={() => setAttempt((value) => value + 1)} className="mt-4 rounded-xl bg-teal-600 px-5 py-3 font-semibold text-white">Try again</button>
+          </div>
+        </div>
+      ) : children}
     </AuthContext.Provider>
   );
 };
