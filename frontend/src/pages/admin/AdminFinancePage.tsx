@@ -686,11 +686,6 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
     [feeRules]
   );
 
-  const selectedInvoiceRuleId = invoiceItems[0]?.feeRuleId || '';
-  const selectedInvoiceRule = selectedInvoiceRuleId
-    ? feeRuleById.get(selectedInvoiceRuleId) || null
-    : null;
-
   const invoiceCurrency =
     invoiceItems.length > 0
       ? feeRuleById.get(invoiceItems[0].feeRuleId)?.currency || form.currency || 'USD'
@@ -2483,7 +2478,7 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                         <div className="mt-1 text-xs font-black text-slate-800">Choose the approved student batch</div>
                       </div>
                       <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
-                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">3. Select Pricing Rule</div>
+                        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">3. Select Pricing Rules</div>
                         <div className="mt-1 text-xs font-black text-slate-800">Choose service rule(s) to charge</div>
                       </div>
                       <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-3">
@@ -2655,96 +2650,12 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                     </Select>
                   )}
 
-                  {!editing && form.payerType === 'UNIVERSITY' && (
-                    <div className="sm:col-span-2 rounded-3xl border border-cyan-200 bg-white p-4 shadow-sm">
-                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">
-                        Pricing Rule
-                      </div>
-                      <div className="mt-1 text-sm font-black text-slate-900">
-                        {selectedUniversity?.name || 'Selected university'} · {selectedBatch?.batchNumber || 'Select batch'}
-                      </div>
-                      <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                        Choose one pricing rule for this batch. Per Student rules automatically use the approved student count.
-                      </p>
-
-                      <label className="mt-4 block">
-                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                          University Pricing Rule *
-                        </span>
-                        <select
-                          value={selectedInvoiceRuleId}
-                          disabled={!form.batchId || feeRulesLoading}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            const rule = feeRuleById.get(value);
-                            setInvoiceItems(
-                              value && rule
-                                ? [{ feeRuleId: value, quantity: quantityForRule(rule) }]
-                                : []
-                            );
-                          }}
-                          className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-500 disabled:bg-slate-100 disabled:text-slate-400"
-                        >
-                          <option value="">
-                            {!form.batchId
-                              ? 'Select batch first'
-                              : feeRulesLoading
-                                ? 'Loading university pricing...'
-                                : feeRules.length
-                                  ? 'Select pricing rule'
-                                  : 'No active university pricing found'}
-                          </option>
-                          {feeRules.map((rule) => (
-                            <option key={asId(rule)} value={asId(rule)}>
-                              {rule.serviceName} · {formatMoney(rule.amount, rule.currency)} · {String(rule.billingBasis || '').replace(/_/g, ' ')}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      {selectedInvoiceRule && (
-                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <div className="rounded-xl bg-slate-50 p-3">
-                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Unit Price</div>
-                            <div className="mt-1 text-sm font-black text-slate-900">
-                              {formatMoney(selectedInvoiceRule.amount, selectedInvoiceRule.currency)}
-                            </div>
-                          </div>
-                          <div className="rounded-xl bg-slate-50 p-3">
-                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Billing Basis</div>
-                            <div className="mt-1 text-sm font-black text-slate-900">
-                              {String(selectedInvoiceRule.billingBasis || '').replace(/_/g, ' ')}
-                            </div>
-                          </div>
-                          <div className="rounded-xl bg-slate-50 p-3">
-                            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Billing Qty</div>
-                            <div className="mt-1 text-sm font-black text-slate-900">
-                              {quantityForRule(selectedInvoiceRule)}
-                            </div>
-                          </div>
-                          <div className="rounded-xl bg-teal-50 p-3">
-                            <div className="text-[9px] font-black uppercase tracking-wide text-teal-600">Total</div>
-                            <div className="mt-1 text-sm font-black text-teal-800">
-                              {formatMoney(invoiceTotal, selectedInvoiceRule.currency)}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {!feeRulesLoading && form.batchId && feeRules.length === 0 && (
-                        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
-                          No active university pricing was found. Check Finance → Service Pricing for this university.
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {!editing && form.payerType !== 'UNIVERSITY' && (
+                  {!editing && (
                     <div className="sm:col-span-2 overflow-hidden rounded-3xl border border-cyan-200 bg-white shadow-sm">
                       <div className="flex flex-col gap-3 border-b border-cyan-100 bg-gradient-to-r from-cyan-50 to-teal-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700">
-                            Service Price List
+                            {form.payerType === 'UNIVERSITY' ? 'University Pricing Rules' : 'Service Price List'}
                           </div>
                           <div className="mt-1 text-base font-black text-slate-950">
                             {form.payerType === 'UNIVERSITY'
@@ -2754,9 +2665,13 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                               : selectedPayerName || 'Select a payer to load services'}
                           </div>
                           <p className="mt-1 text-[11px] font-semibold text-slate-600">
-                            {pricingProfile?.serviceCount
-                              ? `${pricingProfile.serviceCount} active services · ${pricingProfile.currency || pricingProfile.currencies?.join(', ') || 'Currency varies'} · Pricing snapshot will be saved on the invoice`
-                              : 'All applicable services will appear here automatically.'}
+                            {form.payerType === 'UNIVERSITY'
+                              ? form.batchId
+                                ? 'Check one or more pricing rules to charge this batch. Per Student rules automatically use the approved student count.'
+                                : 'Select a batch first, then check one or more pricing rules.'
+                              : pricingProfile?.serviceCount
+                                ? `${pricingProfile.serviceCount} active services · ${pricingProfile.currency || pricingProfile.currencies?.join(', ') || 'Currency varies'} · Pricing snapshot will be saved on the invoice`
+                                : 'All applicable services will appear here automatically.'}
                           </p>
                         </div>
 
@@ -2836,19 +2751,13 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                   return (
                                     <tr key={ruleId} className={selected ? 'bg-cyan-50/45' : 'bg-white hover:bg-slate-50'}>
                                       <td className="px-4 py-3 text-center">
-                                        <button
-                                          type="button"
-                                          aria-label={selected ? 'Remove service from invoice' : 'Add service to invoice'}
-                                          onClick={() => toggleInvoiceRule(ruleId)}
-                                          className={
-                                            'mx-auto flex h-8 w-8 items-center justify-center rounded-lg border transition ' +
-                                            (selected
-                                              ? 'border-teal-600 bg-teal-600 text-white'
-                                              : 'border-slate-300 bg-white text-transparent hover:border-teal-400')
-                                          }
-                                        >
-                                          <Check className="h-4 w-4" />
-                                        </button>
+                                        <input
+                                          type="checkbox"
+                                          checked={selected}
+                                          onChange={() => toggleInvoiceRule(ruleId)}
+                                          aria-label={selected ? 'Remove pricing rule from invoice' : 'Add pricing rule to invoice'}
+                                          className="h-5 w-5 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600"
+                                        />
                                       </td>
                                       <td className="px-4 py-3">
                                         <div className="font-black text-slate-900">{rule.serviceName}</div>
@@ -2917,18 +2826,13 @@ export const AdminFinancePage: React.FC<FinancePageProps> = ({
                                         {formatMoney(rule.amount, rule.currency)} · {String(rule.billingBasis || '').replace(/_/g, ' ')}
                                       </p>
                                     </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleInvoiceRule(ruleId)}
-                                      className={
-                                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ' +
-                                        (selected
-                                          ? 'border-teal-600 bg-teal-600 text-white'
-                                          : 'border-slate-300 bg-white text-transparent')
-                                      }
-                                    >
-                                      <Check className="h-4 w-4" />
-                                    </button>
+                                    <input
+                                      type="checkbox"
+                                      checked={selected}
+                                      onChange={() => toggleInvoiceRule(ruleId)}
+                                      aria-label={selected ? 'Remove pricing rule from invoice' : 'Add pricing rule to invoice'}
+                                      className="h-5 w-5 shrink-0 cursor-pointer rounded border-slate-300 text-teal-600 accent-teal-600"
+                                    />
                                   </div>
 
                                   {selected && (
