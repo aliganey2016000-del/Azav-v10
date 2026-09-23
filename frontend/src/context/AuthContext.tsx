@@ -6,6 +6,8 @@ interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
   isLoading: boolean;
+  sessionError: boolean;
+  retrySession: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
@@ -78,17 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const retrySession = () => setAttempt((value) => value + 1);
+
   return (
-    <AuthContext.Provider value={{ user, token: null, isLoading, login, register, logout }}>
-      {sessionError ? (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-slate-800">
-          <div role="alert" className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-sm">
-            <h1 className="text-lg font-bold">Unable to connect</h1>
-            <p className="mt-2 text-sm">Check your connection and try again to restore your session.</p>
-            <button type="button" onClick={() => setAttempt((value) => value + 1)} className="mt-4 rounded-xl bg-teal-600 px-5 py-3 font-semibold text-white">Try again</button>
-          </div>
-        </div>
-      ) : children}
+    <AuthContext.Provider value={{ user, token: null, isLoading, sessionError, retrySession, login, register, logout }}>
+      {children}
     </AuthContext.Provider>
   );
 };

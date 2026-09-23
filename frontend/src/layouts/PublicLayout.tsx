@@ -1,14 +1,39 @@
-import React from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Activity, ArrowRight, ChevronDown, Menu, Moon, ShieldCheck, Sparkles, X } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Activity, ArrowRight, ChevronDown, Menu, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
 
+const SECTION_LINKS = [
+  { hash: '#about', label: 'About' },
+  { hash: '#programs', label: 'Training' },
+  { hash: '#news', label: 'Updates' },
+  { hash: '#network', label: 'Partners' },
+];
+
 export const PublicLayout: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const onLandingPage = location.pathname === '/';
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+  // The public marketing site has its own fixed brand palette and was never
+  // designed with a dark mode. If the visitor toggled dark mode in the admin
+  // portal earlier in the same session, the `dark` class stays on <html> and
+  // a global stylesheet override (index.css) forcibly re-colors bg-white /
+  // text-slate-* utility classes everywhere, breaking contrast here. Suspend
+  // that class for as long as a public page is mounted, and restore it when
+  // navigating back into an authenticated portal.
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains('dark');
+    root.classList.remove('dark');
+    return () => {
+      if (hadDark) root.classList.add('dark');
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#003d33] text-white">
@@ -25,19 +50,19 @@ export const PublicLayout: React.FC = () => {
           </Link>
 
           <nav className="hidden items-center gap-1 text-[13px] font-semibold text-emerald-50/80 lg:flex">
-            <a href="#about" className="rounded-full px-4 py-2 hover:bg-white/5 hover:text-white">About</a>
-            <a href="#programs" className="rounded-full px-4 py-2 hover:bg-white/5 hover:text-white">Training</a>
-            <a href="#news" className="rounded-full px-4 py-2 hover:bg-white/5 hover:text-white">Updates</a>
-            <a href="#network" className="rounded-full px-4 py-2 hover:bg-white/5 hover:text-white">Partners</a>
+            {SECTION_LINKS.map((item) =>
+              onLandingPage ? (
+                <a key={item.hash} href={item.hash} className="rounded-full px-4 py-2 hover:bg-white/5 hover:text-white">{item.label}</a>
+              ) : (
+                <Link key={item.hash} to={`/${item.hash}`} className="rounded-full px-4 py-2 hover:bg-white/5 hover:text-white">{item.label}</Link>
+              ),
+            )}
             <Link to="/verify-certificate" className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 hover:bg-white/5 hover:text-white">
               Certificates <ChevronDown className="h-3.5 w-3.5" />
             </Link>
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
-            <button type="button" className="rounded-full border border-white/10 p-2.5 text-emerald-100/70 hover:bg-white/5" aria-label="Theme">
-              <Moon className="h-4 w-4" />
-            </button>
             {user ? (
               <button
                 onClick={() => navigate('/portal')}
@@ -67,10 +92,13 @@ export const PublicLayout: React.FC = () => {
         {mobileMenuOpen && (
           <div className="border-t border-white/10 bg-[#003d33] px-4 py-4 lg:hidden">
             <div className="space-y-2 text-sm font-semibold text-emerald-50/85">
-              <a href="#about" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">About</a>
-              <a href="#programs" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">Training</a>
-              <a href="#news" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">Updates</a>
-              <a href="#network" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">Partners</a>
+              {SECTION_LINKS.map((item) =>
+                onLandingPage ? (
+                  <a key={item.hash} href={item.hash} onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">{item.label}</a>
+                ) : (
+                  <Link key={item.hash} to={`/${item.hash}`} onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">{item.label}</Link>
+                ),
+              )}
               <Link to="/verify-certificate" onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">Verify Certificate</Link>
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="rounded-full border border-white/20 px-4 py-2.5 text-center">Sign in</Link>

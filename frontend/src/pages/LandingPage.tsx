@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
@@ -7,6 +7,8 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   FileCheck2,
   Globe2,
   GraduationCap,
@@ -23,6 +25,7 @@ import {
   defaultLandingPageContent,
   LandingPageCmsService,
   LandingPageContent,
+  VideoItem,
 } from '../services/landingPageCms.service';
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
@@ -47,6 +50,110 @@ const youtubeEmbed = (url: string) => {
   return '';
 };
 
+const HeroVideoCarousel: React.FC<{ videos: VideoItem[] }> = ({ videos }) => {
+  const [index, setIndex] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const items = videos.slice(0, 5);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [items.length]);
+
+  const goNext = () => setIndex((current) => (current + 1) % items.length);
+  const goPrev = () => setIndex((current) => (current - 1 + items.length) % items.length);
+
+  const current = items[index];
+  const embed = current ? youtubeEmbed(current.url) : '';
+
+  // YouTube videos only move to the next one once they actually finish playing
+  // (via the IFrame API's onStateChange === 0 "ended" event), not on a timer.
+  useEffect(() => {
+    if (!embed) return;
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.event === 'onStateChange' && data.info === 0) goNext();
+      } catch {
+        // Not a JSON message from the YouTube player; ignore.
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embed, items.length]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-black">
+      <div className="aspect-video w-full">
+        {embed ? (
+          <iframe
+            ref={iframeRef}
+            key={`${current.url}-${index}`}
+            src={`${embed}${embed.includes('?') ? '&' : '?'}autoplay=1&mute=1&controls=1&rel=0&enablejsapi=1`}
+            title={current.title || `AIMN video ${index + 1}`}
+            className="h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <video
+            key={`${current.url}-${index}`}
+            src={current.url}
+            poster={current.thumbnail}
+            autoPlay
+            muted
+            controls
+            playsInline
+            onEnded={goNext}
+            className="h-full w-full object-cover"
+          />
+        )}
+      </div>
+
+      {current.title && (
+        <div className="pointer-events-none absolute left-4 top-4 max-w-[80%] rounded-full bg-black/55 px-4 py-2 text-xs font-bold text-white backdrop-blur">
+          {current.title}
+        </div>
+      )}
+
+      {items.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={goPrev}
+            aria-label="Previous video"
+            className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur transition hover:bg-black/70 group-hover:opacity-100 focus:opacity-100"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            aria-label="Next video"
+            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur transition hover:bg-black/70 group-hover:opacity-100 focus:opacity-100"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 px-3 py-2 backdrop-blur">
+            {items.map((item, itemIndex) => (
+              <button
+                key={item.url || itemIndex}
+                type="button"
+                onClick={() => setIndex(itemIndex)}
+                aria-label={`Show video ${itemIndex + 1}`}
+                className={`h-2 rounded-full transition-all ${itemIndex === index ? 'w-6 bg-[#ffb612]' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const heroPattern = {
   backgroundImage:
     'radial-gradient(circle at 15% 15%, rgba(255,182,18,0.12), transparent 28%), radial-gradient(circle at 85% 78%, rgba(30,210,160,0.13), transparent 30%), linear-gradient(135deg, rgba(255,255,255,0.025) 25%, transparent 25%), linear-gradient(225deg, rgba(255,255,255,0.025) 25%, transparent 25%), linear-gradient(45deg, rgba(255,255,255,0.025) 25%, transparent 25%), linear-gradient(315deg, rgba(255,255,255,0.025) 25%, #004b3e 25%)',
@@ -66,9 +173,19 @@ export const LandingPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    document.title = content.seo.title || 'AZAAM International Medics Network';
-    const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute('content', content.seo.description || '');
+    const title = content.seo.title || 'AZAAM International Medics Network';
+    const description = content.seo.description || '';
+    document.title = title;
+
+    const setMeta = (selector: string, attr: string, value: string) => {
+      const el = document.querySelector(selector);
+      if (el && value) el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[name="description"]', 'content', description);
+    setMeta('meta[property="og:title"]', 'content', title);
+    setMeta('meta[property="og:description"]', 'content', description);
+    if (content.seo.shareImage) setMeta('meta[property="og:image"]', 'content', content.seo.shareImage);
   }, [content.seo]);
 
   const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
@@ -106,8 +223,8 @@ export const LandingPage: React.FC = () => {
                 <SmartLink to={content.hero.primaryButtonUrl} className="inline-flex items-center gap-2 rounded-full bg-[#ffb612] px-7 py-3.5 text-sm font-black text-[#063b31] shadow-lg shadow-amber-500/20 transition hover:bg-[#ffc83d]">
                   {content.hero.primaryButtonText || 'Get Started'} <ArrowRight className="h-4 w-4" />
                 </SmartLink>
-                <a href="#programs" className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08]">
-                  <Play className="h-4 w-4" /> Watch Demo
+                <a href={content.videos.length > 0 ? '#videos' : '#programs'} className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08]">
+                  <Play className="h-4 w-4" /> {content.videos.length > 0 ? 'Watch Demo' : 'Explore Programs'}
                 </a>
               </div>
 
@@ -127,65 +244,69 @@ export const LandingPage: React.FC = () => {
             <div className="relative mx-auto w-full max-w-[590px]">
               <div className="absolute -inset-10 rounded-full bg-emerald-300/10 blur-3xl" />
               <div className="relative rounded-[28px] border border-white/20 bg-white/[0.08] p-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
-                <div className="rounded-[22px] border border-white/10 bg-[#174f42]/90 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Stethoscope className="h-6 w-6" /></div>
-                      <div>
-                        <h2 className="font-black text-white">AZAAM Medics</h2>
-                        <p className="text-xs text-emerald-50/60">Clinical Training Dashboard</p>
+                {content.videos.length > 0 ? (
+                  <HeroVideoCarousel videos={content.videos} />
+                ) : (
+                  <div className="rounded-[22px] border border-white/10 bg-[#174f42]/90 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Stethoscope className="h-6 w-6" /></div>
+                        <div>
+                          <h2 className="font-black text-white">AZAAM Medics</h2>
+                          <p className="text-xs text-emerald-50/60">Clinical Training Dashboard</p>
+                        </div>
+                      </div>
+                      <div className="flex -space-x-2">
+                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#ffb612]" />
+                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#39d0b2]" />
+                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#45baff]" />
                       </div>
                     </div>
-                    <div className="flex -space-x-2">
-                      <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#ffb612]" />
-                      <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#39d0b2]" />
-                      <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#45baff]" />
-                    </div>
-                  </div>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                      { icon: Users, label: 'Total Trainees', value: '1,248', accent: '+12%' },
-                      { icon: Building2, label: 'Active Placements', value: '386', accent: '+8%' },
-                      { icon: FileCheck2, label: 'Visa Pipeline', value: '214', accent: '+24%' },
-                      { icon: Award, label: 'Certificates Issued', value: '892', accent: '+18%' },
-                    ].map(({ icon: Icon, label, value, accent }) => (
-                      <div key={label} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
-                        <Icon className="h-5 w-5 text-[#45d2aa]" />
-                        <p className="mt-3 text-[10px] font-bold text-emerald-50/60">{label}</p>
-                        <div className="mt-1 flex items-end gap-2"><span className="text-xl font-black text-white">{value}</span><span className="pb-0.5 text-[9px] font-bold text-[#54d9a7]">{accent}</span></div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-white">Placements Trend</p>
-                        <p className="mt-1 text-[10px] text-emerald-50/50">Last 6 months</p>
-                      </div>
-                      <span className="rounded-full border border-white/10 px-3 py-1 text-[9px] text-emerald-50/60">Live</span>
-                    </div>
-                    <div className="mt-5 flex h-28 items-end gap-3">
-                      {[28,42,55,66,70,80,95].map((height, index) => (
-                        <div key={index} className="flex flex-1 flex-col items-center gap-2">
-                          <div className="w-full rounded-t-md bg-[#45c894]/70" style={{ height: `${height}%` }} />
-                          <span className="text-[9px] text-emerald-50/45">{['Jan','Feb','Mar','Apr','May','Jun','Jul'][index]}</span>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        { icon: Users, label: 'Total Trainees', value: '1,248', accent: '+12%' },
+                        { icon: Building2, label: 'Active Placements', value: '386', accent: '+8%' },
+                        { icon: FileCheck2, label: 'Visa Pipeline', value: '214', accent: '+24%' },
+                        { icon: Award, label: 'Certificates Issued', value: '892', accent: '+18%' },
+                      ].map(({ icon: Icon, label, value, accent }) => (
+                        <div key={label} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
+                          <Icon className="h-5 w-5 text-[#45d2aa]" />
+                          <p className="mt-3 text-[10px] font-bold text-emerald-50/60">{label}</p>
+                          <div className="mt-1 flex items-end gap-2"><span className="text-xl font-black text-white">{value}</span><span className="pb-0.5 text-[9px] font-bold text-[#54d9a7]">{accent}</span></div>
                         </div>
                       ))}
                     </div>
+
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black text-white">Placements Trend</p>
+                          <p className="mt-1 text-[10px] text-emerald-50/50">Last 6 months</p>
+                        </div>
+                        <span className="rounded-full border border-white/10 px-3 py-1 text-[9px] text-emerald-50/60">Live</span>
+                      </div>
+                      <div className="mt-5 flex h-28 items-end gap-3">
+                        {[28,42,55,66,70,80,95].map((height, index) => (
+                          <div key={index} className="flex flex-1 flex-col items-center gap-2">
+                            <div className="w-full rounded-t-md bg-[#45c894]/70" style={{ height: `${height}%` }} />
+                            <span className="text-[9px] text-emerald-50/45">{['Jan','Feb','Mar','Apr','May','Jun','Jul'][index]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
-              <div className="absolute -left-5 top-[42%] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:block">
+              <div className="pointer-events-none absolute -left-5 top-[42%] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:block">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full border-4 border-[#ffb612] text-xs font-black text-white">92%</div>
                   <div><p className="text-[10px] text-emerald-50/55">Placement</p><p className="text-sm font-black text-white">Success Rate</p></div>
                 </div>
               </div>
 
-              <div className="absolute -bottom-3 right-[-6px] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:flex sm:items-center sm:gap-3">
+              <div className="pointer-events-none absolute -bottom-3 right-[-6px] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:flex sm:items-center sm:gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Award className="h-5 w-5" /></div>
                 <div><p className="text-[10px] text-emerald-50/55">Certificates</p><p className="text-sm font-black text-white">Auto-generated & Verified</p></div>
                 <CheckCircle2 className="h-5 w-5 text-[#4be0a7]" />
@@ -303,7 +424,7 @@ export const LandingPage: React.FC = () => {
       )}
 
       {content.videos.length > 0 && (
-        <section className="bg-[#002f28] py-20" style={heroPattern}>
+        <section id="videos" className="bg-[#002f28] py-20" style={heroPattern}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-[#ffbf2f]"><PlayCircle className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">Videos</span></div>
             <h2 className="mt-3 text-4xl font-black text-white" style={headingFont}>Stories, training and partnerships</h2>

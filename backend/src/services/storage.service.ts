@@ -1,9 +1,11 @@
 import fs from 'fs';
+import { Readable } from 'stream';
 import path from 'path';
 import crypto from 'crypto';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -20,10 +22,17 @@ export interface StorageUploadResult {
   fileSize: number;
 }
 
+export interface StorageByteRange {
+  start: number;
+  end: number;
+}
+
 export interface IStorageProvider {
   uploadFile(file: FilePayload): Promise<StorageUploadResult>;
   getFile(storageKey: string): Promise<Buffer>;
   deleteFile(storageKey: string): Promise<void>;
+  getFileSize(storageKey: string): Promise<number>;
+  getFileStream(storageKey: string, range?: StorageByteRange): Promise<Readable>;
 }
 
 const createPrivateObjectKey = (originalname: string): string => {
@@ -84,6 +93,33 @@ export class LocalStorageProvider implements IStorageProvider {
     if (fs.existsSync(filePath)) {
       await fs.promises.unlink(filePath);
     }
+  }
+
+  async getFileSize(storageKey: string): Promise<number> {
+    const safeKey = path.basename(storageKey);
+    const filePath = path.join(this.uploadDir, safeKey);
+
+    try {
+      const stat = await fs.promises.stat(filePath);
+      return stat.size;
+    } catch {
+      const err: any = new Error('File not found on storage');
+      err.statusCode = 404;
+      throw err;
+    }
+  }
+
+  async getFileStream(storageKey: string, range?: StorageByteRange): Promise<Readable> {
+    const safeKey = path.basename(storageKey);
+    const filePath = path.join(this.uploadDir, safeKey);
+
+    if (!fs.existsSync(filePath)) {
+      const err: any = new Error('File not found on storage');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    return fs.createReadStream(filePath, range ? { start: range.start, end: range.end } : undefined);
   }
 }
 
@@ -174,6 +210,59 @@ export class S3StorageProvider implements IStorageProvider {
         Key: storageKey,
       })
     );
+  }
+
+  async getFileSize(storageKey: string): Promise<number> {
+    try {
+      const response = await this.client.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: storageKey })
+      );
+      return response.ContentLength ?? 0;
+    } catch (error: any) {
+      if (
+        error?.name === 'NoSuchKey' ||
+        error?.name === 'NotFound' ||
+        error?.$metadata?.httpStatusCode === 404
+      ) {
+        const err: any = new Error('File not found on object storage');
+        err.statusCode = 404;
+        err.code = 'STORAGE_OBJECT_NOT_FOUND';
+        throw err;
+      }
+      throw error;
+    }
+  }
+
+  async getFileStream(storageKey: string, range?: StorageByteRange): Promise<Readable> {
+    try {
+      const response = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: storageKey,
+          Range: range ? `bytes=${range.start}-${range.end}` : undefined,
+        })
+      );
+
+      if (!response.Body) {
+        const err: any = new Error('File not found on object storage');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      return response.Body as Readable;
+    } catch (error: any) {
+      if (
+        error?.name === 'NoSuchKey' ||
+        error?.name === 'NotFound' ||
+        error?.$metadata?.httpStatusCode === 404
+      ) {
+        const err: any = new Error('File not found on object storage');
+        err.statusCode = 404;
+        err.code = 'STORAGE_OBJECT_NOT_FOUND';
+        throw err;
+      }
+      throw error;
+    }
   }
 }
 

@@ -67,11 +67,10 @@ export const defaultLandingPageContent: LandingPageContent = {
     secondaryButtonUrl: '/verify-certificate',
   },
   highlights: [
-    { label: 'CORE PARTIES', value: '02' },
-    { label: 'CLINICAL AREAS', value: '10+' },
-    { label: 'TRAINING STAGES', value: '03' },
-    { label: 'QUALITY FOCUS', value: '01' },
-    { label: 'PATHWAY', value: 'END-TO-END' },
+    { label: 'YEARS OF EXPERIENCE', value: '15+' },
+    { label: 'ESTABLISHED', value: '2011' },
+    { label: 'CLINICAL SPECIALTY AREAS', value: '10+' },
+    { label: 'PLACEMENT SUCCESS RATE', value: '92%' },
   ],
   about: {
     eyebrow: 'About AIMN',
@@ -189,5 +188,24 @@ export const LandingPageCmsService = {
       ...response.data?.data,
       content: mergeWithDefaults(response.data?.data?.content),
     };
+  },
+
+  async uploadAsset(file: File): Promise<string> {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const response = await api.post('/site-assets/upload', {
+      originalName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      base64Data,
+    });
+
+    const path = response.data?.data?.url as string;
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) || '';
+    return `${apiBase}${path}`;
   },
 };
