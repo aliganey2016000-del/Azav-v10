@@ -1,0 +1,185 @@
+import api from './api';
+
+export type HighlightItem = { label: string; value: string };
+export type ProgramItem = { title: string; image: string; link: string };
+export type NewsItem = { title: string; label: string; summary: string; image: string; link: string };
+export type GalleryItem = { title: string; image: string; caption: string };
+export type VideoItem = { title: string; url: string; thumbnail: string; description: string };
+
+export type LandingPageContent = {
+  hero: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    backgroundImage: string;
+    backgroundVideo: string;
+    primaryButtonText: string;
+    primaryButtonUrl: string;
+    secondaryButtonText: string;
+    secondaryButtonUrl: string;
+  };
+  highlights: HighlightItem[];
+  about: {
+    eyebrow: string;
+    title: string;
+    paragraphs: string[];
+    images: string[];
+  };
+  programs: ProgramItem[];
+  news: NewsItem[];
+  gallery: GalleryItem[];
+  videos: VideoItem[];
+  networkRoles: string[];
+  cta: {
+    eyebrow: string;
+    title: string;
+    primaryText: string;
+    primaryUrl: string;
+    secondaryText: string;
+    secondaryUrl: string;
+  };
+  contact: {
+    email: string;
+    phone: string;
+    address: string;
+  };
+  seo: {
+    title: string;
+    description: string;
+    shareImage: string;
+  };
+};
+
+export const defaultLandingPageContent: LandingPageContent = {
+  hero: {
+    eyebrow: 'Clinical excellence without borders',
+    title: 'AZAAM International Medics Network (AIMN)',
+    subtitle: 'AIMN is an international medical education and clinical attachment network committed to quality training, trusted partnerships, and stronger healthcare practice.',
+    backgroundImage: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1600&q=85',
+    backgroundVideo: '',
+    primaryButtonText: 'Apply Now',
+    primaryButtonUrl: '/register',
+    secondaryButtonText: 'Verify Certificate',
+    secondaryButtonUrl: '/verify-certificate',
+  },
+  highlights: [
+    { label: 'CORE PARTIES', value: '02' },
+    { label: 'CLINICAL AREAS', value: '10+' },
+    { label: 'TRAINING STAGES', value: '03' },
+    { label: 'QUALITY FOCUS', value: '01' },
+    { label: 'PATHWAY', value: 'END-TO-END' },
+  ],
+  about: {
+    eyebrow: 'About AIMN',
+    title: 'International medical training with purpose.',
+    paragraphs: [
+      'AZAAM International Medics Network (AIMN) delivers quality clinical attachment and medical training experiences that blend academic strength with supervised practical learning.',
+      'Our network connects students, universities, hospitals, and clinical supervisors to produce experienced, engaged, and confident healthcare professionals.',
+    ],
+    images: [
+      'https://images.unsplash.com/photo-1516841273335-e39b37888115?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80',
+    ],
+  },
+  programs: [
+    { title: 'Internal Medicine', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=800&q=85', link: '/register' },
+    { title: 'Surgery & Emergency Medicine', image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=85', link: '/register' },
+    { title: 'Pediatrics', image: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=800&q=85', link: '/register' },
+    { title: 'Obstetrics & Gynecology', image: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=85', link: '/register' },
+  ],
+  news: [
+    { title: 'Clinical attachment applications are now open for university-nominated students', label: 'Placement update', summary: 'Universities can nominate eligible students through the AIMN university portal.', image: '', link: '/login' },
+    { title: 'AIMN coordinates international clinical training with approved host institutions', label: 'Network update', summary: 'Structured coordination connects universities, trainees and approved host institutions.', image: '', link: '/login' },
+    { title: 'Supporting safe, ethical, and supervised practical learning', label: 'Quality update', summary: 'Clinical learning is coordinated around supervision, documentation and quality monitoring.', image: '', link: '/login' },
+  ],
+  gallery: [],
+  videos: [],
+  networkRoles: [
+    'Sending universities',
+    'Approved host institutions',
+    'Qualified clinical supervisors',
+    'Hospitals and health facilities',
+    'Academic coordinators',
+    'Professional networks',
+    'Uganda and East Africa',
+    'Asia and other agreed destinations',
+    'Research collaborators',
+    'Quality and compliance stakeholders',
+  ],
+  cta: {
+    eyebrow: 'Explore more',
+    title: 'A trusted bridge between universities and clinical practice.',
+    primaryText: 'Join now',
+    primaryUrl: '/register',
+    secondaryText: 'Login',
+    secondaryUrl: '/login',
+  },
+  contact: {
+    email: 'info@azaammedics.org',
+    phone: '',
+    address: '',
+  },
+  seo: {
+    title: 'AZAAM International Medics Network',
+    description: 'International medical education, clinical attachments and supervised healthcare training.',
+    shareImage: '',
+  },
+};
+
+const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): LandingPageContent => ({
+  ...defaultLandingPageContent,
+  ...(value || {}),
+  hero: { ...defaultLandingPageContent.hero, ...(value?.hero || {}) },
+  about: { ...defaultLandingPageContent.about, ...(value?.about || {}) },
+  cta: { ...defaultLandingPageContent.cta, ...(value?.cta || {}) },
+  contact: { ...defaultLandingPageContent.contact, ...(value?.contact || {}) },
+  seo: { ...defaultLandingPageContent.seo, ...(value?.seo || {}) },
+  highlights: Array.isArray(value?.highlights) ? value!.highlights : defaultLandingPageContent.highlights,
+  programs: Array.isArray(value?.programs) ? value!.programs : defaultLandingPageContent.programs,
+  news: Array.isArray(value?.news) ? value!.news : defaultLandingPageContent.news,
+  gallery: Array.isArray(value?.gallery) ? value!.gallery : defaultLandingPageContent.gallery,
+  videos: Array.isArray(value?.videos) ? value!.videos : defaultLandingPageContent.videos,
+  networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
+});
+
+export const LandingPageCmsService = {
+  async getPublic(): Promise<LandingPageContent> {
+    const response = await api.get('/landing-page');
+    return mergeWithDefaults(response.data?.data?.content);
+  },
+
+  async getPreview(): Promise<LandingPageContent> {
+    const response = await api.get('/landing-page/preview');
+    return mergeWithDefaults(response.data?.data?.content);
+  },
+
+  async getAdmin(): Promise<{ content: LandingPageContent; draftUpdatedAt: string | null; publishedAt: string | null; hasPublishedVersion: boolean }> {
+    const response = await api.get('/landing-page/admin');
+    const data = response.data?.data || {};
+    return {
+      content: mergeWithDefaults(data.content),
+      draftUpdatedAt: data.draftUpdatedAt || null,
+      publishedAt: data.publishedAt || null,
+      hasPublishedVersion: Boolean(data.hasPublishedVersion),
+    };
+  },
+
+  async saveDraft(content: LandingPageContent) {
+    const response = await api.put('/landing-page/admin/draft', { content });
+    return response.data?.data;
+  },
+
+  async publish() {
+    const response = await api.post('/landing-page/admin/publish');
+    return response.data?.data;
+  },
+
+  async resetDraft() {
+    const response = await api.post('/landing-page/admin/reset');
+    return {
+      ...response.data?.data,
+      content: mergeWithDefaults(response.data?.data?.content),
+    };
+  },
+};

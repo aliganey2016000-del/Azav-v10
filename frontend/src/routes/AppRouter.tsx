@@ -24,6 +24,7 @@ import { UniversityRotationsPage } from '../pages/university/UniversityRotations
 
 import { OrganizationDepartmentsPage } from '../pages/organization/OrganizationDepartmentsPage';
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
+import { WebsiteManagementPage } from '../pages/admin/WebsiteManagementPage';
 import { UsersManagementPage } from '../pages/admin/UsersManagementPage';
 import { UniversitiesPage } from '../pages/admin/UniversitiesPage';
 import { UniversityDetailPage } from '../pages/admin/UniversityDetailPage';
@@ -69,6 +70,7 @@ export const AppRouter: React.FC = () => (
       <Route element={<ProtectedRoute />}>
         <Route element={<PortalLayout />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/website" element={<WebsiteManagementPage />} />
           <Route path="/admin/users" element={<UsersManagementPage />} />
           <Route path="/admin/students" element={<StudentsManagementPage />} />
           <Route path="/admin/bulk-journey" element={<BulkJourneyAdminPage />} />
