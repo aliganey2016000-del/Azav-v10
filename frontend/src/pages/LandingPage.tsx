@@ -11,6 +11,7 @@ import {
   Globe2,
   GraduationCap,
   Image as ImageIcon,
+  Pause,
   Play,
   PlayCircle,
   ShieldCheck,
@@ -23,6 +24,7 @@ import {
   defaultLandingPageContent,
   LandingPageCmsService,
   LandingPageContent,
+  VideoItem,
 } from '../services/landingPageCms.service';
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
@@ -45,6 +47,76 @@ const youtubeEmbed = (url: string) => {
     }
   } catch {}
   return '';
+};
+
+const HERO_VIDEO_INTERVAL_MS = 6000;
+
+const HeroVideoCarousel: React.FC<{ videos: VideoItem[] }> = ({ videos }) => {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const items = videos.slice(0, 5);
+
+  useEffect(() => {
+    setIndex(0);
+  }, [items.length]);
+
+  useEffect(() => {
+    if (items.length <= 1 || paused) return;
+    const timer = setInterval(() => setIndex((current) => (current + 1) % items.length), HERO_VIDEO_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [items.length, paused]);
+
+  if (items.length === 0) return null;
+
+  const current = items[index];
+  const embed = youtubeEmbed(current.url);
+
+  return (
+    <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-black">
+      <div className="aspect-video w-full">
+        {embed ? (
+          <iframe
+            key={`${current.url}-${index}`}
+            src={`${embed}${embed.includes('?') ? '&' : '?'}autoplay=1&mute=1&controls=1&rel=0`}
+            title={current.title || `AIMN video ${index + 1}`}
+            className="h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <video key={`${current.url}-${index}`} src={current.url} poster={current.thumbnail} autoPlay muted loop playsInline className="h-full w-full object-cover" />
+        )}
+      </div>
+
+      {current.title && (
+        <div className="pointer-events-none absolute left-4 top-4 max-w-[80%] rounded-full bg-black/55 px-4 py-2 text-xs font-bold text-white backdrop-blur">
+          {current.title}
+        </div>
+      )}
+
+      {items.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 px-3 py-2 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setPaused((value) => !value)}
+            aria-label={paused ? 'Resume video slideshow' : 'Pause video slideshow'}
+            className="mr-1 flex h-5 w-5 items-center justify-center text-white/80 hover:text-white"
+          >
+            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+          </button>
+          {items.map((item, itemIndex) => (
+            <button
+              key={item.url || itemIndex}
+              type="button"
+              onClick={() => setIndex(itemIndex)}
+              aria-label={`Show video ${itemIndex + 1}`}
+              className={`h-2 rounded-full transition-all ${itemIndex === index ? 'w-6 bg-[#ffb612]' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const heroPattern = {
@@ -137,55 +209,59 @@ export const LandingPage: React.FC = () => {
             <div className="relative mx-auto w-full max-w-[590px]">
               <div className="absolute -inset-10 rounded-full bg-emerald-300/10 blur-3xl" />
               <div className="relative rounded-[28px] border border-white/20 bg-white/[0.08] p-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
-                <div className="rounded-[22px] border border-white/10 bg-[#174f42]/90 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Stethoscope className="h-6 w-6" /></div>
-                      <div>
-                        <h2 className="font-black text-white">AZAAM Medics</h2>
-                        <p className="text-xs text-emerald-50/60">Clinical Training Dashboard</p>
+                {content.videos.length > 0 ? (
+                  <HeroVideoCarousel videos={content.videos} />
+                ) : (
+                  <div className="rounded-[22px] border border-white/10 bg-[#174f42]/90 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Stethoscope className="h-6 w-6" /></div>
+                        <div>
+                          <h2 className="font-black text-white">AZAAM Medics</h2>
+                          <p className="text-xs text-emerald-50/60">Clinical Training Dashboard</p>
+                        </div>
+                      </div>
+                      <div className="flex -space-x-2">
+                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#ffb612]" />
+                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#39d0b2]" />
+                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#45baff]" />
                       </div>
                     </div>
-                    <div className="flex -space-x-2">
-                      <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#ffb612]" />
-                      <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#39d0b2]" />
-                      <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#45baff]" />
-                    </div>
-                  </div>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                      { icon: Users, label: 'Total Trainees', value: '1,248', accent: '+12%' },
-                      { icon: Building2, label: 'Active Placements', value: '386', accent: '+8%' },
-                      { icon: FileCheck2, label: 'Visa Pipeline', value: '214', accent: '+24%' },
-                      { icon: Award, label: 'Certificates Issued', value: '892', accent: '+18%' },
-                    ].map(({ icon: Icon, label, value, accent }) => (
-                      <div key={label} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
-                        <Icon className="h-5 w-5 text-[#45d2aa]" />
-                        <p className="mt-3 text-[10px] font-bold text-emerald-50/60">{label}</p>
-                        <div className="mt-1 flex items-end gap-2"><span className="text-xl font-black text-white">{value}</span><span className="pb-0.5 text-[9px] font-bold text-[#54d9a7]">{accent}</span></div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-white">Placements Trend</p>
-                        <p className="mt-1 text-[10px] text-emerald-50/50">Last 6 months</p>
-                      </div>
-                      <span className="rounded-full border border-white/10 px-3 py-1 text-[9px] text-emerald-50/60">Live</span>
-                    </div>
-                    <div className="mt-5 flex h-28 items-end gap-3">
-                      {[28,42,55,66,70,80,95].map((height, index) => (
-                        <div key={index} className="flex flex-1 flex-col items-center gap-2">
-                          <div className="w-full rounded-t-md bg-[#45c894]/70" style={{ height: `${height}%` }} />
-                          <span className="text-[9px] text-emerald-50/45">{['Jan','Feb','Mar','Apr','May','Jun','Jul'][index]}</span>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        { icon: Users, label: 'Total Trainees', value: '1,248', accent: '+12%' },
+                        { icon: Building2, label: 'Active Placements', value: '386', accent: '+8%' },
+                        { icon: FileCheck2, label: 'Visa Pipeline', value: '214', accent: '+24%' },
+                        { icon: Award, label: 'Certificates Issued', value: '892', accent: '+18%' },
+                      ].map(({ icon: Icon, label, value, accent }) => (
+                        <div key={label} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
+                          <Icon className="h-5 w-5 text-[#45d2aa]" />
+                          <p className="mt-3 text-[10px] font-bold text-emerald-50/60">{label}</p>
+                          <div className="mt-1 flex items-end gap-2"><span className="text-xl font-black text-white">{value}</span><span className="pb-0.5 text-[9px] font-bold text-[#54d9a7]">{accent}</span></div>
                         </div>
                       ))}
                     </div>
+
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black text-white">Placements Trend</p>
+                          <p className="mt-1 text-[10px] text-emerald-50/50">Last 6 months</p>
+                        </div>
+                        <span className="rounded-full border border-white/10 px-3 py-1 text-[9px] text-emerald-50/60">Live</span>
+                      </div>
+                      <div className="mt-5 flex h-28 items-end gap-3">
+                        {[28,42,55,66,70,80,95].map((height, index) => (
+                          <div key={index} className="flex flex-1 flex-col items-center gap-2">
+                            <div className="w-full rounded-t-md bg-[#45c894]/70" style={{ height: `${height}%` }} />
+                            <span className="text-[9px] text-emerald-50/45">{['Jan','Feb','Mar','Apr','May','Jun','Jul'][index]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="absolute -left-5 top-[42%] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:block">
