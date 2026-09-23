@@ -190,4 +190,23 @@ export const LandingPageCmsService = {
       content: mergeWithDefaults(response.data?.data?.content),
     };
   },
+
+  async uploadAsset(file: File): Promise<string> {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const response = await api.post('/site-assets/upload', {
+      originalName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      base64Data,
+    });
+
+    const path = response.data?.data?.url as string;
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) || '';
+    return `${apiBase}${path}`;
+  },
 };

@@ -20,6 +20,7 @@ import { financeRouter } from './routes/finance.routes.js';
 import { notificationRouter } from './routes/notification.routes.js';
 import { rotationRouter } from './routes/rotation.routes.js';
 import { landingPageRouter } from './routes/landingPage.routes.js';
+import { siteAssetRouter } from './routes/siteAsset.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { isDatabaseConnected } from './config/database.js';
 import { env } from './config/env.js';
@@ -63,6 +64,7 @@ export function createApp() {
   // API v1 Routes
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/landing-page', landingPageRouter);
+  app.use('/api/v1/site-assets', siteAssetRouter);
   app.use('/api/v1/applications', applicationRouter);
   app.use('/api/v1/documents', documentRouter);
   app.use('/api/v1/placements', placementRouter);

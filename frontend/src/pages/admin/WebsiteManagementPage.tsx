@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Eye,
@@ -12,6 +12,7 @@ import {
   Search,
   Send,
   Trash2,
+  UploadCloud,
   Users,
   Video,
 } from 'lucide-react';
@@ -47,6 +48,36 @@ const Field: React.FC<{ label: string; value: string; onChange: (value: string) 
     )}
   </label>
 );
+
+const ImageField: React.FC<{ label: string; value: string; onChange: (value: string) => void; accept?: string; placeholder?: string; onError: (message: string) => void }> = ({ label, value, onChange, accept = 'image/*', placeholder, onError }) => {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    try {
+      setUploading(true);
+      const url = await LandingPageCmsService.uploadAsset(file);
+      onChange(url);
+    } catch (error: any) {
+      onError(error?.response?.data?.error?.message || error.message || 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
+      <div className="flex gap-2">
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder || 'https://...'} className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100" />
+        <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFile(file); e.target.value = ''; }} />
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs font-black text-slate-700 transition hover:bg-slate-100 disabled:opacity-60">
+          <UploadCloud className="h-4 w-4" /> {uploading ? 'Uploading...' : 'Upload'}
+        </button>
+      </div>
+    </label>
+  );
+};
 
 const Card: React.FC<{ title: string; children: React.ReactNode; onDelete?: () => void }> = ({ title, children, onDelete }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -85,6 +116,8 @@ export const WebsiteManagementPage: React.FC = () => {
     setDirty(true);
     setMessage('');
   };
+
+  const showError = (text: string) => setMessage(text);
 
   const saveDraft = async () => {
     try {
@@ -201,7 +234,7 @@ export const WebsiteManagementPage: React.FC = () => {
             <div className="grid gap-4 sm:grid-cols-2"><Field label="Secondary button text" value={content.hero.secondaryButtonText} onChange={(v) => updateHero('secondaryButtonText', v)} /><Field label="Secondary button link" value={content.hero.secondaryButtonUrl} onChange={(v) => updateHero('secondaryButtonUrl', v)} /></div>
           </Card>
           <Card title="Hero media">
-            <Field label="Background image URL" value={content.hero.backgroundImage} onChange={(v) => updateHero('backgroundImage', v)} placeholder="https://..." />
+            <ImageField label="Background image" value={content.hero.backgroundImage} onChange={(v) => updateHero('backgroundImage', v)} onError={showError} />
             <Field label="Background video URL (optional)" value={content.hero.backgroundVideo} onChange={(v) => updateHero('backgroundVideo', v)} placeholder="YouTube or MP4 URL" />
             <p className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800">If a video URL is present it takes priority over the background image. Use a public HTTPS media URL.</p>
             <div className="overflow-hidden rounded-xl bg-slate-100">{content.hero.backgroundImage && <img src={content.hero.backgroundImage} alt="Hero preview" className="h-48 w-full object-cover" />}</div>
@@ -230,7 +263,7 @@ export const WebsiteManagementPage: React.FC = () => {
             <button onClick={() => mark({...content,about:{...content.about,paragraphs:[...content.about.paragraphs,'']}})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add paragraph</button>
           </Card>
           <Card title="About images">
-            {content.about.images.map((image, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><Field label={`Image ${index + 1} URL`} value={image} onChange={(v) => { const images=[...content.about.images]; images[index]=v; mark({...content,about:{...content.about,images}}); }} /><div className="mt-2 flex items-center gap-3">{image && <img src={image} alt="" className="h-16 w-24 rounded-lg object-cover" />}<button onClick={() => mark({...content,about:{...content.about,images:content.about.images.filter((_,i)=>i!==index)}})} className="text-xs font-bold text-rose-600">Remove</button></div></div>)}
+            {content.about.images.map((image, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><ImageField label={`Image ${index + 1}`} value={image} onChange={(v) => { const images=[...content.about.images]; images[index]=v; mark({...content,about:{...content.about,images}}); }} onError={showError} /><div className="mt-2 flex items-center gap-3">{image && <img src={image} alt="" className="h-16 w-24 rounded-lg object-cover" />}<button onClick={() => mark({...content,about:{...content.about,images:content.about.images.filter((_,i)=>i!==index)}})} className="text-xs font-bold text-rose-600">Remove</button></div></div>)}
             <button onClick={() => mark({...content,about:{...content.about,images:[...content.about.images,'']}})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add image</button>
           </Card>
         </div>
@@ -240,7 +273,7 @@ export const WebsiteManagementPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex justify-end"><button onClick={() => mark({...content,programs:[...content.programs,{title:'New Program',image:'',link:'/register'}]})} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add program</button></div>
           <div className="grid gap-4 lg:grid-cols-2">
-            {content.programs.map((program,index) => <Card key={index} title={`Program ${index+1}`} onDelete={() => mark({...content,programs:content.programs.filter((_,i)=>i!==index)})}><Field label="Title" value={program.title} onChange={(v)=>updateProgram(index,'title',v)} /><Field label="Image URL" value={program.image} onChange={(v)=>updateProgram(index,'image',v)} /><Field label="Button link" value={program.link} onChange={(v)=>updateProgram(index,'link',v)} />{program.image && <img src={program.image} alt="" className="h-36 w-full rounded-xl object-cover" />}</Card>)}
+            {content.programs.map((program,index) => <Card key={index} title={`Program ${index+1}`} onDelete={() => mark({...content,programs:content.programs.filter((_,i)=>i!==index)})}><Field label="Title" value={program.title} onChange={(v)=>updateProgram(index,'title',v)} /><ImageField label="Image" value={program.image} onChange={(v)=>updateProgram(index,'image',v)} onError={showError} /><Field label="Button link" value={program.link} onChange={(v)=>updateProgram(index,'link',v)} />{program.image && <img src={program.image} alt="" className="h-36 w-full rounded-xl object-cover" />}</Card>)}
           </div>
         </div>
       )}
@@ -249,7 +282,7 @@ export const WebsiteManagementPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex justify-end"><button onClick={() => mark({...content,news:[...content.news,{title:'New update',label:'Update',summary:'',image:'',link:'/login'}]})} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add update</button></div>
           <div className="grid gap-4 lg:grid-cols-2">
-            {content.news.map((item,index) => <Card key={index} title={`Update ${index+1}`} onDelete={() => mark({...content,news:content.news.filter((_,i)=>i!==index)})}><Field label="Label" value={item.label} onChange={(v)=>updateNews(index,'label',v)} /><Field label="Title" value={item.title} onChange={(v)=>updateNews(index,'title',v)} multiline /><Field label="Summary" value={item.summary} onChange={(v)=>updateNews(index,'summary',v)} multiline /><Field label="Image URL" value={item.image} onChange={(v)=>updateNews(index,'image',v)} /><Field label="Read more link" value={item.link} onChange={(v)=>updateNews(index,'link',v)} /></Card>)}
+            {content.news.map((item,index) => <Card key={index} title={`Update ${index+1}`} onDelete={() => mark({...content,news:content.news.filter((_,i)=>i!==index)})}><Field label="Label" value={item.label} onChange={(v)=>updateNews(index,'label',v)} /><Field label="Title" value={item.title} onChange={(v)=>updateNews(index,'title',v)} multiline /><Field label="Summary" value={item.summary} onChange={(v)=>updateNews(index,'summary',v)} multiline /><ImageField label="Image" value={item.image} onChange={(v)=>updateNews(index,'image',v)} onError={showError} /><Field label="Read more link" value={item.link} onChange={(v)=>updateNews(index,'link',v)} /></Card>)}
           </div>
         </div>
       )}
@@ -259,12 +292,12 @@ export const WebsiteManagementPage: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between"><h2 className="font-black text-slate-900">Gallery images</h2><button onClick={() => mark({...content,gallery:[...content.gallery,{title:'',image:'',caption:''}]})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add image</button></div>
             {content.gallery.length===0 && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No gallery images yet.</div>}
-            {content.gallery.map((item,index)=><Card key={index} title={`Gallery image ${index+1}`} onDelete={()=>mark({...content,gallery:content.gallery.filter((_,i)=>i!==index)})}><Field label="Title" value={item.title} onChange={(v)=>updateGallery(index,'title',v)} /><Field label="Image URL" value={item.image} onChange={(v)=>updateGallery(index,'image',v)} /><Field label="Caption" value={item.caption} onChange={(v)=>updateGallery(index,'caption',v)} multiline />{item.image&&<img src={item.image} alt="" className="h-40 w-full rounded-xl object-cover" />}</Card>)}
+            {content.gallery.map((item,index)=><Card key={index} title={`Gallery image ${index+1}`} onDelete={()=>mark({...content,gallery:content.gallery.filter((_,i)=>i!==index)})}><Field label="Title" value={item.title} onChange={(v)=>updateGallery(index,'title',v)} /><ImageField label="Image" value={item.image} onChange={(v)=>updateGallery(index,'image',v)} onError={showError} /><Field label="Caption" value={item.caption} onChange={(v)=>updateGallery(index,'caption',v)} multiline />{item.image&&<img src={item.image} alt="" className="h-40 w-full rounded-xl object-cover" />}</Card>)}
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between"><h2 className="font-black text-slate-900">Videos</h2><button onClick={() => mark({...content,videos:[...content.videos,{title:'',url:'',thumbnail:'',description:''}]})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add video</button></div>
             {content.videos.length===0 && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500"><Video className="mx-auto mb-2 h-8 w-8" />No videos yet.</div>}
-            {content.videos.map((item,index)=><Card key={index} title={`Video ${index+1}`} onDelete={()=>mark({...content,videos:content.videos.filter((_,i)=>i!==index)})}><Field label="Title" value={item.title} onChange={(v)=>updateVideo(index,'title',v)} /><Field label="Video URL" value={item.url} onChange={(v)=>updateVideo(index,'url',v)} placeholder="YouTube or MP4 URL" /><Field label="Thumbnail URL" value={item.thumbnail} onChange={(v)=>updateVideo(index,'thumbnail',v)} /><Field label="Description" value={item.description} onChange={(v)=>updateVideo(index,'description',v)} multiline /></Card>)}
+            {content.videos.map((item,index)=><Card key={index} title={`Video ${index+1}`} onDelete={()=>mark({...content,videos:content.videos.filter((_,i)=>i!==index)})}><Field label="Title" value={item.title} onChange={(v)=>updateVideo(index,'title',v)} /><ImageField label="Video (YouTube link or upload a file)" value={item.url} onChange={(v)=>updateVideo(index,'url',v)} accept="video/*" placeholder="YouTube or MP4 URL" onError={showError} /><ImageField label="Thumbnail" value={item.thumbnail} onChange={(v)=>updateVideo(index,'thumbnail',v)} onError={showError} /><Field label="Description" value={item.description} onChange={(v)=>updateVideo(index,'description',v)} multiline /></Card>)}
           </div>
         </div>
       )}
@@ -287,7 +320,7 @@ export const WebsiteManagementPage: React.FC = () => {
       {activeTab === 'seo' && (
         <div className="grid gap-5 lg:grid-cols-2">
           <Card title="Contact information"><Field label="Email" value={content.contact.email} onChange={(v)=>updateContact('email',v)} /><Field label="Phone" value={content.contact.phone} onChange={(v)=>updateContact('phone',v)} /><Field label="Address" value={content.contact.address} onChange={(v)=>updateContact('address',v)} multiline /></Card>
-          <Card title="SEO & social sharing"><Field label="Browser / SEO title" value={content.seo.title} onChange={(v)=>updateSeo('title',v)} /><Field label="Meta description" value={content.seo.description} onChange={(v)=>updateSeo('description',v)} multiline /><Field label="Social share image URL" value={content.seo.shareImage} onChange={(v)=>updateSeo('shareImage',v)} />{content.seo.shareImage&&<img src={content.seo.shareImage} alt="" className="h-36 w-full rounded-xl object-cover" />}</Card>
+          <Card title="SEO & social sharing"><Field label="Browser / SEO title" value={content.seo.title} onChange={(v)=>updateSeo('title',v)} /><Field label="Meta description" value={content.seo.description} onChange={(v)=>updateSeo('description',v)} multiline /><ImageField label="Social share image" value={content.seo.shareImage} onChange={(v)=>updateSeo('shareImage',v)} onError={showError} />{content.seo.shareImage&&<img src={content.seo.shareImage} alt="" className="h-36 w-full rounded-xl object-cover" />}</Card>
         </div>
       )}
 
