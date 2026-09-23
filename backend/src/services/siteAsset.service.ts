@@ -1,5 +1,6 @@
+import { Readable } from 'stream';
 import { SiteAsset } from '../models/SiteAsset.js';
-import { StorageService, FilePayload } from './storage.service.js';
+import { StorageByteRange, StorageService, FilePayload } from './storage.service.js';
 
 const MAX_ASSET_BYTES = 6 * 1024 * 1024; // 6MB raw (~8MB base64, under the 12MB JSON body limit)
 const ALLOWED_MIME_PREFIXES = ['image/', 'video/'];
@@ -39,7 +40,7 @@ export class SiteAssetService {
     };
   }
 
-  static async getAssetFile(id: string): Promise<{ buffer: Buffer; mimeType: string; originalName: string }> {
+  static async getAssetMeta(id: string): Promise<{ storageKey: string; mimeType: string; originalName: string; fileSize: number }> {
     const asset = await SiteAsset.findById(id).lean();
     if (!asset) {
       const err: any = new Error('Asset not found.');
@@ -48,9 +49,16 @@ export class SiteAssetService {
       throw err;
     }
 
-    const provider = StorageService.getProvider();
-    const buffer = await provider.getFile(asset.storageKey);
+    return {
+      storageKey: asset.storageKey,
+      mimeType: asset.mimeType,
+      originalName: asset.originalName,
+      fileSize: asset.fileSize,
+    };
+  }
 
-    return { buffer, mimeType: asset.mimeType, originalName: asset.originalName };
+  static async getAssetStream(storageKey: string, range?: StorageByteRange): Promise<Readable> {
+    const provider = StorageService.getProvider();
+    return provider.getFileStream(storageKey, range);
   }
 }

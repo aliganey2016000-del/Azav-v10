@@ -31,11 +31,39 @@ export class SiteAssetController {
 
   static async serve(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { buffer, mimeType, originalName } = await SiteAssetService.getAssetFile(req.params.id);
+      const { storageKey, mimeType, originalName, fileSize } = await SiteAssetService.getAssetMeta(req.params.id);
+
       res.setHeader('Content-Type', mimeType);
       res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(originalName)}`);
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      res.send(buffer);
+      res.setHeader('Accept-Ranges', 'bytes');
+
+      const rangeHeader = req.headers.range;
+      const match = typeof rangeHeader === 'string' ? rangeHeader.match(/^bytes=(\d*)-(\d*)$/) : null;
+
+      if (!match || fileSize === 0) {
+        res.setHeader('Content-Length', String(fileSize));
+        const stream = await SiteAssetService.getAssetStream(storageKey);
+        stream.on('error', next);
+        stream.pipe(res);
+        return;
+      }
+
+      const start = match[1] ? parseInt(match[1], 10) : Math.max(fileSize - parseInt(match[2], 10), 0);
+      const end = match[2] && match[1] ? Math.min(parseInt(match[2], 10), fileSize - 1) : fileSize - 1;
+
+      if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= fileSize) {
+        res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).end();
+        return;
+      }
+
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+      res.setHeader('Content-Length', String(end - start + 1));
+
+      const stream = await SiteAssetService.getAssetStream(storageKey, { start, end });
+      stream.on('error', next);
+      stream.pipe(res);
     } catch (error) {
       next(error);
     }
