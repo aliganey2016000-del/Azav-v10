@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Activity, ArrowRight, ChevronDown, Menu, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,22 @@ export const PublicLayout: React.FC = () => {
   const location = useLocation();
   const onLandingPage = location.pathname === '/';
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+  // The public marketing site has its own fixed brand palette and was never
+  // designed with a dark mode. If the visitor toggled dark mode in the admin
+  // portal earlier in the same session, the `dark` class stays on <html> and
+  // a global stylesheet override (index.css) forcibly re-colors bg-white /
+  // text-slate-* utility classes everywhere, breaking contrast here. Suspend
+  // that class for as long as a public page is mounted, and restore it when
+  // navigating back into an authenticated portal.
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains('dark');
+    root.classList.remove('dark');
+    return () => {
+      if (hadDark) root.classList.add('dark');
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#003d33] text-white">
