@@ -18,8 +18,6 @@ export const JOURNEY_STAGE_ORDER: JourneyStageKey[] = [
   JourneyStageKey.RESIDENCE,
   JourneyStageKey.TRANSPORT,
   JourneyStageKey.PLACEMENT,
-  JourneyStageKey.TRAINING,
-  JourneyStageKey.COMPLETION,
 ];
 
 export enum JourneyStageStatus {
@@ -45,6 +43,15 @@ export interface IJourneyMilestoneHistoryEntry {
   actedAt: Date;
 }
 
+export interface IJourneyMilestoneComment {
+  author: 'AZAAM' | 'UNIVERSITY';
+  authorUserId: mongoose.Types.ObjectId;
+  authorName: string;
+  message: string;
+  readBy: ('AZAAM' | 'UNIVERSITY')[];
+  createdAt: Date;
+}
+
 export interface IJourneyMilestone extends Document {
   studentId: mongoose.Types.ObjectId;
   stageKey: JourneyStageKey;
@@ -53,6 +60,8 @@ export interface IJourneyMilestone extends Document {
   reason?: string;
   actedBy?: mongoose.Types.ObjectId | null;
   actedAt?: Date | null;
+  documents: mongoose.Types.ObjectId[];
+  comments: IJourneyMilestoneComment[];
   history: IJourneyMilestoneHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
@@ -70,6 +79,21 @@ const JourneyMilestoneHistorySchema = new Schema<IJourneyMilestoneHistoryEntry>(
   { _id: false }
 );
 
+const JourneyMilestoneCommentSchema = new Schema<IJourneyMilestoneComment>(
+  {
+    author: { type: String, enum: ['AZAAM', 'UNIVERSITY'], required: true },
+    authorUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    authorName: { type: String, required: true, trim: true },
+    message: { type: String, required: true, trim: true, maxlength: 2000 },
+    readBy: {
+      type: [{ type: String, enum: ['AZAAM', 'UNIVERSITY'] }],
+      default: [],
+    },
+    createdAt: { type: Date, default: Date.now, required: true },
+  },
+  { _id: true }
+);
+
 const JourneyMilestoneSchema = new Schema<IJourneyMilestone>(
   {
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
@@ -84,6 +108,8 @@ const JourneyMilestoneSchema = new Schema<IJourneyMilestone>(
     reason: { type: String, trim: true },
     actedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     actedAt: { type: Date, default: null },
+    documents: [{ type: Schema.Types.ObjectId, ref: 'Document' }],
+    comments: { type: [JourneyMilestoneCommentSchema], default: [] },
     history: { type: [JourneyMilestoneHistorySchema], default: [] },
   },
   { timestamps: true }

@@ -114,7 +114,12 @@ export const AdminDashboardPage: React.FC = () => {
       setLastRefreshed(new Date());
     } catch (err: any) {
       console.error('Failed to load admin dashboard:', err);
-      setError(err.message || 'Failed to load dashboard statistics.');
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to load dashboard statistics.'
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);

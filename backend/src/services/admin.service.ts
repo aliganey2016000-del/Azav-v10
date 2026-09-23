@@ -10,7 +10,7 @@ import { Certificate } from '../models/Certificate.js';
 import { Student } from '../models/Student.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { AuditService } from './audit.service.js';
-import { UserRole, AuthUser, PlacementStatus } from '../types/index.js';
+import { UserRole, AuthUser, PlacementStatus, ApplicantType } from '../types/index.js';
 import { isDatabaseConnected } from '../config/database.js';
 import {
   memoryUsers,
@@ -105,6 +105,9 @@ export class AdminService {
       }
     }
 
+    // Core dashboard totals should fail loudly if the database itself is unavailable.
+    // Optional dashboard panels are loaded independently below so one malformed
+    // recent-record relation can never take down the whole Super Admin dashboard.
     const [
       studentsCount,
       applicationsCount,
@@ -113,10 +116,6 @@ export class AdminService {
       organizationsCount,
       supervisorsCount,
       certificatesCount,
-      recentApplications,
-      recentUsers,
-      recentActivity,
-      organizationsList,
     ] = await Promise.all([
       User.countDocuments({ ...userFilter, roles: { $in: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT] } }),
       Application.countDocuments(appFilter),
@@ -125,12 +124,21 @@ export class AdminService {
       Organization.countDocuments(orgFilter),
       ClinicalSupervisor.countDocuments(supFilter),
       Certificate.countDocuments({}),
+    ]);
+
+    const optionalResults = await Promise.allSettled([
       Application.find(appFilter)
         .sort({ createdAt: -1 })
         .limit(5)
-        .populate('studentId', 'firstName lastName email')
+        .populate({
+          path: 'studentId',
+          select: 'studentNumber userId universityId programmeId',
+          populate: {
+            path: 'userId',
+            select: 'firstName lastName email',
+          },
+        })
         .populate('universityId', 'name shortName code')
-        .populate('desiredOrganizationId', 'name type')
         .lean(),
       User.find(userFilter)
         .sort({ createdAt: -1 })
@@ -146,14 +154,30 @@ export class AdminService {
       Organization.find(orgFilter).limit(10).lean(),
     ]);
 
-    // Calculate capacity for organizations
-    const organizationCapacity = await Promise.all(
+    const readOptional = <T>(index: number, label: string, fallback: T): T => {
+      const result = optionalResults[index];
+      if (result?.status === 'fulfilled') return result.value as T;
+      console.warn(
+        `[AdminDashboard] Optional panel "${label}" failed and was omitted:`,
+        result?.status === 'rejected' ? result.reason : 'Unknown query result'
+      );
+      return fallback;
+    };
+
+    const recentApplications = readOptional<any[]>(0, 'recent applications', []);
+    const recentUsers = readOptional<any[]>(1, 'recent users', []);
+    const recentActivity = readOptional<any[]>(2, 'recent activity', []);
+    const organizationsList = readOptional<any[]>(3, 'organization capacity', []);
+
+    // Capacity figures are also isolated per organization so one damaged record
+    // does not make the dashboard endpoint return HTTP 500.
+    const capacityResults = await Promise.allSettled(
       organizationsList.map(async (org: any) => {
         const occupied = await Placement.countDocuments({
           organizationId: org._id,
           status: { $in: [PlacementStatus.CONFIRMED, PlacementStatus.ACTIVE] },
         });
-        const capacity = org.capacity || 20;
+        const capacity = Number(org.capacity) || 20;
         const available = Math.max(0, capacity - occupied);
         const utilization = capacity > 0 ? Math.min(100, Math.round((occupied / capacity) * 100)) : 0;
 
@@ -169,6 +193,10 @@ export class AdminService {
         };
       })
     );
+
+    const organizationCapacity = capacityResults
+      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+      .map((result) => result.value);
 
     return {
       stats: {
@@ -449,6 +477,30 @@ export class AdminService {
 
     await newUser.save();
 
+    // A university STUDENT user must also have a Student profile.
+    if (allowedRoles.includes(UserRole.STUDENT) && universityId) {
+      const studentProfile = await Student.findOneAndUpdate(
+        { userId: newUser._id },
+        {
+          $setOnInsert: {
+            userId: newUser._id,
+            universityId,
+            phone: userData.phone,
+            applicantType: ApplicantType.UNIVERSITY,
+            status: 'ACTIVE',
+          },
+          $set: {
+            universityId,
+            phone: userData.phone,
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      newUser.studentId = studentProfile._id as any;
+      await newUser.save();
+    }
+
     // If role is CLINICAL_SUPERVISOR, ensure ClinicalSupervisor record exists
     if (allowedRoles.includes(UserRole.CLINICAL_SUPERVISOR) && organizationId) {
       await ClinicalSupervisor.findOneAndUpdate(
@@ -493,6 +545,19 @@ export class AdminService {
       const user = memoryUsers[idx];
       if (updateData.firstName) user.firstName = updateData.firstName;
       if (updateData.lastName) user.lastName = updateData.lastName;
+      if (
+        updateData.email &&
+        currentUser.roles.includes(UserRole.SUPER_ADMIN)
+      ) {
+        const normalizedEmail = updateData.email.trim().toLowerCase();
+        const duplicate = memoryUsers.find(
+          (candidate) =>
+            (candidate._id !== userId && candidate.id !== userId) &&
+            candidate.email.toLowerCase() === normalizedEmail
+        );
+        if (duplicate) throw new Error('User with this email already exists');
+        user.email = normalizedEmail;
+      }
       if (updateData.phone !== undefined) user.phone = updateData.phone;
       if (updateData.roles && Array.isArray(updateData.roles)) {
         if (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF)) {
@@ -545,6 +610,18 @@ export class AdminService {
 
     if (updateData.firstName) user.firstName = updateData.firstName;
     if (updateData.lastName) user.lastName = updateData.lastName;
+    if (
+      updateData.email &&
+      currentUser.roles.includes(UserRole.SUPER_ADMIN)
+    ) {
+      const normalizedEmail = updateData.email.trim().toLowerCase();
+      const duplicate = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: user._id },
+      });
+      if (duplicate) throw new Error('User with this email already exists');
+      user.email = normalizedEmail;
+    }
     if (updateData.phone !== undefined) user.phone = updateData.phone;
     if (updateData.roles && Array.isArray(updateData.roles)) {
       if (currentUser.roles.includes(UserRole.SUPER_ADMIN) || currentUser.roles.includes(UserRole.AZAAM_STAFF)) {

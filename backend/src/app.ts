@@ -18,6 +18,8 @@ import {
 import { adminRouter } from './routes/admin.routes.js';
 import { financeRouter } from './routes/finance.routes.js';
 import { notificationRouter } from './routes/notification.routes.js';
+import { rotationRouter } from './routes/rotation.routes.js';
+import { landingPageRouter } from './routes/landingPage.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { isDatabaseConnected } from './config/database.js';
 import { env } from './config/env.js';
@@ -34,8 +36,10 @@ export function createApp() {
     origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN,
     credentials: true,
   }));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // Nomination documents are uploaded as base64 JSON. A 5MB file expands to ~6.7MB in base64,
+  // so the parser limit must safely exceed the validated file-size limit.
+  app.use(express.json({ limit: '12mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 
   // Global Rate Limiter
   const apiLimiter = rateLimit({
@@ -58,9 +62,11 @@ export function createApp() {
 
   // API v1 Routes
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/landing-page', landingPageRouter);
   app.use('/api/v1/applications', applicationRouter);
   app.use('/api/v1/documents', documentRouter);
   app.use('/api/v1/placements', placementRouter);
+  app.use('/api/v1/rotations', rotationRouter);
   app.use('/api/v1/attendance', attendanceRouter);
   app.use('/api/v1/logbooks', logbookRouter);
   app.use('/api/v1/evaluations', evaluationRouter);

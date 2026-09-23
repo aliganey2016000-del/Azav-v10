@@ -30,8 +30,16 @@ test('anonymous users are redirected away from protected admin pages', async ({ 
 for (const roleCase of roleCases) {
   test(`${roleCase.name} signs in and lands in the correct portal`, async ({ page }) => {
     await login(page, roleCase.email);
-    await expect(page).toHaveURL(new RegExp(`${roleCase.expectedPath.replaceAll('/', '\\/')}$`), { timeout: 15_000 });
+    await expect(page).toHaveURL(
+      new RegExp(`${roleCase.expectedPath.replaceAll('/', '\\/')}$`),
+      { timeout: 15_000 }
+    );
     await expect(page.locator('body')).not.toContainText('Invalid credentials');
+
+    if (roleCase.expectedPath === '/admin/dashboard') {
+      await expect(page.getByText('Failed to load data')).toHaveCount(0, { timeout: 15_000 });
+      await expect(page.getByText('Super Admin Dashboard')).toBeVisible({ timeout: 15_000 });
+    }
   });
 }
 

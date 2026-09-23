@@ -3,6 +3,8 @@ import { AdminController } from '../controllers/admin.controller.js';
 import { JourneyController } from '../controllers/journey.controller.js';
 import { StudentAdminController } from '../controllers/studentAdmin.controller.js';
 import { updateOrganizationAdminAccount } from '../controllers/organizationAdminAccount.controller.js';
+import { SupervisorManagementController } from '../controllers/supervisorManagement.controller.js';
+import { TrainingBatchController } from '../controllers/trainingBatch.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { authorizeManagedUserTarget, validateManagedUserCreate } from '../middleware/adminUserGuard.js';
@@ -44,7 +46,7 @@ adminRouter.patch(
 );
 adminRouter.post(
   '/users/:id/reset-password',
-  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  requireRole(UserRole.SUPER_ADMIN),
   validateAdminPasswordReset,
   AdminController.resetUserPassword
 );
@@ -90,7 +92,12 @@ adminRouter.post('/organizations/:id/activate', requireRole(UserRole.SUPER_ADMIN
 adminRouter.post('/organizations/:id/suspend', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.suspendOrganization);
 adminRouter.post('/organizations/:id/archive', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.archiveOrganization);
 
-adminRouter.get('/supervisors', requireRole(...ADMIN_ROLES), AdminController.getSupervisors);
+adminRouter.get('/supervisors', requireRole(...ADMIN_ROLES), SupervisorManagementController.list);
+adminRouter.post(
+  '/supervisors',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
+  SupervisorManagementController.create
+);
 adminRouter.get('/supervisors/:id', requireRole(...ADMIN_ROLES), AdminController.getSupervisorById);
 adminRouter.patch(
   '/supervisors/:id/status',
@@ -105,16 +112,76 @@ const STUDENT_NOMINATION_ROLES = [
   UserRole.UNIVERSITY_STAFF,
 ];
 
+adminRouter.get(
+  '/training-batches',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  TrainingBatchController.list
+);
+adminRouter.post(
+  '/training-batches',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  TrainingBatchController.create
+);
+
 adminRouter.get('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.list);
 adminRouter.post('/students', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.nominate);
 adminRouter.get('/students/:id', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.getById);
 adminRouter.patch('/students/:id', requireRole(...STUDENT_NOMINATION_ROLES), StudentAdminController.update);
 
-adminRouter.get('/students/:id/journey', requireRole(...ADMIN_ROLES, UserRole.UNIVERSITY_STAFF), JourneyController.getJourney);
+adminRouter.get(
+  '/students/:id/journey',
+  requireRole(
+    ...ADMIN_ROLES,
+    UserRole.UNIVERSITY_STAFF,
+    UserRole.STUDENT,
+    UserRole.INDEPENDENT_APPLICANT
+  ),
+  JourneyController.getJourney
+);
 adminRouter.post(
   '/students/:id/journey/:stageKey/action',
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
   JourneyController.actOnStage
+);
+adminRouter.post(
+  '/students/:id/journey/:stageKey/update',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  JourneyController.addStageUpdate
+);
+adminRouter.post(
+  '/students/:id/journey/PLACEMENT/confirm',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  JourneyController.confirmPlacement
+);
+adminRouter.post(
+  '/students/:id/journey/:stageKey/comment',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.UNIVERSITY_ADMIN,
+    UserRole.UNIVERSITY_STAFF
+  ),
+  JourneyController.addComment
+);
+adminRouter.get(
+  '/students/:id/chat',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.UNIVERSITY_ADMIN,
+    UserRole.UNIVERSITY_STAFF
+  ),
+  JourneyController.getChat
+);
+adminRouter.post(
+  '/students/:id/chat/read',
+  requireRole(
+    UserRole.SUPER_ADMIN,
+    UserRole.AZAAM_STAFF,
+    UserRole.UNIVERSITY_ADMIN,
+    UserRole.UNIVERSITY_STAFF
+  ),
+  JourneyController.markChatRead
 );
 
 adminRouter.get('/audit-logs', requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), AdminController.getAuditLogs);

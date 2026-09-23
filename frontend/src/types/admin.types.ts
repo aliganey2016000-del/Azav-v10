@@ -159,6 +159,13 @@ export interface AdminStudent {
   nationality?: string;
   passportNumber?: string;
   university: { _id: string; name: string; code?: string };
+  batch?: {
+    _id: string;
+    batchNumber: string;
+    name: string;
+    intakeDate?: string;
+    status?: string;
+  } | null;
   studyYear: string;
   specialty: string;
   status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'INACTIVE';
@@ -198,7 +205,25 @@ export interface AdminJourneyComment {
   author: 'AZAAM' | 'UNIVERSITY';
   authorName?: string;
   message: string;
+  readBy?: ('AZAAM' | 'UNIVERSITY')[];
   createdAt: string;
+}
+
+export interface JourneyChatMessage extends AdminJourneyComment {
+  stageKey: 'PERMIT' | 'VISA' | 'RESIDENCE';
+  stageTitle: string;
+}
+
+export interface JourneyChatData {
+  viewerRole: 'AZAAM' | 'UNIVERSITY';
+  unreadCount: number;
+  messages: JourneyChatMessage[];
+  availableStages: {
+    stageKey: 'PERMIT' | 'VISA' | 'RESIDENCE';
+    title: string;
+    status: string;
+    enabled: boolean;
+  }[];
 }
 
 export interface AdminJourneyStage {
@@ -209,7 +234,8 @@ export interface AdminJourneyStage {
   actedAt?: string;
   title: string;
   description: string;
-  documents?: { id: string; name: string; type: string; dataUrl?: string }[];
+  updateMode?: 'APPROVAL' | 'DOCUMENT_CHAT' | 'EVIDENCE' | 'PLACEMENT';
+  documents?: { id: string; name: string; type: string; dataUrl?: string; mimeType?: string; uploadedAt?: string; status?: string }[];
   comments?: AdminJourneyComment[];
 }
 

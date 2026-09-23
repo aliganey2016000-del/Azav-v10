@@ -2,6 +2,7 @@ import { LogbookEntry } from '../models/LogbookEntry.js';
 import { ClinicalAttachment } from '../models/Placement.js';
 import { AuditLog } from '../models/Notification.js';
 import { LogbookStatus } from '../types/index.js';
+import { ClinicalRotation } from '../models/ClinicalRotation.js';
 
 export class LogbookService {
   static async createEntry(studentUserId: string, data: {
@@ -27,18 +28,33 @@ export class LogbookService {
       throw err;
     }
 
-    if (data.supervisorId && (!attachment.supervisorId || data.supervisorId.toString() !== attachment.supervisorId.toString())) {
-      const err: any = new Error('Supervisor does not match the clinical attachment supervisor.');
+    const entryDate = new Date(data.date);
+    entryDate.setUTCHours(0, 0, 0, 0);
+
+    const rotation = await ClinicalRotation.findOne({
+      placementId: attachment.placementId,
+      startDate: { $lte: entryDate },
+      endDate: { $gte: entryDate },
+      status: { $ne: 'CANCELLED' },
+    }).select('_id supervisorId');
+
+    const expectedSupervisorId = rotation?.supervisorId || attachment.supervisorId;
+    if (
+      data.supervisorId &&
+      (!expectedSupervisorId || data.supervisorId.toString() !== expectedSupervisorId.toString())
+    ) {
+      const err: any = new Error('Supervisor does not match the student rotation for this logbook date.');
       err.statusCode = 400;
-      err.code = 'SUPERVISOR_ATTACHMENT_MISMATCH';
+      err.code = 'SUPERVISOR_ROTATION_MISMATCH';
       throw err;
     }
 
     const entry = new LogbookEntry({
       attachmentId: data.attachmentId,
       studentId: attachment.studentId,
-      supervisorId: attachment.supervisorId || undefined,
-      date: new Date(data.date),
+      rotationId: rotation?._id || null,
+      supervisorId: rotation?.supervisorId || attachment.supervisorId || undefined,
+      date: entryDate,
       clinicalActivity: data.clinicalActivity,
       procedure: data.procedure,
       description: data.description,

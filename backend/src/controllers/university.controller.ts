@@ -3,12 +3,103 @@ import { University } from '../models/University.js';
 import { Organization } from '../models/Organization.js';
 import { ClinicalSupervisor } from '../models/ClinicalSupervisor.js';
 import { Department } from '../models/Department.js';
+import { UniversityMou } from '../models/UniversityMou.js';
+import { AuthenticatedRequest } from '../middleware/auth.js';
+import { UserRole } from '../types/index.js';
 
 export class UniversityController {
   static async list(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const universities = await University.find({ status: 'ACTIVE' }).sort({ name: 1 });
       res.status(200).json({ success: true, data: { universities } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCurrentMou(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const universityId =
+        req.user.universityId ||
+        (req.user.roles.includes(UserRole.SUPER_ADMIN) || req.user.roles.includes(UserRole.AZAAM_STAFF)
+          ? (req.query.universityId as string | undefined)
+          : undefined);
+
+      if (!universityId) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'UNIVERSITY_REQUIRED', message: 'A university scope is required to load the MoU.' },
+        });
+        return;
+      }
+
+      const mou = await UniversityMou.findOne({ universityId }).populate('universityId', 'name code');
+      res.status(200).json({ success: true, data: { items: mou ? [mou] : [] } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async upsertCurrentMou(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Not logged in' } });
+        return;
+      }
+
+      const universityId =
+        req.user.universityId ||
+        (req.user.roles.includes(UserRole.SUPER_ADMIN) || req.user.roles.includes(UserRole.AZAAM_STAFF)
+          ? req.body.universityId
+          : undefined);
+
+      if (!universityId) {
+        res.status(400).json({
+          success: false,
+          error: { code: 'UNIVERSITY_REQUIRED', message: 'A university scope is required to save the MoU.' },
+        });
+        return;
+      }
+
+      const allowed = [
+        'mouNumber',
+        'representative',
+        'representativeTitle',
+        'signedAt',
+        'status',
+        'validityStart',
+        'validityEnd',
+        'annualQuota',
+        'notes',
+      ];
+      const updates: any = {};
+      for (const key of allowed) {
+        if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+
+      if (!updates.mouNumber) {
+        const existing = await UniversityMou.findOne({ universityId }).select('mouNumber');
+        if (!existing) {
+          res.status(400).json({
+            success: false,
+            error: { code: 'MOU_NUMBER_REQUIRED', message: 'MoU number is required for the first save.' },
+          });
+          return;
+        }
+      }
+
+      const mou = await UniversityMou.findOneAndUpdate(
+        { universityId },
+        { $set: updates, $setOnInsert: { universityId } },
+        { upsert: true, new: true, runValidators: true }
+      ).populate('universityId', 'name code');
+
+      res.status(200).json({ success: true, data: { mou } });
     } catch (error) {
       next(error);
     }

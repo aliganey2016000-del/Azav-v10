@@ -137,13 +137,32 @@ async function runAuthFlowVerification() {
     }
   }
 
-  // 7. Seed Admin Login Verification
+  // 7. Super Admin Login Flow Verification (database-independent unit test)
   {
-    const loginResult = await AuthService.loginUser('admin@azaammedics.org', 'Password123!');
-    assert.ok(loginResult.token, 'Must return JWT token');
-    assert.strictEqual(loginResult.user.email, 'admin@azaammedics.org');
-    assert.ok(loginResult.user.roles.includes(UserRole.SUPER_ADMIN));
-    console.log('TEST: Super Admin Authentication & Seed Fallback ... ✅ PASSED');
+    const originalFindOne = (User as any).findOne;
+    try {
+      (User as any).findOne = async () => ({
+        _id: 'super-admin-test-id',
+        firstName: 'Global',
+        lastName: 'SuperAdmin',
+        email: 'admin@azaammedics.org',
+        roles: [UserRole.SUPER_ADMIN],
+        status: 'ACTIVE',
+        universityId: null,
+        organizationId: null,
+        studentId: null,
+        comparePassword: async (password: string) => password === 'Password123!',
+        save: async () => undefined,
+      });
+
+      const loginResult = await AuthService.loginUser('admin@azaammedics.org', 'Password123!');
+      assert.ok(loginResult.token, 'Must return JWT token');
+      assert.strictEqual(loginResult.user.email, 'admin@azaammedics.org');
+      assert.ok(loginResult.user.roles.includes(UserRole.SUPER_ADMIN));
+      console.log('TEST: Super Admin Authentication Flow ... ✅ PASSED');
+    } finally {
+      (User as any).findOne = originalFindOne;
+    }
   }
 
   // 8. Inactive Account Rejected at Login

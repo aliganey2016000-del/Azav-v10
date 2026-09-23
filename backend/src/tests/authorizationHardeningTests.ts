@@ -175,14 +175,27 @@ async function runTests() {
   });
   passed++;
 
-  await test('Configured S3 provider fails closed instead of writing to local disk', async () => {
-    const oldProvider = process.env.STORAGE_PROVIDER;
+  await test('Configured S3 provider fails closed when private object storage is not configured', async () => {
+    const envKeys = [
+      'STORAGE_PROVIDER',
+      'S3_ENDPOINT',
+      'S3_BUCKET',
+      'S3_ACCESS_KEY',
+      'S3_SECRET_KEY',
+    ] as const;
+    const previous = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+
     process.env.STORAGE_PROVIDER = 's3';
+    delete process.env.S3_ENDPOINT;
+    delete process.env.S3_BUCKET;
+    delete process.env.S3_ACCESS_KEY;
+    delete process.env.S3_SECRET_KEY;
     (StorageService as any).provider = undefined;
+
     try {
-      const provider = StorageService.getProvider();
       let caught: any;
       try {
+        const provider = StorageService.getProvider();
         await provider.uploadFile({
           originalname: 'test.pdf',
           mimetype: 'application/pdf',
@@ -191,11 +204,15 @@ async function runTests() {
       } catch (error) {
         caught = error;
       }
+
       assert.ok(caught);
-      assert.strictEqual(caught.code, 'STORAGE_PROVIDER_UNAVAILABLE');
+      assert.strictEqual(caught.code, 'STORAGE_CONFIGURATION_ERROR');
     } finally {
-      if (oldProvider === undefined) delete process.env.STORAGE_PROVIDER;
-      else process.env.STORAGE_PROVIDER = oldProvider;
+      for (const key of envKeys) {
+        const value = previous[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
       (StorageService as any).provider = undefined;
     }
   });

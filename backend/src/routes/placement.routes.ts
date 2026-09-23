@@ -6,6 +6,7 @@ import { LogbookController } from '../controllers/logbook.controller.js';
 import { EvaluationController } from '../controllers/evaluation.controller.js';
 import { CertificateController } from '../controllers/certificate.controller.js';
 import { UniversityController, OrganizationController } from '../controllers/university.controller.js';
+import { DepartmentController } from '../controllers/department.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { validatePlacementAccess, validateAttachmentAccess, validateLogbookEntryAccess } from '../middleware/idor.js';
@@ -19,9 +20,20 @@ placementRouter.post(
   requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
   PlacementController.create
 );
+placementRouter.patch(
+  '/:id',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  PlacementController.update
+);
+placementRouter.patch(
+  '/:id/status',
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF),
+  PlacementController.updateStatus
+);
 
 export const attendanceRouter = Router();
 attendanceRouter.use(authenticate);
+attendanceRouter.get('/', AttendanceController.list);
 attendanceRouter.post(
   '/',
   requireRole(
@@ -38,6 +50,7 @@ attendanceRouter.get('/attachment/:attachmentId', validateAttachmentAccess, Atte
 
 export const logbookRouter = Router();
 logbookRouter.use(authenticate);
+logbookRouter.get('/', LogbookController.list);
 logbookRouter.post('/', validateAttachmentAccess, LogbookController.create);
 logbookRouter.get('/attachment/:attachmentId', validateAttachmentAccess, LogbookController.listByAttachment);
 logbookRouter.patch(
@@ -49,6 +62,7 @@ logbookRouter.patch(
 
 export const evaluationRouter = Router();
 evaluationRouter.use(authenticate);
+evaluationRouter.get('/', EvaluationController.list);
 evaluationRouter.post(
   '/',
   requireRole(UserRole.CLINICAL_SUPERVISOR, UserRole.ORGANIZATION_ADMIN, UserRole.SUPER_ADMIN),
@@ -87,10 +101,32 @@ certificateRouter.post(
 
 export const universityRouter = Router();
 universityRouter.get('/', UniversityController.list);
+universityRouter.get(
+  '/mou/current',
+  authenticate,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN, UserRole.UNIVERSITY_STAFF),
+  UniversityController.getCurrentMou
+);
+universityRouter.put(
+  '/mou/current',
+  authenticate,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.UNIVERSITY_ADMIN),
+  UniversityController.upsertCurrentMou
+);
 universityRouter.post('/', authenticate, requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), UniversityController.create);
 
 export const organizationRouter = Router();
 organizationRouter.get('/', OrganizationController.list);
 organizationRouter.post('/', authenticate, requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF), OrganizationController.create);
-organizationRouter.get('/:organizationId/departments', OrganizationController.listDepartments);
+organizationRouter.get(
+  '/:organizationId/departments',
+  authenticate,
+  DepartmentController.list
+);
+organizationRouter.post(
+  '/:organizationId/departments',
+  authenticate,
+  requireRole(UserRole.SUPER_ADMIN, UserRole.AZAAM_STAFF, UserRole.ORGANIZATION_ADMIN),
+  DepartmentController.create
+);
 organizationRouter.get('/:organizationId/supervisors', OrganizationController.listSupervisors);

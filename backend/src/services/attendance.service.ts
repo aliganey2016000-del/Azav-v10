@@ -2,6 +2,7 @@ import { Attendance } from '../models/Attendance.js';
 import { ClinicalAttachment } from '../models/Placement.js';
 import { AuditLog } from '../models/Notification.js';
 import { AttendanceStatus } from '../types/index.js';
+import { ClinicalRotation } from '../models/ClinicalRotation.js';
 
 export class AttendanceService {
   static async recordAttendance(actorUserId: string, data: {
@@ -42,9 +43,17 @@ export class AttendanceService {
       throw err;
     }
 
+    const rotation = await ClinicalRotation.findOne({
+      placementId: attachment.placementId,
+      startDate: { $lte: attendanceDate },
+      endDate: { $gte: attendanceDate },
+      status: { $ne: 'CANCELLED' },
+    }).select('_id');
+
     const attendance = new Attendance({
       attachmentId: data.attachmentId,
       studentId: attachment.studentId,
+      rotationId: rotation?._id || null,
       date: attendanceDate,
       status: data.status,
       checkIn: data.checkIn,
@@ -60,7 +69,7 @@ export class AttendanceService {
       action: 'attendance.record',
       entityType: 'Attendance',
       entityId: attendance._id,
-      after: { attachmentId: data.attachmentId, status: data.status, date: attendanceDate },
+      after: { attachmentId: data.attachmentId, rotationId: rotation?._id || null, status: data.status, date: attendanceDate },
     });
 
     return attendance;

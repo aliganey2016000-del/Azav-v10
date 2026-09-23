@@ -1,9 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import './Programme.js';
 import { ApplicationStatus, ApplicantType } from '../types/index.js';
 
 export interface IApplication extends Document {
   studentId: mongoose.Types.ObjectId;
   universityId?: mongoose.Types.ObjectId | null;
+  batchId?: mongoose.Types.ObjectId | null;
   applicantType: ApplicantType;
   programmeId?: mongoose.Types.ObjectId | null;
   specialtyId?: mongoose.Types.ObjectId | null;
@@ -26,6 +28,7 @@ const ApplicationSchema = new Schema<IApplication>(
   {
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
     universityId: { type: Schema.Types.ObjectId, ref: 'University', default: null, index: true },
+    batchId: { type: Schema.Types.ObjectId, ref: 'TrainingBatch', default: null, index: true },
     applicantType: { type: String, enum: Object.values(ApplicantType), required: true, default: ApplicantType.UNIVERSITY },
     programmeId: { type: Schema.Types.ObjectId, ref: 'Programme', default: null },
     specialtyId: { type: Schema.Types.ObjectId, ref: 'Specialty', default: null },

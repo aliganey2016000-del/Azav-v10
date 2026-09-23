@@ -3,6 +3,28 @@ import { z } from 'zod';
 import { AuthService } from '../services/auth.service.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { ApplicantType } from '../types/index.js';
+import { env } from '../config/env.js';
+
+const SESSION_COOKIE = 'azaam_session';
+
+const setSessionCookie = (res: Response, token: string) => {
+  res.cookie(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+};
+
+const clearSessionCookie = (res: Response) => {
+  res.clearCookie(SESSION_COOKIE, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  });
+};
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(100),
@@ -39,7 +61,8 @@ export class AuthController {
       const { firstName, lastName, email, password, applicantType, universityId, phone } = parsed.data;
       const resolvedApplicantType = applicantType || ApplicantType.UNIVERSITY;
       const result = await AuthService.registerUser({ firstName, lastName, email, password, applicantType: resolvedApplicantType, universityId: resolvedApplicantType === ApplicantType.INDEPENDENT ? null : universityId, phone });
-      res.status(201).json({ success: true, data: result });
+      setSessionCookie(res, result.token);
+      res.status(201).json({ success: true, data: { user: result.user } });
     } catch (error) { next(error); }
   }
 
@@ -51,7 +74,8 @@ export class AuthController {
         return;
       }
       const result = await AuthService.loginUser(parsed.data.email, parsed.data.password);
-      res.status(200).json({ success: true, data: result });
+      setSessionCookie(res, result.token);
+      res.status(200).json({ success: true, data: { user: result.user } });
     } catch (error) { next(error); }
   }
 
@@ -91,6 +115,7 @@ export class AuthController {
   }
 
   static async logout(_req: Request, res: Response): Promise<void> {
+    clearSessionCookie(res);
     res.status(200).json({ success: true, data: { message: 'Successfully logged out' } });
   }
 }

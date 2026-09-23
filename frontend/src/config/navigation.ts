@@ -23,10 +23,10 @@ import {
   LogOut,
   Briefcase,
   DollarSign,
-  FileCheck2,
   Plane,
   TrendingUp,
   BarChart3,
+  CalendarDays,
 } from 'lucide-react';
 import { UserRole } from '../types/frontend';
 
@@ -79,6 +79,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.SUPER_ADMIN],
       },
       {
+        label: 'Website Management',
+        path: '/admin/website',
+        icon: Settings,
+        roles: [UserRole.SUPER_ADMIN],
+      },
+      {
         label: 'Students & Trainees',
         path: '/admin/students',
         icon: Users,
@@ -108,39 +114,27 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
     title: 'TRAINING OPERATIONS',
     items: [
       {
-        label: 'Applications',
-        path: '/admin/applications',
-        icon: FileText,
-        roles: [UserRole.SUPER_ADMIN],
-      },
-      {
         label: 'Placements',
         path: '/admin/placements',
         icon: Building,
         roles: [UserRole.SUPER_ADMIN],
       },
       {
-        label: 'Clinical Attachments',
-        path: '/admin/clinical-attachments',
-        icon: Briefcase,
-        roles: [UserRole.SUPER_ADMIN],
-      },
-      {
-        label: 'Attendance',
-        path: '/admin/attendance',
+        label: 'Bulk Journey',
+        path: '/admin/bulk-journey',
         icon: CheckSquare,
         roles: [UserRole.SUPER_ADMIN],
       },
       {
-        label: 'Logbooks',
-        path: '/admin/logbooks',
-        icon: BookOpen,
+        label: 'Rotation Planner',
+        path: '/admin/rotation-planner',
+        icon: CalendarDays,
         roles: [UserRole.SUPER_ADMIN],
       },
       {
-        label: 'Evaluations',
-        path: '/admin/evaluations',
-        icon: Award,
+        label: 'Rotation Templates',
+        path: '/admin/rotation-templates',
+        icon: BookOpen,
         roles: [UserRole.SUPER_ADMIN],
       },
     ],
@@ -148,6 +142,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
   {
     title: 'FINANCE',
     items: [
+      {
+        label: 'Service Pricing',
+        path: '/admin/finance/pricing',
+        icon: Settings,
+        roles: [UserRole.SUPER_ADMIN],
+      },
       {
         label: 'Fees & Invoices',
         path: '/admin/finance/fees',
@@ -187,12 +187,6 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         label: 'Documents',
         path: '/admin/documents',
         icon: FileText,
-        roles: [UserRole.SUPER_ADMIN],
-      },
-      {
-        label: 'Certificates',
-        path: '/admin/certificates',
-        icon: ShieldCheck,
         roles: [UserRole.SUPER_ADMIN],
       },
     ],
@@ -315,17 +309,17 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         roles: [UserRole.AZAAM_STAFF],
       },
-    ],
-  },
-  {
-    title: 'TRAINING OPERATIONS',
-    items: [
       {
         label: 'Applications',
         path: '/admin/applications',
         icon: FileText,
         roles: [UserRole.AZAAM_STAFF],
       },
+    ],
+  },
+  {
+    title: 'TRAINING OPERATIONS',
+    items: [
       {
         label: 'Placements',
         path: '/admin/placements',
@@ -333,27 +327,21 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.AZAAM_STAFF],
       },
       {
-        label: 'Clinical Attachments',
-        path: '/admin/clinical-attachments',
-        icon: Briefcase,
-        roles: [UserRole.AZAAM_STAFF],
-      },
-      {
-        label: 'Attendance',
-        path: '/admin/attendance',
+        label: 'Bulk Journey',
+        path: '/admin/bulk-journey',
         icon: CheckSquare,
         roles: [UserRole.AZAAM_STAFF],
       },
       {
-        label: 'Logbooks',
-        path: '/admin/logbooks',
-        icon: BookOpen,
+        label: 'Rotation Planner',
+        path: '/admin/rotation-planner',
+        icon: CalendarDays,
         roles: [UserRole.AZAAM_STAFF],
       },
       {
-        label: 'Evaluations',
-        path: '/admin/evaluations',
-        icon: Award,
+        label: 'Rotation Templates',
+        path: '/admin/rotation-templates',
+        icon: BookOpen,
         roles: [UserRole.AZAAM_STAFF],
       },
     ],
@@ -394,12 +382,6 @@ const AZAAM_STAFF_NAVIGATION: NavigationSection[] = [
         label: 'Documents',
         path: '/admin/documents',
         icon: FileText,
-        roles: [UserRole.AZAAM_STAFF],
-      },
-      {
-        label: 'Certificates',
-        path: '/admin/certificates',
-        icon: ShieldCheck,
         roles: [UserRole.AZAAM_STAFF],
       },
     ],
@@ -477,27 +459,21 @@ const UNIVERSITY_ADMIN_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         roles: [UserRole.UNIVERSITY_ADMIN],
       },
-      {
-        label: 'Students',
-        path: '/university/students',
-        icon: Users,
-        roles: [UserRole.UNIVERSITY_ADMIN],
-      },
-      {
-        label: 'Student Status',
-        path: '/university/student-status',
-        icon: FileCheck2,
-        roles: [UserRole.UNIVERSITY_ADMIN],
-      },
     ],
   },
   {
     title: 'TRAINING MONITORING',
     items: [
       {
-        label: 'Clinical Attachments',
-        path: '/university/clinical-attachments',
-        icon: Briefcase,
+        label: 'Placements',
+        path: '/university/placements',
+        icon: Building,
+        roles: [UserRole.UNIVERSITY_ADMIN],
+      },
+      {
+        label: 'Rotations',
+        path: '/university/rotations',
+        icon: CalendarDays,
         roles: [UserRole.UNIVERSITY_ADMIN],
       },
       {
@@ -661,27 +637,21 @@ const UNIVERSITY_STAFF_NAVIGATION: NavigationSection[] = [
         icon: UserCheck,
         roles: [UserRole.UNIVERSITY_STAFF],
       },
-      {
-        label: 'Students',
-        path: '/university/students',
-        icon: Users,
-        roles: [UserRole.UNIVERSITY_STAFF],
-      },
-      {
-        label: 'Student Status',
-        path: '/university/student-status',
-        icon: FileCheck2,
-        roles: [UserRole.UNIVERSITY_STAFF],
-      },
     ],
   },
   {
     title: 'TRAINING MONITORING',
     items: [
       {
-        label: 'Clinical Attachments',
-        path: '/university/clinical-attachments',
-        icon: Briefcase,
+        label: 'Placements',
+        path: '/university/placements',
+        icon: Building,
+        roles: [UserRole.UNIVERSITY_STAFF],
+      },
+      {
+        label: 'Rotations',
+        path: '/university/rotations',
+        icon: CalendarDays,
         roles: [UserRole.UNIVERSITY_STAFF],
       },
       {
@@ -1203,29 +1173,24 @@ const STUDENT_NAVIGATION: NavigationSection[] = [
     ],
   },
   {
-    title: 'MY APPLICATION',
+    title: 'MY JOURNEY',
     items: [
       {
-        label: 'Applications',
+        label: 'Application',
         path: '/student/applications',
         icon: FileText,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
       {
-        label: 'Application Status',
-        path: '/student/application-status',
-        icon: FileCheck2,
+        label: 'Placement',
+        path: '/student/placement',
+        icon: Building,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
-    ],
-  },
-  {
-    title: 'MY TRAINING',
-    items: [
       {
-        label: 'Clinical Attachment',
-        path: '/student/clinical-attachment',
-        icon: Briefcase,
+        label: 'Rotations',
+        path: '/student/rotations',
+        icon: CalendarDays,
         roles: [UserRole.STUDENT, UserRole.INDEPENDENT_APPLICANT],
       },
       {

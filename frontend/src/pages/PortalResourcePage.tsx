@@ -15,7 +15,7 @@ function getRecords(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
   if (payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
-    const candidates = ['items', 'results', 'users', 'applications', 'placements', 'documents', 'certificates', 'data'];
+    const candidates = ['items', 'results', 'users', 'applications', 'placements', 'documents', 'certificates', 'attendanceLogs', 'entries', 'evaluations', 'payments', 'supervisors', 'departments', 'data'];
     for (const key of candidates) {
       if (Array.isArray(record[key])) return record[key] as unknown[];
     }
@@ -47,9 +47,12 @@ export const PortalResourcePage: React.FC<PortalResourcePageProps> = ({
     setLoading(true);
     setError('');
     try {
-      const resolvedEndpoint = endpoint === '/organizations/current/departments' && user?.organizationId
-        ? `/organizations/${user.organizationId}/departments`
-        : endpoint;
+      const resolvedEndpoint =
+        endpoint === '/organizations/current/departments' && user?.organizationId
+          ? `/organizations/${user.organizationId}/departments`
+          : endpoint === '/organizations/current/supervisors' && user?.organizationId
+            ? `/organizations/${user.organizationId}/supervisors`
+            : endpoint;
       const response = await api.get(resolvedEndpoint);
       setPayload(response.data?.data ?? response.data);
     } catch (requestError: any) {

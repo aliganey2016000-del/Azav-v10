@@ -10,19 +10,25 @@ export interface AuthenticatedRequest extends Request {
 
 export async function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const cookieHeader = req.headers.cookie || '';
+  const cookieToken = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('azaam_session='))
+    ?.slice('azaam_session='.length);
+  const token = bearerToken || (cookieToken ? decodeURIComponent(cookieToken) : null);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     res.status(401).json({
       success: false,
       error: {
         code: 'UNAUTHENTICATED',
-        message: 'Authentication token is required',
+        message: 'Authentication session is required',
       },
     });
     return;
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET) as {
@@ -34,31 +40,20 @@ export async function authenticate(req: AuthenticatedRequest, res: Response, nex
       studentId?: string | null;
     };
 
-    let user: any = null;
+    let user: any;
     try {
       user = await User.findById(decoded.sub).select(
         'email roles status universityId organizationId studentId'
       );
     } catch {
-      if (env.NODE_ENV === 'production') {
-        res.status(503).json({
-          success: false,
-          error: {
-            code: 'AUTH_BACKEND_UNAVAILABLE',
-            message: 'Authentication backend is temporarily unavailable',
-          },
-        });
-        return;
-      }
-    }
-
-    // Development and test environments may use the in-memory store. Production
-    // must never authenticate against demo/fallback users if MongoDB is unavailable.
-    if (!user && env.NODE_ENV !== 'production') {
-      const { memoryUsers } = await import('../services/memoryStore.js');
-      user = memoryUsers.find(
-        (u) => u._id === decoded.sub || u.id === decoded.sub || u.email.toLowerCase() === decoded.email.toLowerCase()
-      );
+      res.status(503).json({
+        success: false,
+        error: {
+          code: 'AUTH_BACKEND_UNAVAILABLE',
+          message: 'Authentication database is temporarily unavailable',
+        },
+      });
+      return;
     }
 
     if (!user) {
