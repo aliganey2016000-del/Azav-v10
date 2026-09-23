@@ -66,9 +66,19 @@ export const LandingPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    document.title = content.seo.title || 'AZAAM International Medics Network';
-    const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute('content', content.seo.description || '');
+    const title = content.seo.title || 'AZAAM International Medics Network';
+    const description = content.seo.description || '';
+    document.title = title;
+
+    const setMeta = (selector: string, attr: string, value: string) => {
+      const el = document.querySelector(selector);
+      if (el && value) el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[name="description"]', 'content', description);
+    setMeta('meta[property="og:title"]', 'content', title);
+    setMeta('meta[property="og:description"]', 'content', description);
+    if (content.seo.shareImage) setMeta('meta[property="og:image"]', 'content', content.seo.shareImage);
   }, [content.seo]);
 
   const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
@@ -106,8 +116,8 @@ export const LandingPage: React.FC = () => {
                 <SmartLink to={content.hero.primaryButtonUrl} className="inline-flex items-center gap-2 rounded-full bg-[#ffb612] px-7 py-3.5 text-sm font-black text-[#063b31] shadow-lg shadow-amber-500/20 transition hover:bg-[#ffc83d]">
                   {content.hero.primaryButtonText || 'Get Started'} <ArrowRight className="h-4 w-4" />
                 </SmartLink>
-                <a href="#programs" className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08]">
-                  <Play className="h-4 w-4" /> Watch Demo
+                <a href={content.videos.length > 0 ? '#videos' : '#programs'} className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08]">
+                  <Play className="h-4 w-4" /> {content.videos.length > 0 ? 'Watch Demo' : 'Explore Programs'}
                 </a>
               </div>
 
@@ -303,7 +313,7 @@ export const LandingPage: React.FC = () => {
       )}
 
       {content.videos.length > 0 && (
-        <section className="bg-[#002f28] py-20" style={heroPattern}>
+        <section id="videos" className="bg-[#002f28] py-20" style={heroPattern}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-[#ffbf2f]"><PlayCircle className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">Videos</span></div>
             <h2 className="mt-3 text-4xl font-black text-white" style={headingFont}>Stories, training and partnerships</h2>
