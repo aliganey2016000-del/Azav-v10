@@ -132,7 +132,8 @@ export const WebsiteManagementPage: React.FC = () => {
   };
 
   const updateHero = (key: keyof LandingPageContent['hero'], value: string) => mark({ ...content, hero: { ...content.hero, [key]: value } });
-  const updateAbout = (key: 'eyebrow' | 'title', value: string) => mark({ ...content, about: { ...content.about, [key]: value } });
+  const updateAbout = (key: 'eyebrow' | 'bannerTitle' | 'title' | 'establishedIn' | 'location' | 'experienceYears', value: string) =>
+    mark({ ...content, about: { ...content.about, [key]: value } });
   const updateCta = (key: keyof LandingPageContent['cta'], value: string) => mark({ ...content, cta: { ...content.cta, [key]: value } });
   const updateContact = (key: keyof LandingPageContent['contact'], value: string) => mark({ ...content, contact: { ...content.contact, [key]: value } });
   const updateSeo = (key: keyof LandingPageContent['seo'], value: string) => mark({ ...content, seo: { ...content.seo, [key]: value } });
@@ -218,7 +219,13 @@ export const WebsiteManagementPage: React.FC = () => {
         <div className="grid gap-5 lg:grid-cols-2">
           <Card title="About section">
             <Field label="Eyebrow" value={content.about.eyebrow} onChange={(v) => updateAbout('eyebrow', v)} />
+            <Field label="Banner title" value={content.about.bannerTitle} onChange={(v) => updateAbout('bannerTitle', v)} />
             <Field label="Title" value={content.about.title} onChange={(v) => updateAbout('title', v)} multiline />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Established in" value={content.about.establishedIn} onChange={(v) => updateAbout('establishedIn', v)} />
+              <Field label="Location" value={content.about.location} onChange={(v) => updateAbout('location', v)} />
+              <Field label="Years of experience" value={content.about.experienceYears} onChange={(v) => updateAbout('experienceYears', v)} />
+            </div>
             {content.about.paragraphs.map((p, index) => <div key={index} className="flex items-start gap-2"><div className="flex-1"><Field label={`Paragraph ${index + 1}`} value={p} onChange={(v) => { const paragraphs=[...content.about.paragraphs]; paragraphs[index]=v; mark({...content,about:{...content.about,paragraphs}}); }} multiline /></div><button onClick={() => mark({...content,about:{...content.about,paragraphs:content.about.paragraphs.filter((_,i)=>i!==index)}})} className="mt-7 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button></div>)}
             <button onClick={() => mark({...content,about:{...content.about,paragraphs:[...content.about.paragraphs,'']}})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add paragraph</button>
           </Card>

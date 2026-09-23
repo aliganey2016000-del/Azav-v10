@@ -21,9 +21,13 @@ export type LandingPageContent = {
   highlights: HighlightItem[];
   about: {
     eyebrow: string;
+    bannerTitle: string;
     title: string;
     paragraphs: string[];
     images: string[];
+    establishedIn: string;
+    location: string;
+    experienceYears: string;
   };
   programs: ProgramItem[];
   news: NewsItem[];
@@ -71,6 +75,7 @@ export const defaultLandingPageContent: LandingPageContent = {
   ],
   about: {
     eyebrow: 'About AIMN',
+    bannerTitle: 'About Us',
     title: 'International medical training with purpose.',
     paragraphs: [
       'AZAAM International Medics Network (AIMN) delivers quality clinical attachment and medical training experiences that blend academic strength with supervised practical learning.',
@@ -81,6 +86,9 @@ export const defaultLandingPageContent: LandingPageContent = {
       'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=900&q=80',
       'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80',
     ],
+    establishedIn: '2011',
+    location: 'Mogadishu, Somalia',
+    experienceYears: '15+',
   },
   programs: [
     { title: 'Internal Medicine', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=800&q=85', link: '/register' },

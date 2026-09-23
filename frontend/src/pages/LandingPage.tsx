@@ -2,13 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
-  Building2,
   CalendarDays,
   Image as ImageIcon,
   PlayCircle,
   ShieldCheck,
   Stethoscope,
-  Users,
 } from 'lucide-react';
 import {
   defaultLandingPageContent,
@@ -115,36 +113,62 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      <section id="about" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.25em] text-[#9c7629]">{content.about.eyebrow}</p>
-            <h2 className="mt-4 text-3xl font-black text-slate-950 sm:text-4xl">{content.about.title}</h2>
-            <div className="mt-6 space-y-4 text-base leading-8 text-slate-650">
-              {content.about.paragraphs.map((p, i) => <p key={i}>{p}</p>)}
+      <section id="about" className="bg-white">
+        <div className="relative isolate overflow-hidden bg-[#27368f] text-white">
+          <div className="absolute inset-0">
+            <img
+              src={content.about.images[1] || content.hero.backgroundImage}
+              alt=""
+              className="h-full w-full object-cover opacity-20"
+            />
+            <div className="absolute inset-0 bg-[#27368f]/85" />
+          </div>
+          <div className="relative mx-auto flex min-h-[185px] max-w-7xl flex-col items-center justify-center px-4 py-10 text-center sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-black sm:text-4xl">{content.about.bannerTitle || 'About Us'}</h2>
+            <div className="mt-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-white/75">
+              <a href="#home" className="transition hover:text-white">Home</a>
+              <span className="text-[#63dc86]">•</span>
+              <span>About</span>
             </div>
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-[#0d1b2a] p-5 text-white">
-                <Users className="h-5 w-5 text-[#d5b56d]" />
-                <h3 className="mt-3 font-black">Student-focused</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-300">Structured exposure under qualified healthcare professionals.</p>
+          </div>
+        </div>
+
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:py-20 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:gap-16 lg:px-8">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#0ca94f]">{content.about.eyebrow}</p>
+            <h3 className="mt-3 max-w-xl text-3xl font-black leading-tight text-[#27368f] sm:text-4xl">
+              {content.about.title}
+            </h3>
+            <div className="mt-4 h-1 w-14 rounded-full bg-[#10b957]" />
+
+            <div className="mt-6 max-w-2xl space-y-4 text-[15px] leading-7 text-slate-600">
+              {content.about.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+            </div>
+
+            <div className="mt-8 inline-grid overflow-hidden rounded-md border border-slate-200 bg-[#f8f9fb] shadow-sm sm:grid-cols-2">
+              <div className="min-w-[170px] px-5 py-4">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Established In</p>
+                <p className="mt-1 text-base font-black text-[#27368f]">{content.about.establishedIn || '2011'}</p>
               </div>
-              <div className="rounded-2xl bg-[#efe2bd] p-5 text-slate-950">
-                <Building2 className="h-5 w-5" />
-                <h3 className="mt-3 font-black">Institution-connected</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-700">Universities and host institutions stay connected throughout the journey.</p>
+              <div className="min-w-[210px] border-t border-slate-200 px-5 py-4 sm:border-l sm:border-t-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Location</p>
+                <p className="mt-1 text-base font-black text-[#27368f]">{content.about.location || 'Mogadishu, Somalia'}</p>
               </div>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {content.about.images.filter(Boolean).map((image, index) => (
+
+          <div className="relative mx-auto w-full max-w-[430px] pb-8 sm:pb-10">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-xl">
               <img
-                key={index}
-                src={image}
-                alt={`AIMN medical training ${index + 1}`}
-                className={`w-full rounded-[26px] object-cover shadow-lg ${index === 2 ? 'h-64 sm:col-span-2' : 'h-56'}`}
+                src={content.about.images[0] || content.hero.backgroundImage}
+                alt="AZAAM International Medics Network"
+                className="aspect-[1.12/1] w-full object-cover"
               />
-            ))}
+            </div>
+            <div className="absolute -bottom-1 left-[-8px] flex min-h-[118px] min-w-[145px] flex-col justify-center rounded-xl bg-[#0cb451] px-5 py-4 text-white shadow-lg sm:-left-8 sm:min-w-[155px]">
+              <div className="text-3xl font-black leading-none">{content.about.experienceYears || '15+'}</div>
+              <div className="mt-2 text-[10px] font-black uppercase leading-4 tracking-[0.04em]">Years of<br />Experience</div>
+            </div>
           </div>
         </div>
       </section>
