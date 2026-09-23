@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
@@ -7,11 +7,12 @@ import {
   Building2,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   FileCheck2,
   Globe2,
   GraduationCap,
   Image as ImageIcon,
-  Pause,
   Play,
   PlayCircle,
   ShieldCheck,
@@ -49,42 +50,66 @@ const youtubeEmbed = (url: string) => {
   return '';
 };
 
-const HERO_VIDEO_INTERVAL_MS = 6000;
-
 const HeroVideoCarousel: React.FC<{ videos: VideoItem[] }> = ({ videos }) => {
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const items = videos.slice(0, 5);
 
   useEffect(() => {
     setIndex(0);
   }, [items.length]);
 
+  const goNext = () => setIndex((current) => (current + 1) % items.length);
+  const goPrev = () => setIndex((current) => (current - 1 + items.length) % items.length);
+
+  const current = items[index];
+  const embed = current ? youtubeEmbed(current.url) : '';
+
+  // YouTube videos only move to the next one once they actually finish playing
+  // (via the IFrame API's onStateChange === 0 "ended" event), not on a timer.
   useEffect(() => {
-    if (items.length <= 1 || paused) return;
-    const timer = setInterval(() => setIndex((current) => (current + 1) % items.length), HERO_VIDEO_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [items.length, paused]);
+    if (!embed) return;
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.event === 'onStateChange' && data.info === 0) goNext();
+      } catch {
+        // Not a JSON message from the YouTube player; ignore.
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embed, items.length]);
 
   if (items.length === 0) return null;
 
-  const current = items[index];
-  const embed = youtubeEmbed(current.url);
-
   return (
-    <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-black">
+    <div className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-black">
       <div className="aspect-video w-full">
         {embed ? (
           <iframe
+            ref={iframeRef}
             key={`${current.url}-${index}`}
-            src={`${embed}${embed.includes('?') ? '&' : '?'}autoplay=1&mute=1&controls=1&rel=0`}
+            src={`${embed}${embed.includes('?') ? '&' : '?'}autoplay=1&mute=1&controls=1&rel=0&enablejsapi=1`}
             title={current.title || `AIMN video ${index + 1}`}
             className="h-full w-full"
             allow="autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
           />
         ) : (
-          <video key={`${current.url}-${index}`} src={current.url} poster={current.thumbnail} autoPlay muted loop playsInline className="h-full w-full object-cover" />
+          <video
+            key={`${current.url}-${index}`}
+            src={current.url}
+            poster={current.thumbnail}
+            autoPlay
+            muted
+            controls
+            playsInline
+            onEnded={goNext}
+            className="h-full w-full object-cover"
+          />
         )}
       </div>
 
@@ -95,25 +120,35 @@ const HeroVideoCarousel: React.FC<{ videos: VideoItem[] }> = ({ videos }) => {
       )}
 
       {items.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 px-3 py-2 backdrop-blur">
+        <>
           <button
             type="button"
-            onClick={() => setPaused((value) => !value)}
-            aria-label={paused ? 'Resume video slideshow' : 'Pause video slideshow'}
-            className="mr-1 flex h-5 w-5 items-center justify-center text-white/80 hover:text-white"
+            onClick={goPrev}
+            aria-label="Previous video"
+            className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur transition hover:bg-black/70 group-hover:opacity-100 focus:opacity-100"
           >
-            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+            <ChevronLeft className="h-5 w-5" />
           </button>
-          {items.map((item, itemIndex) => (
-            <button
-              key={item.url || itemIndex}
-              type="button"
-              onClick={() => setIndex(itemIndex)}
-              aria-label={`Show video ${itemIndex + 1}`}
-              className={`h-2 rounded-full transition-all ${itemIndex === index ? 'w-6 bg-[#ffb612]' : 'w-2 bg-white/40 hover:bg-white/60'}`}
-            />
-          ))}
-        </div>
+          <button
+            type="button"
+            onClick={goNext}
+            aria-label="Next video"
+            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur transition hover:bg-black/70 group-hover:opacity-100 focus:opacity-100"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 px-3 py-2 backdrop-blur">
+            {items.map((item, itemIndex) => (
+              <button
+                key={item.url || itemIndex}
+                type="button"
+                onClick={() => setIndex(itemIndex)}
+                aria-label={`Show video ${itemIndex + 1}`}
+                className={`h-2 rounded-full transition-all ${itemIndex === index ? 'w-6 bg-[#ffb612]' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -264,14 +299,14 @@ export const LandingPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="absolute -left-5 top-[42%] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:block">
+              <div className="pointer-events-none absolute -left-5 top-[42%] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:block">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full border-4 border-[#ffb612] text-xs font-black text-white">92%</div>
                   <div><p className="text-[10px] text-emerald-50/55">Placement</p><p className="text-sm font-black text-white">Success Rate</p></div>
                 </div>
               </div>
 
-              <div className="absolute -bottom-3 right-[-6px] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:flex sm:items-center sm:gap-3">
+              <div className="pointer-events-none absolute -bottom-3 right-[-6px] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:flex sm:items-center sm:gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Award className="h-5 w-5" /></div>
                 <div><p className="text-[10px] text-emerald-50/55">Certificates</p><p className="text-sm font-black text-white">Auto-generated & Verified</p></div>
                 <CheckCircle2 className="h-5 w-5 text-[#4be0a7]" />
