@@ -172,7 +172,7 @@ export const WebsiteManagementPage: React.FC = () => {
     }
   };
 
-  const updateHero = (key: keyof LandingPageContent['hero'], value: string) => mark({ ...content, hero: { ...content.hero, [key]: value } });
+  const updateHero = (key: Exclude<keyof LandingPageContent['hero'], 'titleLines' | 'statsLabels'>, value: string) => mark({ ...content, hero: { ...content.hero, [key]: value } });
   const updateContact = (key: keyof LandingPageContent['contact'], value: string) => mark({ ...content, contact: { ...content.contact, [key]: value } });
   const updateSeo = (key: keyof LandingPageContent['seo'], value: string) => mark({ ...content, seo: { ...content.seo, [key]: value } });
 
