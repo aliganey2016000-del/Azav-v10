@@ -246,7 +246,7 @@ export const WebsiteManagementPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-cyan-200"><Globe2 className="h-4 w-4" /> Website Management</div>
             <h1 className="mt-3 text-2xl font-black md:text-3xl">Landing Page CMS</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Manage the public landing page text, images, videos, programs, updates, contact details and SEO without editing code.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Manage every visible landing-page section, testimonial, partner, hospital, recognition, header, footer, contact detail and SEO setting without editing code.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={resetDraft} disabled={saving || publishing} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-black hover:bg-white/15"><RefreshCw className="h-4 w-4" /> Reset Draft</button>
@@ -427,12 +427,22 @@ export const WebsiteManagementPage: React.FC = () => {
         <div className="grid gap-5 xl:grid-cols-2">
           <Card title="Strategy & highlights headings">
             <Field label="Strategy section title" value={content.sectionHeadings.strategyTitle} onChange={(v) => updateSectionHeading('strategyTitle', v)} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Vision title" value={content.sectionHeadings.visionTitle} onChange={(v) => updateSectionHeading('visionTitle', v)} />
+              <Field label="Mission title" value={content.sectionHeadings.missionTitle} onChange={(v) => updateSectionHeading('missionTitle', v)} />
+              <Field label="Values title" value={content.sectionHeadings.valuesTitle} onChange={(v) => updateSectionHeading('valuesTitle', v)} />
+            </div>
             <Field label="AIMN Highlights title" value={content.sectionHeadings.highlightsTitle} onChange={(v) => updateSectionHeading('highlightsTitle', v)} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Centre title" value={content.sectionHeadings.highlightsCenterTitle} onChange={(v) => updateSectionHeading('highlightsCenterTitle', v)} />
+              <Field label="Centre subtitle" value={content.sectionHeadings.highlightsCenterSubtitle} onChange={(v) => updateSectionHeading('highlightsCenterSubtitle', v)} />
+            </div>
           </Card>
           <Card title="Training Programs section">
             <Field label="Eyebrow" value={content.sectionHeadings.programsEyebrow} onChange={(v) => updateSectionHeading('programsEyebrow', v)} />
             <Field label="Title" value={content.sectionHeadings.programsTitle} onChange={(v) => updateSectionHeading('programsTitle', v)} />
             <Field label="Description" value={content.sectionHeadings.programsDescription} onChange={(v) => updateSectionHeading('programsDescription', v)} multiline />
+            <Field label="Program card button label" value={content.sectionHeadings.programButtonLabel} onChange={(v) => updateSectionHeading('programButtonLabel', v)} />
           </Card>
           <Card title="Testimonials section">
             <Field label="Eyebrow" value={content.sectionHeadings.testimonialsEyebrow} onChange={(v) => updateSectionHeading('testimonialsEyebrow', v)} />
@@ -464,10 +474,15 @@ export const WebsiteManagementPage: React.FC = () => {
             <Field label="Videos eyebrow" value={content.sectionHeadings.videosEyebrow} onChange={(v) => updateSectionHeading('videosEyebrow', v)} />
             <Field label="Videos title" value={content.sectionHeadings.videosTitle} onChange={(v) => updateSectionHeading('videosTitle', v)} />
           </Card>
-          <Card title="Shared buttons">
+          <Card title="Shared buttons & contact labels">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="View more label" value={content.sectionHeadings.viewMoreLabel} onChange={(v) => updateSectionHeading('viewMoreLabel', v)} />
               <Field label="View less label" value={content.sectionHeadings.viewLessLabel} onChange={(v) => updateSectionHeading('viewLessLabel', v)} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Email label" value={content.sectionHeadings.contactEmailLabel} onChange={(v) => updateSectionHeading('contactEmailLabel', v)} />
+              <Field label="Phone label" value={content.sectionHeadings.contactPhoneLabel} onChange={(v) => updateSectionHeading('contactPhoneLabel', v)} />
+              <Field label="Address label" value={content.sectionHeadings.contactAddressLabel} onChange={(v) => updateSectionHeading('contactAddressLabel', v)} />
             </div>
           </Card>
         </div>
@@ -479,6 +494,11 @@ export const WebsiteManagementPage: React.FC = () => {
             <ImageField label="Brand logo (optional)" value={content.branding.logo} onChange={(v) => updateBranding('logo', v)} onError={showError} />
             <Field label="Brand name" value={content.branding.name} onChange={(v) => updateBranding('name', v)} />
             <Field label="Brand tagline" value={content.branding.tagline} onChange={(v) => updateBranding('tagline', v)} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Sign in label" value={content.branding.signInLabel} onChange={(v) => updateBranding('signInLabel', v)} />
+              <Field label="Get Started label" value={content.branding.getStartedLabel} onChange={(v) => updateBranding('getStartedLabel', v)} />
+              <Field label="Dashboard label" value={content.branding.dashboardLabel} onChange={(v) => updateBranding('dashboardLabel', v)} />
+            </div>
             {content.branding.logo && <img src={content.branding.logo} alt="" className="h-20 w-40 rounded-xl bg-slate-50 object-contain p-2" />}
           </Card>
 
@@ -495,6 +515,7 @@ export const WebsiteManagementPage: React.FC = () => {
 
           <Card title="Footer brand & quality">
             <Field label="Footer description" value={content.footer.description} onChange={(v) => updateFooter('description', v)} multiline />
+            <Field label="Quality column title" value={content.footer.qualityColumnTitle} onChange={(v) => updateFooter('qualityColumnTitle', v)} />
             <Field label="Quality card title" value={content.footer.qualityTitle} onChange={(v) => updateFooter('qualityTitle', v)} />
             <Field label="Quality card description" value={content.footer.qualityDescription} onChange={(v) => updateFooter('qualityDescription', v)} multiline />
             <Field label="Copyright text" value={content.footer.copyrightText} onChange={(v) => updateFooter('copyrightText', v)} />
