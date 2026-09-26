@@ -505,3 +505,23 @@ html.dark ::-webkit-scrollbar-thumb {
     min-height: 2.5rem;
   }
 }
+
+@keyframes aimn-membership-scroll {
+  to { transform: translateX(-50%); }
+}
+
+.aimn-membership-track {
+  display: flex;
+  width: max-content;
+  animation: aimn-membership-scroll 32s linear infinite;
+}
+
+.aimn-membership-window:hover .aimn-membership-track,
+.aimn-membership-window:focus-within .aimn-membership-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aimn-membership-window { overflow-x: auto; }
+  .aimn-membership-track { animation: none; }
+}

@@ -196,6 +196,12 @@ export const LandingPage: React.FC = () => {
 
   const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
+  const membershipCard = (item: LandingPageContent['memberships'][number], index: number, duplicate = false) => {
+    const card = <div className="flex h-40 w-40 items-center justify-center rounded border border-slate-200 bg-white p-5 transition hover:border-[#303b8e] sm:h-48 sm:w-44"><img src={item.logo} alt={duplicate ? '' : item.name} loading="eager" className="max-h-full max-w-full object-contain" /></div>;
+    return <div key={`${duplicate ? 'copy' : 'original'}-${index}`} className="shrink-0" title={duplicate ? undefined : item.name}>
+      {!duplicate && /^https?:\/\//i.test(item.url) ? <a href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${item.name}`}>{card}</a> : card}
+    </div>;
+  };
 
   return (
     <div id="home" className="bg-[#003d33] text-white">
@@ -496,14 +502,16 @@ export const LandingPage: React.FC = () => {
           <h2 id="memberships-title" className="text-xl font-extrabold uppercase tracking-tight sm:text-2xl">Local and International Memberships and Agreements</h2>
           {memberships.length > 0 ? (
             <>
-              <div className={showAllMemberships ? 'mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6' : 'mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 lg:grid lg:grid-cols-6 lg:overflow-visible lg:pb-0'}>
-                {(showAllMemberships ? memberships : memberships.slice(0, 6)).map((item, index) => {
-                  const card = <div className="flex h-40 w-full items-center justify-center rounded border border-slate-200 bg-white p-5 transition hover:border-[#303b8e] sm:h-48"><img src={item.logo} alt={item.name} loading="lazy" className="max-h-full max-w-full object-contain" /></div>;
-                  return <div key={`${item.name}-${index}`} className={showAllMemberships ? 'min-w-0' : 'w-[42%] shrink-0 snap-start sm:w-[29%] lg:w-auto'}>
-                    {/^https?:\/\//i.test(item.url) ? <a href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${item.name}`}>{card}</a> : card}
-                  </div>;
-                })}
-              </div>
+              {showAllMemberships ? (
+                <div className="mt-10 flex flex-wrap justify-center gap-4">{memberships.map((item, index) => membershipCard(item, index))}</div>
+              ) : (
+                <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Partner universities">
+                  <div className="aimn-membership-track" style={{ animationDuration: `${Math.max(28, memberships.length * 4)}s` }}>
+                    <div className="flex shrink-0 gap-4 pr-4">{memberships.map((item, index) => membershipCard(item, index))}</div>
+                    <div className="flex shrink-0 gap-4 pr-4" aria-hidden="true">{memberships.map((item, index) => membershipCard(item, index, true))}</div>
+                  </div>
+                </div>
+              )}
               {memberships.length > 6 && <button type="button" onClick={() => setShowAllMemberships((current) => !current)} className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]">{showAllMemberships ? 'View less' : 'View more'}</button>}
             </>
           ) : <p className="mx-auto mt-10 max-w-xl rounded border border-slate-200 px-6 py-12 text-base text-slate-600">Memberships and agreements will be displayed here when confirmed.</p>}

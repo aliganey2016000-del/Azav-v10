@@ -133,7 +133,16 @@ export const defaultLandingPageContent: LandingPageContent = {
     'Research collaborators',
     'Quality and compliance stakeholders',
   ],
-  memberships: [],
+  memberships: [
+    { name: 'Zamzam University of Science & Technology', logo: '/memberships/zamzam.png', url: '' },
+    { name: 'Mogadishu University', logo: '/memberships/mogadishu.jpg', url: '' },
+    { name: 'Jazeera University', logo: '/memberships/jazeera.jpg', url: '' },
+    { name: 'Kismayo University', logo: '/memberships/kismayo.png', url: '' },
+    { name: 'Red Sea University', logo: '/memberships/red-sea.jpg', url: '' },
+    { name: 'East Africa University', logo: '/memberships/east-africa.png', url: '' },
+    { name: 'University of Bosaso', logo: '/memberships/bosaso.png', url: '' },
+    { name: 'Salaam University', logo: '/memberships/salaam.png', url: '' },
+  ],
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -161,7 +170,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   gallery: Array.isArray(value?.gallery) ? value!.gallery : defaultLandingPageContent.gallery,
   videos: Array.isArray(value?.videos) ? value!.videos : defaultLandingPageContent.videos,
   networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
-  memberships: Array.isArray(value?.memberships) ? value!.memberships : defaultLandingPageContent.memberships,
+  memberships: Array.isArray(value?.memberships) && value!.memberships.length > 0 ? value!.memberships : defaultLandingPageContent.memberships,
 });
 
 export const LandingPageCmsService = {
