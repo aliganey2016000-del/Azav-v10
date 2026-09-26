@@ -133,17 +133,17 @@ export type LandingPageContent = {
 
 export const defaultLandingPageContent: LandingPageContent = {
   hero: {
-    eyebrow: 'Global Clinical Training • Institutional Partnerships • Capacity Development',
-    title: 'Advancing Clinical Training. Strengthening Global Healthcare.',
-    subtitle: 'AZAAM Medics connects universities, teaching hospitals, healthcare institutions, and medical professionals through structured clinical training, professional development, and international collaboration. We create trusted pathways that strengthen clinical competence, institutional capacity, and the quality of healthcare delivery.',
-    backgroundImage: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1800&q=88',
+    eyebrow: 'Global training • Institutional network • Capacity building',
+    title: 'AZAAM International Medics Network (AIMN)',
+    subtitle: 'AIMN is an international institutional network connecting universities, healthcare institutions and professionals to advance high-quality clinical training, strengthen health workforce capacity, and build sustainable partnerships that improve healthcare education and service delivery.',
+    backgroundImage: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1600&q=85',
     backgroundVideo: '',
-    primaryButtonText: 'Explore Opportunities',
+    primaryButtonText: 'Apply Now',
     primaryButtonUrl: '/register',
-    secondaryButtonText: 'Verify Certificate',
-    secondaryButtonUrl: '/verify-certificate',
-    titleLines: ['Advancing', 'Clinical Training.', 'Strengthening', 'Global Healthcare.'],
-    trustText: 'Connecting universities, hospitals, educators, and healthcare professionals across borders.',
+    secondaryButtonText: 'Watch Video',
+    secondaryButtonUrl: '#organization-video',
+    titleLines: ['Advancing Global', 'Clinical Training &', 'Health Workforce', 'Capacity'],
+    trustText: 'Connecting universities, hospitals and health professionals worldwide',
     statsLabels: {
       universities: 'Partner Universities',
       hospitals: 'Training Hospitals',
@@ -410,45 +410,20 @@ const mergeHospitals = (value: Partial<LandingPageContent> | undefined): Hospita
 
 const normalizeHero = (hero: Partial<LandingPageContent['hero']> | undefined): LandingPageContent['hero'] => {
   const legacyLines = ['Complete', 'Clinical Training &', 'Medical Placement', 'Platform'];
-  const previousLines = ['Advancing Global', 'Clinical Training &', 'Health Workforce', 'Capacity'];
   const legacySubtitle = 'AIMN is an international medical education and clinical attachment network committed to quality training, trusted partnerships, and stronger healthcare practice.';
-  const previousSubtitle = 'AIMN is an international institutional network connecting universities, healthcare institutions and professionals to advance high-quality clinical training, strengthen health workforce capacity, and build sustainable partnerships that improve healthcare education and service delivery.';
   const legacyEyebrow = 'Clinical excellence without borders';
-  const previousEyebrow = 'Global training • Institutional network • Capacity building';
   const legacyTrust = 'Trusted by universities, hospitals and trainees';
-  const previousTrust = 'Connecting universities, hospitals and health professionals worldwide';
 
   const savedLines = Array.isArray(hero?.titleLines) ? hero!.titleLines : defaultLandingPageContent.hero.titleLines;
-  const matches = (candidate: string[], expected: string[]) =>
-    candidate.length === expected.length && candidate.every((line, index) => line === expected[index]);
-  const useDefaultLines = matches(savedLines, legacyLines) || matches(savedLines, previousLines);
-
-  const secondaryText = !hero?.secondaryButtonText || hero.secondaryButtonText === 'Watch Video'
-    ? defaultLandingPageContent.hero.secondaryButtonText
-    : hero.secondaryButtonText;
-  const secondaryUrl = !hero?.secondaryButtonUrl || hero.secondaryButtonUrl === '#organization-video'
-    ? defaultLandingPageContent.hero.secondaryButtonUrl
-    : hero.secondaryButtonUrl;
-  const primaryText = !hero?.primaryButtonText || hero.primaryButtonText === 'Apply Now'
-    ? defaultLandingPageContent.hero.primaryButtonText
-    : hero.primaryButtonText;
+  const isLegacyLines = savedLines.length === legacyLines.length && savedLines.every((line, index) => line === legacyLines[index]);
 
   return {
     ...defaultLandingPageContent.hero,
     ...(hero || {}),
-    titleLines: useDefaultLines ? defaultLandingPageContent.hero.titleLines : savedLines,
-    eyebrow: !hero?.eyebrow || hero.eyebrow === legacyEyebrow || hero.eyebrow === previousEyebrow
-      ? defaultLandingPageContent.hero.eyebrow
-      : hero.eyebrow,
-    subtitle: !hero?.subtitle || hero.subtitle === legacySubtitle || hero.subtitle === previousSubtitle
-      ? defaultLandingPageContent.hero.subtitle
-      : hero.subtitle,
-    trustText: !hero?.trustText || hero.trustText === legacyTrust || hero.trustText === previousTrust
-      ? defaultLandingPageContent.hero.trustText
-      : hero.trustText,
-    primaryButtonText: primaryText,
-    secondaryButtonText: secondaryText,
-    secondaryButtonUrl: secondaryUrl,
+    titleLines: isLegacyLines ? defaultLandingPageContent.hero.titleLines : savedLines,
+    eyebrow: !hero?.eyebrow || hero.eyebrow === legacyEyebrow ? defaultLandingPageContent.hero.eyebrow : hero.eyebrow,
+    subtitle: !hero?.subtitle || hero.subtitle === legacySubtitle ? defaultLandingPageContent.hero.subtitle : hero.subtitle,
+    trustText: !hero?.trustText || hero.trustText === legacyTrust ? defaultLandingPageContent.hero.trustText : hero.trustText,
     statsLabels: { ...defaultLandingPageContent.hero.statsLabels, ...(hero?.statsLabels || {}) },
   };
 };
