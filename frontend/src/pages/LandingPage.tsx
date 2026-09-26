@@ -584,7 +584,7 @@ export const LandingPage: React.FC = () => {
                         <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt={hospital.name} loading="lazy" className="h-20 w-20 object-contain" />
                         <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
                       </article>
-                    )})}
+                    ))}
                   </div>
                   <div className="flex shrink-0 gap-4 pr-4" aria-hidden="true">
                     {hospitals.map((hospital, index) => (
@@ -592,7 +592,7 @@ export const LandingPage: React.FC = () => {
                         <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt="" loading="lazy" className="h-20 w-20 object-contain" />
                         <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
                       </article>
-                    )})}
+                    ))}
                   </div>
                 </div>
               </div>
@@ -690,7 +690,7 @@ export const LandingPage: React.FC = () => {
                         </div>
                         <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
                       </a>
-                    )})}
+                    ))}
                   </div>
                 ))}
               </div>
