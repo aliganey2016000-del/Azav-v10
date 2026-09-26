@@ -249,7 +249,7 @@ export const defaultLandingPageContent: LandingPageContent = {
     galleryEyebrow: 'Gallery',
     galleryTitle: 'AIMN in action',
     videosEyebrow: 'Videos',
-    videosTitle: 'Stories, training and partnerships',
+    videosTitle: 'News, Events & Training Highlights',
     partnersEyebrow: 'Institutional Network',
     partnersTitle: 'Our Partners',
     hospitalsEyebrow: 'Clinical Training Network',
@@ -428,13 +428,21 @@ const normalizeHero = (hero: Partial<LandingPageContent['hero']> | undefined): L
   };
 };
 
+const normalizeSectionHeadings = (headings: Partial<SectionHeadings> | undefined): SectionHeadings => {
+  const merged = { ...defaultLandingPageContent.sectionHeadings, ...(headings || {}) };
+  if (!headings?.videosTitle || headings.videosTitle === 'Stories, training and partnerships') {
+    merged.videosTitle = defaultLandingPageContent.sectionHeadings.videosTitle;
+  }
+  return merged;
+};
+
 const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): LandingPageContent => ({
   ...defaultLandingPageContent,
   ...(value || {}),
   hero: normalizeHero(value?.hero),
   about: { ...defaultLandingPageContent.about, ...(value?.about || {}) },
   strategy: { ...defaultLandingPageContent.strategy, ...(value?.strategy || {}) },
-  sectionHeadings: { ...defaultLandingPageContent.sectionHeadings, ...(value?.sectionHeadings || {}) },
+  sectionHeadings: normalizeSectionHeadings(value?.sectionHeadings),
   branding: { ...defaultLandingPageContent.branding, ...(value?.branding || {}) },
   footer: {
     ...defaultLandingPageContent.footer,
