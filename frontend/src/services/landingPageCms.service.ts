@@ -247,7 +247,7 @@ export const defaultLandingPageContent: LandingPageContent = {
     testimonialsTitle: 'What Our Partners Say',
     testimonialsDescription: 'Sample testimonial placeholders for verified institutional feedback about placements, clinical training and partnership coordination.',
     galleryEyebrow: 'Gallery',
-    galleryTitle: 'AIMN in action',
+    galleryTitle: 'AIMN in Action',
     videosEyebrow: 'Videos',
     videosTitle: 'News, Events & Training Highlights',
     partnersEyebrow: 'Institutional Network',
@@ -433,6 +433,9 @@ const normalizeSectionHeadings = (headings: Partial<SectionHeadings> | undefined
   if (!headings?.videosTitle || headings.videosTitle === 'Stories, training and partnerships') {
     merged.videosTitle = defaultLandingPageContent.sectionHeadings.videosTitle;
   }
+  if (!headings?.galleryTitle || headings.galleryTitle === 'AIMN in action') {
+    merged.galleryTitle = defaultLandingPageContent.sectionHeadings.galleryTitle;
+  }
   return merged;
 };
 
@@ -523,7 +526,12 @@ export const LandingPageCmsService = {
     });
 
     const path = response.data?.data?.url as string;
-    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) || '';
-    return `${apiBase}${path}`;
+    if (!path) {
+      throw new Error('Upload completed but no asset URL was returned.');
+    }
+
+    // Resolve both relative API paths and absolute object URLs safely.
+    const apiBase = ((import.meta.env.VITE_API_URL as string | undefined) || window.location.origin).trim();
+    return new URL(path, apiBase.endsWith('/') ? apiBase : `${apiBase}/`).toString();
   },
 };
