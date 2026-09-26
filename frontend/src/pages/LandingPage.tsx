@@ -31,23 +31,6 @@ import {
 } from '../services/landingPageCms.service';
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
-const TESTIMONIALS = [
-  { name: 'Dr. [Name 01]', role: 'Dean of Medicine', organization: 'Jamhuriya University', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&q=85', quote: 'AIMN provides a dependable placement process and clear institutional coordination from nomination through clinical training.' },
-  { name: 'Dr. [Name 02]', role: 'Clinical Coordinator', organization: 'Benadir University', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=700&q=85', quote: 'The structured workflow makes student placements easier to manage and gives institutions better visibility throughout training.' },
-  { name: 'Prof. [Name 03]', role: 'Faculty Representative', organization: 'Islamic University in Uganda', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=85', quote: 'AIMN strengthens collaboration between universities and hospitals while keeping clinical training practical and well organized.' },
-  { name: 'Dr. [Name 04]', role: 'Academic Director', organization: 'Kampala International University', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=85', quote: 'Placement reliability and responsive coordination are major strengths of the AIMN model.' },
-  { name: 'Dr. [Name 05]', role: 'Dean of Health Sciences', organization: 'Busitema University', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=700&q=85', quote: 'The platform supports consistent communication, supervised rotations and a smoother experience for students and institutions.' },
-  { name: 'Prof. [Name 06]', role: 'Medical Education Lead', organization: 'Makerere University', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=700&q=85', quote: 'AIMN brings structure to clinical attachments and helps partners coordinate placements efficiently.' },
-  { name: 'Dr. [Name 07]', role: 'University Liaison', organization: 'Mogadishu University', image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=700&q=85', quote: 'The nomination and placement journey is clear, traceable and easier for academic teams to follow.' },
-  { name: 'Dr. [Name 08]', role: 'Clinical Training Lead', organization: 'Zamzam University', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=700&q=85', quote: 'Students benefit from organized clinical exposure while institutions benefit from reliable coordination and documentation.' },
-  { name: 'Prof. [Name 09]', role: 'Dean of Medicine', organization: 'Partner University', image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=700&q=85', quote: 'AIMN creates a practical bridge between academic preparation and supervised hospital-based learning.' },
-  { name: 'Dr. [Name 10]', role: 'Hospital Training Coordinator', organization: 'Regional Referral Hospital', image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=700&q=85', quote: 'Hospital coordination is more efficient when student lists, rotations and communication are managed through one workflow.' },
-  { name: 'Dr. [Name 11]', role: 'Clinical Supervisor', organization: 'Teaching Hospital', image: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=700&q=85', quote: 'The structured approach supports supervision, accountability and a better clinical training experience.' },
-  { name: 'Prof. [Name 12]', role: 'Institutional Partnership Lead', organization: 'Partner Institution', image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=700&q=85', quote: 'AIMN makes cross-institutional collaboration easier through clear processes and consistent follow-up.' },
-  { name: 'Dr. [Name 13]', role: 'Student Affairs Director', organization: 'Medical University', image: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c6?auto=format&fit=crop&w=700&q=85', quote: 'The platform improves visibility of placement progress and gives our team confidence in the coordination process.' },
-  { name: 'Dr. [Name 14]', role: 'Training Programme Lead', organization: 'Clinical Partner', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=700&q=85', quote: 'AIMN combines dependable placement support with a strong focus on quality clinical learning.' },
-  { name: 'Prof. [Name 15]', role: 'Academic Partnership Director', organization: 'International Partner', image: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=700&q=85', quote: 'The partnership workflow is organized, responsive and designed around the needs of universities, hospitals and trainees.' },
-];
 
 const aimnHighlightIcons = [Users, CalendarDays, Stethoscope, TrendingUp, Globe2, Activity, Building2, Award];
 
@@ -217,21 +200,19 @@ export const LandingPage: React.FC = () => {
   const heroShowcaseEmbed = heroShowcaseUrl ? youtubeEmbed(heroShowcaseUrl) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
-  const recognitions = [
-    { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://mofa.go.ug/' },
-    { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://www.mia.go.ug/' },
-    { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://health.go.ug/about-moh/' },
-    { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: 'https://www.education.go.ug/wp-content/uploads/2019/07/NewLogo2.png', url: 'https://www.education.go.ug/' },
-    { name: 'Ministry of Health & Human Services — Somalia', icon: Stethoscope, logo: 'data:image/webp;base64,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', url: 'https://moh.gov.so/so/' },
-    { name: 'Ministry of Foreign Affairs & International Cooperation — Somalia', icon: Globe2, logo: 'https://web.mfa.gov.so/favicon.ico', url: 'https://web.mfa.gov.so/' },
-    { name: 'Association of Somali Universities (ASU)', icon: GraduationCap, logo: 'https://asu.org.so/favicon.ico', url: 'https://asu.org.so/' },
-    { name: 'Somali Medical Association', icon: Stethoscope, logo: 'https://www.facebook.com/favicon.ico', url: 'https://www.facebook.com/SomaliMedicalAssoc/about/' },
-  ];
+  const recognitions = content.recognitions.filter((item) => item.name?.trim());
+  const recognitionIcon = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes('health') || lower.includes('medical')) return Stethoscope;
+    if (lower.includes('education') || lower.includes('universit')) return GraduationCap;
+    if (lower.includes('foreign')) return Globe2;
+    return ShieldCheck;
+  };
   const heroNetworkStats = [
-    { label: 'Partner Universities', value: memberships.length, icon: GraduationCap },
-    { label: 'Training Hospitals', value: hospitals.length, icon: Building2 },
-    { label: 'Official Recognitions', value: recognitions.length, icon: ShieldCheck },
-    { label: 'Clinical Training Programs', value: content.programs.filter((program) => program.title?.trim()).length, icon: Stethoscope },
+    { label: content.hero.statsLabels.universities, value: memberships.length, icon: GraduationCap },
+    { label: content.hero.statsLabels.hospitals, value: hospitals.length, icon: Building2 },
+    { label: content.hero.statsLabels.recognitions, value: recognitions.length, icon: ShieldCheck },
+    { label: content.hero.statsLabels.programs, value: content.programs.filter((program) => program.title?.trim()).length, icon: Stethoscope },
   ];
 
   const membershipCard = (item: LandingPageContent['memberships'][number], index: number, duplicate = false) => {
@@ -268,10 +249,9 @@ export const LandingPage: React.FC = () => {
               </div>
 
               <h1 className="mt-6 text-[48px] font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-[64px] lg:text-[72px]" style={headingFont}>
-                Complete
-                <span className="block text-[#ffbf2f]">Clinical Training &</span>
-                <span className="block text-[#ffbf2f]">Medical Placement</span>
-                <span className="block text-white">Platform</span>
+                {content.hero.titleLines.map((line, index) => (
+                  <span key={index} className={`block ${index > 0 && index < content.hero.titleLines.length - 1 ? 'text-[#ffbf2f]' : 'text-white'}`}>{line}</span>
+                ))}
               </h1>
 
               <p className="mt-6 max-w-xl text-base leading-8 text-white/85 sm:text-lg">
@@ -283,10 +263,10 @@ export const LandingPage: React.FC = () => {
                   {content.hero.primaryButtonText || 'Get Started'} <ArrowRight className="h-4 w-4" />
                 </SmartLink>
                 <a
-                  href={heroShowcaseUrl ? '#organization-video' : '#programs'}
+                  href={content.hero.secondaryButtonUrl || (heroShowcaseUrl ? '#organization-video' : '#programs')}
                   className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.05] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.10]"
                 >
-                  <Play className="h-4 w-4" /> {heroShowcaseUrl ? 'Watch Video' : 'Explore Programs'}
+                  <Play className="h-4 w-4" /> {content.hero.secondaryButtonText || (heroShowcaseUrl ? 'Watch Video' : 'Explore Programs')}
                 </a>
               </div>
 
@@ -298,7 +278,7 @@ export const LandingPage: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-sm tracking-[0.18em] text-[#ffbf2f]">★★★★★</div>
-                  <p className="text-xs text-white/65">Trusted by universities, hospitals and trainees</p>
+                  <p className="text-xs text-white/65">{content.hero.trustText}</p>
                 </div>
               </div>
             </div>
@@ -308,8 +288,8 @@ export const LandingPage: React.FC = () => {
               <div className="relative overflow-hidden rounded-[28px] border border-white/20 bg-white/[0.08] shadow-2xl shadow-black/25 backdrop-blur-xl">
                 <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]">AIMN in Action</p>
-                    <h2 className="mt-1 truncate text-base font-black text-white sm:text-lg">Organization Impact &amp; Clinical Training</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]">{content.sectionHeadings.heroVideoEyebrow}</p>
+                    <h2 className="mt-1 truncate text-base font-black text-white sm:text-lg">{content.sectionHeadings.heroVideoTitle}</h2>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5" aria-hidden="true">
                     <span className="h-2.5 w-2.5 rounded-full bg-[#ffb612]" />
@@ -342,7 +322,7 @@ export const LandingPage: React.FC = () => {
 
                 <div className="border-t border-white/10 px-5 py-4 sm:px-6">
                   <p className="text-sm leading-6 text-white/70">
-                    Watch AIMN’s institutional partnerships, placement coordination and supervised clinical training activities without leaving the website.
+                    {content.sectionHeadings.heroVideoDescription}
                   </p>
                 </div>
               </div>
@@ -372,7 +352,7 @@ export const LandingPage: React.FC = () => {
 
       <section id="about" className="bg-[#f7f8fa] px-4 py-20 text-[#303b89] sm:px-6 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">Our Strategy &amp; Values</h2>
+          <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">{content.sectionHeadings.strategyTitle}</h2>
           <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-[#00aa60]" />
           <div className="mt-12 grid gap-5 md:grid-cols-3 md:items-stretch lg:gap-7">
             <article className="rounded-[4px] bg-[#303b8e] p-7 text-white shadow-sm sm:p-8">
@@ -400,7 +380,7 @@ export const LandingPage: React.FC = () => {
 
       <section aria-labelledby="aimn-highlights-title" className="bg-[#303b8e] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-5xl">
-          <h2 id="aimn-highlights-title" className="text-center text-2xl font-extrabold uppercase tracking-tight sm:text-3xl">AIMN Highlights</h2>
+          <h2 id="aimn-highlights-title" className="text-center text-2xl font-extrabold uppercase tracking-tight sm:text-3xl">{content.sectionHeadings.highlightsTitle}</h2>
           <div className="mt-10 grid grid-cols-2 border-l border-t border-white/15 md:grid-cols-3">
             {content.aimnHighlights.slice(0, 4).map((item, index) => {
               const Icon = aimnHighlightIcons[index];
@@ -429,9 +409,9 @@ export const LandingPage: React.FC = () => {
       <section id="programs" className="bg-[#00a653] py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]"><GraduationCap className="h-4 w-4" /> Clinical Training</div>
-            <h2 className="mt-3 text-4xl font-black text-white sm:text-5xl" style={headingFont}>Build experience across essential departments</h2>
-            <p className="mt-4 text-sm leading-7 text-emerald-50/65">Structured rotations designed for practical learning, institutional coordination and supervised clinical exposure.</p>
+            <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]"><GraduationCap className="h-4 w-4" /> {content.sectionHeadings.programsEyebrow}</div>
+            <h2 className="mt-3 text-4xl font-black text-white sm:text-5xl" style={headingFont}>{content.sectionHeadings.programsTitle}</h2>
+            <p className="mt-4 text-sm leading-7 text-emerald-50/65">{content.sectionHeadings.programsDescription}</p>
           </div>
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {content.programs.map((program, index) => (
@@ -452,14 +432,14 @@ export const LandingPage: React.FC = () => {
       <section id="testimonials" aria-labelledby="testimonials-title" className="bg-[#303b8e] py-16 text-white sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-200">Partner Experience</p>
-            <h2 id="testimonials-title" className="mt-3 text-3xl font-black text-white sm:text-4xl" style={headingFont}>What Our Partners Say</h2>
-            <p className="mt-4 text-sm leading-7 text-white/75 sm:text-base">Sample testimonial placeholders for verified institutional feedback about placements, clinical training and partnership coordination.</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-200">{content.sectionHeadings.testimonialsEyebrow}</p>
+            <h2 id="testimonials-title" className="mt-3 text-3xl font-black text-white sm:text-4xl" style={headingFont}>{content.sectionHeadings.testimonialsTitle}</h2>
+            <p className="mt-4 text-sm leading-7 text-white/75 sm:text-base">{content.sectionHeadings.testimonialsDescription}</p>
           </div>
 
           {showAllTestimonials ? (
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {TESTIMONIALS.map((item, index) => (
+              {content.testimonials.map((item, index) => (
                 <article
                   key={`testimonial-grid-${index}`}
                   className="group overflow-hidden rounded-[22px] border border-white/15 bg-white text-slate-800 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
@@ -471,18 +451,18 @@ export const LandingPage: React.FC = () => {
                     <h3 className="text-lg font-black leading-tight text-[#073f35]">{item.name}</h3>
                     <p className="mt-1 text-sm font-bold text-[#303b8e]">{item.role}</p>
                     <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{item.organization}</p>
-                    <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
+                    <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label={`${item.rating || '5'} out of 5 stars`}>{'★'.repeat(Math.max(1, Math.min(5, Number(item.rating) || 5)))}</div>
                     <p className="mt-3 text-sm leading-6 text-slate-600">“{item.quote}”</p>
                   </div>
                 </article>
-              ))}
+              )})}
             </div>
           ) : (
             <div className="aimn-testimonial-window mt-10 overflow-hidden" aria-label="Partner testimonials">
               <div className="aimn-testimonial-track">
                 {[false, true].map((duplicate) => (
                   <div key={duplicate ? 'testimonials-copy' : 'testimonials-original'} className="flex shrink-0 gap-5 pr-5" aria-hidden={duplicate ? 'true' : undefined}>
-                    {TESTIMONIALS.map((item, index) => (
+                    {content.testimonials.map((item, index) => (
                       <article
                         key={`${duplicate ? 'copy' : 'original'}-${index}`}
                         className="group w-[82vw] max-w-[320px] shrink-0 overflow-hidden rounded-[22px] border border-white/15 bg-white text-left text-slate-800 shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:w-[320px] lg:w-[340px]"
@@ -494,11 +474,11 @@ export const LandingPage: React.FC = () => {
                           <h3 className="text-lg font-black leading-tight text-[#073f35]">{item.name}</h3>
                           <p className="mt-1 text-sm font-bold text-[#303b8e]">{item.role}</p>
                           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{item.organization}</p>
-                          <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
+                          <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label={`${item.rating || '5'} out of 5 stars`}>{'★'.repeat(Math.max(1, Math.min(5, Number(item.rating) || 5)))}</div>
                           <p className="mt-3 line-clamp-5 text-sm leading-6 text-slate-600">“{item.quote}”</p>
                         </div>
                       </article>
-                    ))}
+                    )})}
                   </div>
                 ))}
               </div>
@@ -511,7 +491,7 @@ export const LandingPage: React.FC = () => {
               onClick={() => setShowAllTestimonials((current) => !current)}
               className="rounded bg-white px-7 py-2.5 text-sm font-bold text-[#303b8e] transition hover:bg-slate-100"
             >
-              {showAllTestimonials ? 'View less' : 'View more'}
+              {showAllTestimonials ? content.sectionHeadings.viewLessLabel : content.sectionHeadings.viewMoreLabel}
             </button>
           </div>
         </div>
@@ -520,8 +500,8 @@ export const LandingPage: React.FC = () => {
       {content.gallery.length > 0 && (
         <section className="bg-white py-20 text-slate-800">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-2 text-[#008267]"><ImageIcon className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">Gallery</span></div>
-            <h2 className="mt-3 text-4xl font-black text-[#073f35]" style={headingFont}>AIMN in action</h2>
+            <div className="flex items-center gap-2 text-[#008267]"><ImageIcon className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">{content.sectionHeadings.galleryEyebrow}</span></div>
+            <h2 className="mt-3 text-4xl font-black text-[#073f35]" style={headingFont}>{content.sectionHeadings.galleryTitle}</h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {content.gallery.map((item, index) => (
                 <figure key={index} className="overflow-hidden rounded-[22px] border border-emerald-100 bg-[#f6fbf8]">
@@ -537,8 +517,8 @@ export const LandingPage: React.FC = () => {
       {content.videos.length > 0 && (
         <section id="videos" className="bg-[#002f28] py-20" style={heroPattern}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-2 text-[#ffbf2f]"><PlayCircle className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">Videos</span></div>
-            <h2 className="mt-3 text-4xl font-black text-white" style={headingFont}>Stories, training and partnerships</h2>
+            <div className="flex items-center gap-2 text-[#ffbf2f]"><PlayCircle className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">{content.sectionHeadings.videosEyebrow}</span></div>
+            <h2 className="mt-3 text-4xl font-black text-white" style={headingFont}>{content.sectionHeadings.videosTitle}</h2>
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
               {content.videos.map((item, index) => {
                 const embed = youtubeEmbed(item.url);
@@ -556,8 +536,8 @@ export const LandingPage: React.FC = () => {
 
       <section id="network" aria-labelledby="memberships-title" className="bg-white px-4 pb-16 pt-10 text-[#202020] sm:px-6 lg:px-8 lg:pb-20">
         <div className="mx-auto max-w-6xl text-center">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Institutional Network</p>
-          <h2 id="memberships-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Partners</h2>
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">{content.sectionHeadings.partnersEyebrow}</p>
+          <h2 id="memberships-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{content.sectionHeadings.partnersTitle}</h2>
           {memberships.length > 0 ? (
             <>
               {showAllMemberships ? (
@@ -570,7 +550,7 @@ export const LandingPage: React.FC = () => {
                   </div>
                 </div>
               )}
-              {memberships.length > 6 && <button type="button" onClick={() => setShowAllMemberships((current) => !current)} className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]">{showAllMemberships ? 'View less' : 'View more'}</button>}
+              {memberships.length > 6 && <button type="button" onClick={() => setShowAllMemberships((current) => !current)} className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]">{showAllMemberships ? content.sectionHeadings.viewLessLabel : content.sectionHeadings.viewMoreLabel}</button>}
             </>
           ) : <p className="mx-auto mt-10 max-w-xl rounded border border-slate-200 px-6 py-12 text-base text-slate-600">Our partners will be displayed here when confirmed.</p>}
         </div>
@@ -579,9 +559,9 @@ export const LandingPage: React.FC = () => {
       {hospitals.length > 0 && (
         <section id="training-hospitals" aria-labelledby="training-hospitals-title" className="bg-[#303b8e] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-6xl text-center">
-            <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-200">Clinical Training Network</p>
-            <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">Our Training Hospitals</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-200">{content.sectionHeadings.hospitalsEyebrow}</p>
+            <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">{content.sectionHeadings.hospitalsTitle}</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">{content.sectionHeadings.hospitalsDescription}</p>
 
             {showAllHospitals ? (
               <div className="mt-10 flex flex-wrap justify-center gap-4">
@@ -604,7 +584,7 @@ export const LandingPage: React.FC = () => {
                         <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt={hospital.name} loading="lazy" className="h-20 w-20 object-contain" />
                         <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
                       </article>
-                    ))}
+                    )})}
                   </div>
                   <div className="flex shrink-0 gap-4 pr-4" aria-hidden="true">
                     {hospitals.map((hospital, index) => (
@@ -612,7 +592,7 @@ export const LandingPage: React.FC = () => {
                         <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt="" loading="lazy" className="h-20 w-20 object-contain" />
                         <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
                       </article>
-                    ))}
+                    )})}
                   </div>
                 </div>
               </div>
@@ -624,7 +604,7 @@ export const LandingPage: React.FC = () => {
                 onClick={() => setShowAllHospitals((current) => !current)}
                 className="mt-8 rounded bg-white px-7 py-2.5 text-sm font-bold text-[#303b8e] transition hover:bg-slate-100"
               >
-                {showAllHospitals ? 'View less' : 'View more'}
+                {showAllHospitals ? content.sectionHeadings.viewLessLabel : content.sectionHeadings.viewMoreLabel}
               </button>
             )}
           </div>
@@ -633,15 +613,17 @@ export const LandingPage: React.FC = () => {
 
       <section id="recognitions" aria-labelledby="recognitions-title" className="bg-white px-4 py-16 text-[#202020] sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-6xl text-center">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Institutional Recognition</p>
-          <h2 id="recognitions-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Official Recognitions &amp; Approvals</h2>
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">{content.sectionHeadings.recognitionsEyebrow}</p>
+          <h2 id="recognitions-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{content.sectionHeadings.recognitionsTitle}</h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Official institutional recognitions and approvals supporting our international medical education and clinical training activities.
+            {content.sectionHeadings.recognitionsDescription}
           </p>
 
           {showAllRecognitions ? (
             <div className="mt-10 flex flex-wrap justify-center gap-4">
-              {recognitions.map(({ name, icon: Icon, logo, url }) => (
+              {recognitions.map(({ name, logo, url }) => {
+                const Icon = recognitionIcon(name);
+                return (
                 <a
                   key={name}
                   href={url}
@@ -666,7 +648,7 @@ export const LandingPage: React.FC = () => {
                   </div>
                   <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
                 </a>
-              ))}
+              )})}
             </div>
           ) : (
             <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Official recognitions">
@@ -680,7 +662,9 @@ export const LandingPage: React.FC = () => {
                     className="flex shrink-0 gap-4 pr-4"
                     aria-hidden={duplicate ? 'true' : undefined}
                   >
-                    {recognitions.map(({ name, icon: Icon, logo, url }, index) => (
+                    {recognitions.map(({ name, logo, url }, index) => {
+                      const Icon = recognitionIcon(name);
+                      return (
                       <a
                         key={`${duplicate ? 'copy' : 'original'}-${name}-${index}`}
                         href={duplicate ? undefined : url}
@@ -706,7 +690,7 @@ export const LandingPage: React.FC = () => {
                         </div>
                         <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
                       </a>
-                    ))}
+                    )})}
                   </div>
                 ))}
               </div>
@@ -719,7 +703,7 @@ export const LandingPage: React.FC = () => {
               onClick={() => setShowAllRecognitions((current) => !current)}
               className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]"
             >
-              {showAllRecognitions ? 'View less' : 'View more'}
+              {showAllRecognitions ? content.sectionHeadings.viewLessLabel : content.sectionHeadings.viewMoreLabel}
             </button>
           )}
         </div>
