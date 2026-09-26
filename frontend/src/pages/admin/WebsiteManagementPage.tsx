@@ -206,6 +206,37 @@ export const WebsiteManagementPage: React.FC = () => {
     mark({ ...content, hospitals });
   };
 
+  const updateTestimonial = (index: number, key: keyof TestimonialItem, value: string) => {
+    const testimonials = content.testimonials.map((item, i) => i === index ? { ...item, [key]: value } : item);
+    mark({ ...content, testimonials });
+  };
+
+  const updateRecognition = (index: number, key: keyof RecognitionItem, value: string) => {
+    const recognitions = content.recognitions.map((item, i) => i === index ? { ...item, [key]: value } : item);
+    mark({ ...content, recognitions });
+  };
+
+  const updateSectionHeading = (key: keyof LandingPageContent['sectionHeadings'], value: string) =>
+    mark({ ...content, sectionHeadings: { ...content.sectionHeadings, [key]: value } });
+
+  const updateBranding = (key: keyof LandingPageContent['branding'], value: string) =>
+    mark({ ...content, branding: { ...content.branding, [key]: value } });
+
+  const updateFooter = (key: Exclude<keyof LandingPageContent['footer'], 'exploreLinks' | 'portalLinks'>, value: string) =>
+    mark({ ...content, footer: { ...content.footer, [key]: value } });
+
+  const updateNavigation = (index: number, key: 'label' | 'href', value: string) =>
+    mark({ ...content, navigation: content.navigation.map((item, i) => i === index ? { ...item, [key]: value } : item) });
+
+  const updateFooterLink = (group: 'exploreLinks' | 'portalLinks', index: number, key: 'label' | 'href', value: string) =>
+    mark({
+      ...content,
+      footer: {
+        ...content.footer,
+        [group]: content.footer[group].map((item, i) => i === index ? { ...item, [key]: value } : item),
+      },
+    });
+
   if (loading) return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm font-bold text-slate-600">Loading website management...</div>;
 
   return (
