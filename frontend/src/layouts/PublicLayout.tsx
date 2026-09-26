@@ -8,7 +8,7 @@ const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
 const SECTION_LINKS = [
   { hash: '#about', label: 'About' },
   { hash: '#programs', label: 'Training' },
-  { hash: '#news', label: 'Updates' },
+  { hash: '#testimonials', label: 'Testimonials' },
   { hash: '#network', label: 'Partners' },
 ];
 
