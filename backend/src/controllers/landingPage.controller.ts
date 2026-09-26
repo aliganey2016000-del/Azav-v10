@@ -81,14 +81,7 @@ const DEFAULT_CONTENT = {
     'Research collaborators',
     'Quality and compliance stakeholders',
   ],
-  cta: {
-    eyebrow: 'Explore more',
-    title: 'A trusted bridge between universities and clinical practice.',
-    primaryText: 'Join now',
-    primaryUrl: '/register',
-    secondaryText: 'Login',
-    secondaryUrl: '/login',
-  },
+  memberships: [],
   contact: {
     email: 'info@azaammedics.org',
     phone: '',

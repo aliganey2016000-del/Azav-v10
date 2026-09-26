@@ -169,6 +169,7 @@ const heroPattern = {
 export const LandingPage: React.FC = () => {
   const [content, setContent] = useState<LandingPageContent>(defaultLandingPageContent);
   const [preview, setPreview] = useState(false);
+  const [showAllMemberships, setShowAllMemberships] = useState(false);
 
   useEffect(() => {
     const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
@@ -194,6 +195,7 @@ export const LandingPage: React.FC = () => {
   }, [content.seo]);
 
   const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
+  const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
 
   return (
     <div id="home" className="bg-[#003d33] text-white">
@@ -489,20 +491,22 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      <section className="bg-[#003d33] py-16" style={heroPattern}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-[30px] border border-white/15 bg-white/[0.07] p-8 shadow-xl backdrop-blur md:p-10">
-            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]">{content.cta.eyebrow}</p>
-                <h2 className="mt-3 max-w-3xl text-4xl font-black text-white" style={headingFont}>{content.cta.title}</h2>
+      <section aria-labelledby="memberships-title" className="bg-white px-4 py-16 text-[#202020] sm:px-6 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-6xl text-center">
+          <h2 id="memberships-title" className="text-xl font-extrabold uppercase tracking-tight sm:text-2xl">Local and International Memberships and Agreements</h2>
+          {memberships.length > 0 ? (
+            <>
+              <div className={showAllMemberships ? 'mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6' : 'mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 lg:grid lg:grid-cols-6 lg:overflow-visible lg:pb-0'}>
+                {(showAllMemberships ? memberships : memberships.slice(0, 6)).map((item, index) => {
+                  const card = <div className="flex h-40 w-full items-center justify-center rounded border border-slate-200 bg-white p-5 transition hover:border-[#303b8e] sm:h-48"><img src={item.logo} alt={item.name} loading="lazy" className="max-h-full max-w-full object-contain" /></div>;
+                  return <div key={`${item.name}-${index}`} className={showAllMemberships ? 'min-w-0' : 'w-[42%] shrink-0 snap-start sm:w-[29%] lg:w-auto'}>
+                    {/^https?:\/\//i.test(item.url) ? <a href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${item.name}`}>{card}</a> : card}
+                  </div>;
+                })}
               </div>
-              <div className="flex flex-wrap gap-3">
-                <SmartLink to={content.cta.primaryUrl} className="rounded-full bg-[#ffb612] px-6 py-3 text-sm font-black text-[#063b31]">{content.cta.primaryText}</SmartLink>
-                <SmartLink to={content.cta.secondaryUrl} className="rounded-full border border-white/25 px-6 py-3 text-sm font-bold text-white">{content.cta.secondaryText}</SmartLink>
-              </div>
-            </div>
-          </div>
+              {memberships.length > 6 && <button type="button" onClick={() => setShowAllMemberships((current) => !current)} className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]">{showAllMemberships ? 'View less' : 'View more'}</button>}
+            </>
+          ) : <p className="mx-auto mt-10 max-w-xl rounded border border-slate-200 px-6 py-12 text-base text-slate-600">Memberships and agreements will be displayed here when confirmed.</p>}
         </div>
       </section>
 

@@ -5,6 +5,7 @@ export type ProgramItem = { title: string; image: string; link: string };
 export type NewsItem = { title: string; label: string; summary: string; image: string; link: string };
 export type GalleryItem = { title: string; image: string; caption: string };
 export type VideoItem = { title: string; url: string; thumbnail: string; description: string };
+export type MembershipItem = { name: string; logo: string; url: string };
 
 export type LandingPageContent = {
   hero: {
@@ -40,14 +41,7 @@ export type LandingPageContent = {
   gallery: GalleryItem[];
   videos: VideoItem[];
   networkRoles: string[];
-  cta: {
-    eyebrow: string;
-    title: string;
-    primaryText: string;
-    primaryUrl: string;
-    secondaryText: string;
-    secondaryUrl: string;
-  };
+  memberships: MembershipItem[];
   contact: {
     email: string;
     phone: string;
@@ -139,14 +133,7 @@ export const defaultLandingPageContent: LandingPageContent = {
     'Research collaborators',
     'Quality and compliance stakeholders',
   ],
-  cta: {
-    eyebrow: 'Explore more',
-    title: 'A trusted bridge between universities and clinical practice.',
-    primaryText: 'Join now',
-    primaryUrl: '/register',
-    secondaryText: 'Login',
-    secondaryUrl: '/login',
-  },
+  memberships: [],
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -165,7 +152,6 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   hero: { ...defaultLandingPageContent.hero, ...(value?.hero || {}) },
   about: { ...defaultLandingPageContent.about, ...(value?.about || {}) },
   strategy: { ...defaultLandingPageContent.strategy, ...(value?.strategy || {}) },
-  cta: { ...defaultLandingPageContent.cta, ...(value?.cta || {}) },
   contact: { ...defaultLandingPageContent.contact, ...(value?.contact || {}) },
   seo: { ...defaultLandingPageContent.seo, ...(value?.seo || {}) },
   highlights: Array.isArray(value?.highlights) ? value!.highlights : defaultLandingPageContent.highlights,
@@ -175,6 +161,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   gallery: Array.isArray(value?.gallery) ? value!.gallery : defaultLandingPageContent.gallery,
   videos: Array.isArray(value?.videos) ? value!.videos : defaultLandingPageContent.videos,
   networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
+  memberships: Array.isArray(value?.memberships) ? value!.memberships : defaultLandingPageContent.memberships,
 });
 
 export const LandingPageCmsService = {

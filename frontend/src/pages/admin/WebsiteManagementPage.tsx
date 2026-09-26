@@ -21,6 +21,7 @@ import {
   GalleryItem,
   LandingPageCmsService,
   LandingPageContent,
+  MembershipItem,
   NewsItem,
   ProgramItem,
   VideoItem,
@@ -35,7 +36,7 @@ const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: 'programs', label: 'Programs', icon: LayoutTemplate },
   { key: 'updates', label: 'Updates', icon: Newspaper },
   { key: 'media', label: 'Gallery & Videos', icon: ImageIcon },
-  { key: 'network', label: 'Network & CTA', icon: Users },
+  { key: 'network', label: 'Network & Memberships', icon: Users },
   { key: 'seo', label: 'Contact & SEO', icon: Search },
 ];
 
@@ -166,7 +167,6 @@ export const WebsiteManagementPage: React.FC = () => {
   };
 
   const updateHero = (key: keyof LandingPageContent['hero'], value: string) => mark({ ...content, hero: { ...content.hero, [key]: value } });
-  const updateCta = (key: keyof LandingPageContent['cta'], value: string) => mark({ ...content, cta: { ...content.cta, [key]: value } });
   const updateContact = (key: keyof LandingPageContent['contact'], value: string) => mark({ ...content, contact: { ...content.contact, [key]: value } });
   const updateSeo = (key: keyof LandingPageContent['seo'], value: string) => mark({ ...content, seo: { ...content.seo, [key]: value } });
 
@@ -188,6 +188,11 @@ export const WebsiteManagementPage: React.FC = () => {
   const updateVideo = (index: number, key: keyof VideoItem, value: string) => {
     const videos = content.videos.map((item, i) => i === index ? { ...item, [key]: value } : item);
     mark({ ...content, videos });
+  };
+
+  const updateMembership = (index: number, key: keyof MembershipItem, value: string) => {
+    const memberships = content.memberships.map((item, i) => i === index ? { ...item, [key]: value } : item);
+    mark({ ...content, memberships });
   };
 
   if (loading) return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm font-bold text-slate-600">Loading website management...</div>;
@@ -311,11 +316,10 @@ export const WebsiteManagementPage: React.FC = () => {
             {content.networkRoles.map((role,index)=><div key={index} className="flex items-center gap-2"><input value={role} onChange={(e)=>{const networkRoles=[...content.networkRoles];networkRoles[index]=e.target.value;mark({...content,networkRoles});}} className="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /><button onClick={()=>mark({...content,networkRoles:content.networkRoles.filter((_,i)=>i!==index)})} className="rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button></div>)}
             <button onClick={()=>mark({...content,networkRoles:[...content.networkRoles,'New partner / network role']})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add role</button>
           </Card>
-          <Card title="Call to action">
-            <Field label="Eyebrow" value={content.cta.eyebrow} onChange={(v)=>updateCta('eyebrow',v)} />
-            <Field label="Title" value={content.cta.title} onChange={(v)=>updateCta('title',v)} multiline />
-            <div className="grid gap-3 sm:grid-cols-2"><Field label="Primary text" value={content.cta.primaryText} onChange={(v)=>updateCta('primaryText',v)} /><Field label="Primary link" value={content.cta.primaryUrl} onChange={(v)=>updateCta('primaryUrl',v)} /></div>
-            <div className="grid gap-3 sm:grid-cols-2"><Field label="Secondary text" value={content.cta.secondaryText} onChange={(v)=>updateCta('secondaryText',v)} /><Field label="Secondary link" value={content.cta.secondaryUrl} onChange={(v)=>updateCta('secondaryUrl',v)} /></div>
+          <Card title="Local and International Memberships and Agreements">
+            <p className="text-sm leading-6 text-slate-600">Add confirmed organizations with their logos. The first six appear in the logo row; View more reveals the rest.</p>
+            {content.memberships.map((item, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><div className="space-y-3"><Field label="Organization name" value={item.name} onChange={(v) => updateMembership(index, 'name', v)} /><ImageField label="Organization logo" value={item.logo} onChange={(v) => updateMembership(index, 'logo', v)} onError={showError} /><Field label="Website URL (optional)" value={item.url} onChange={(v) => updateMembership(index, 'url', v)} /></div><div className="mt-3 flex items-center justify-between gap-3">{item.logo && <img src={item.logo} alt="" className="h-12 w-24 object-contain" />}<button type="button" onClick={() => mark({ ...content, memberships: content.memberships.filter((_, i) => i !== index) })} className="ml-auto text-xs font-bold text-rose-600">Remove</button></div></div>)}
+            <button type="button" onClick={() => mark({ ...content, memberships: [...content.memberships, { name: '', logo: '', url: '' }] })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add organization</button>
           </Card>
         </div>
       )}
