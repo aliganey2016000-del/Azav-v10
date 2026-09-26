@@ -45,6 +45,7 @@ export type LandingPageContent = {
   memberships: MembershipItem[];
   membershipSeedVersion: number;
   hospitals: HospitalItem[];
+  hospitalSeedVersion: number;
   contact: {
     email: string;
     phone: string;
@@ -166,7 +167,15 @@ export const defaultLandingPageContent: LandingPageContent = {
       description: 'A clinical training setting for supervised, hands-on learning.',
       url: 'https://www.mbalehospital.go.ug/',
     },
+    {
+      name: 'Fort Portal Regional Referral Hospital',
+      image: '/memberships/fort-portal-hospital.webp',
+      location: 'Fort Portal, Uganda',
+      description: 'A regional referral hospital supporting supervised clinical learning.',
+      url: 'https://kiu.ac.ug/clinical-training-sites/fort-portal-regional-referral-hospital',
+    },
   ],
+  hospitalSeedVersion: 1,
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -191,6 +200,16 @@ const mergeMemberships = (value: Partial<LandingPageContent> | undefined): Membe
   return [...existing, ...newlyAdded];
 };
 
+const mergeHospitals = (value: Partial<LandingPageContent> | undefined): HospitalItem[] => {
+  const existing = value?.hospitals;
+  if (!Array.isArray(existing)) return defaultLandingPageContent.hospitals;
+  if ((value?.hospitalSeedVersion || 0) >= 1) return existing;
+  const newlyAdded = defaultLandingPageContent.hospitals.slice(1).filter((item) =>
+    !existing.some((hospital) => hospital.name?.toLowerCase() === item.name.toLowerCase()),
+  );
+  return [...existing, ...newlyAdded];
+};
+
 const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): LandingPageContent => ({
   ...defaultLandingPageContent,
   ...(value || {}),
@@ -208,7 +227,8 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
   memberships: mergeMemberships(value),
   membershipSeedVersion: 3,
-  hospitals: Array.isArray(value?.hospitals) ? value.hospitals : defaultLandingPageContent.hospitals,
+  hospitals: mergeHospitals(value),
+  hospitalSeedVersion: 1,
 });
 
 export const LandingPageCmsService = {

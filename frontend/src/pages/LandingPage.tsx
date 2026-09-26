@@ -516,11 +516,11 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {content.hospitals.some((hospital) => hospital.name?.trim()) && (
-        <section id="training-hospitals" aria-labelledby="training-hospitals-title" className="bg-[#f6fbf8] px-4 py-16 text-slate-800 sm:px-6 lg:px-8 lg:py-20">
+        <section id="training-hospitals" aria-labelledby="training-hospitals-title" className="bg-[#303b8e] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-6xl text-center">
-            <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Clinical Training Network</p>
-            <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Training Hospitals</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-200">Clinical Training Network</p>
+            <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">Our Training Hospitals</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
             <div className="mt-10 flex flex-wrap justify-center gap-6 text-left">
               {content.hospitals.filter((hospital) => hospital.name?.trim()).map((hospital, index) => (
                 <article key={`${hospital.name}-${index}`} className="flex w-full max-w-[360px] flex-col rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -531,7 +531,7 @@ export const LandingPage: React.FC = () => {
                     {hospital.location && <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">{hospital.location}</p>}
                     <h3 className="mt-2 text-xl font-black leading-tight text-[#073f35]">{hospital.name}</h3>
                     {hospital.description && <p className="mt-3 text-sm leading-6 text-slate-600">{hospital.description}</p>}
-                    {/^https?:\/\//i.test(hospital.url) && <a href={hospital.url} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-bold text-[#006d56] hover:underline">Visit hospital <ArrowRight className="h-4 w-4" /></a>}
+                    {/^https?:\/\//i.test(hospital.url) && <a href={hospital.url} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-bold text-[#006d56] hover:underline">Learn more <ArrowRight className="h-4 w-4" /></a>}
                   </div>
                 </article>
               ))}

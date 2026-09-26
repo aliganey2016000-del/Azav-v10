@@ -111,7 +111,15 @@ const DEFAULT_CONTENT = {
       description: 'A clinical training setting for supervised, hands-on learning.',
       url: 'https://www.mbalehospital.go.ug/',
     },
+    {
+      name: 'Fort Portal Regional Referral Hospital',
+      image: '/memberships/fort-portal-hospital.webp',
+      location: 'Fort Portal, Uganda',
+      description: 'A regional referral hospital supporting supervised clinical learning.',
+      url: 'https://kiu.ac.ug/clinical-training-sites/fort-portal-regional-referral-hospital',
+    },
   ],
+  hospitalSeedVersion: 1,
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
