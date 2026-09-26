@@ -37,6 +37,10 @@ export class SiteAssetController {
       res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(originalName)}`);
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       res.setHeader('Accept-Ranges', 'bytes');
+      // Website assets are intentionally embedded by the public frontend, which
+      // runs on a separate Coolify origin from the API. Helmet defaults CORP to
+      // same-origin, so explicitly allow these public media responses cross-origin.
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
       const rangeHeader = req.headers.range;
       const match = typeof rangeHeader === 'string' ? rangeHeader.match(/^bytes=(\d*)-(\d*)$/) : null;
