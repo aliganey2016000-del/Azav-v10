@@ -113,7 +113,7 @@ export const PublicLayout: React.FC = () => {
         <Outlet />
       </main>
 
-      <footer className="border-t border-white/10 bg-[#002d27] text-emerald-50/70">
+      <footer className="border-t border-white/15 bg-[#303b8e] text-white/75">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid gap-10 md:grid-cols-4">
             <div>
