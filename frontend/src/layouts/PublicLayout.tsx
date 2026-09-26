@@ -132,7 +132,6 @@ export const PublicLayout: React.FC = () => {
                   <div className="text-[9px] uppercase tracking-[0.2em]">{siteContent.branding.tagline}</div>
                 </div>
               </div>
-              <p className="text-sm leading-7">{siteContent.footer.description}</p>
             </div>
             <div>
               <h3 className="mb-4 text-xs font-black uppercase tracking-[0.18em] text-[#ffbf2f]">{siteContent.footer.exploreTitle}</h3>
