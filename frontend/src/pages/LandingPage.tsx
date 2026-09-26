@@ -248,13 +248,13 @@ export const LandingPage: React.FC = () => {
                 <Sparkles className="h-3.5 w-3.5" /> {content.hero.eyebrow || 'Trusted by medical schools & hospitals worldwide'}
               </div>
 
-              <h1 className="mt-6 text-[48px] font-black leading-[0.98] tracking-[-0.04em] text-white sm:text-[64px] lg:text-[72px]" style={headingFont}>
+              <h1 className="mt-6 max-w-[680px] text-[40px] font-black leading-[0.98] tracking-[-0.035em] text-white sm:text-[54px] lg:text-[62px] xl:text-[66px]" style={headingFont}>
                 {content.hero.titleLines.map((line, index) => (
                   <span key={index} className={`block ${index > 0 && index < content.hero.titleLines.length - 1 ? 'text-[#ffbf2f]' : 'text-white'}`}>{line}</span>
                 ))}
               </h1>
 
-              <p className="mt-6 max-w-xl text-base leading-8 text-white/85 sm:text-lg">
+              <p className="mt-6 max-w-2xl text-[15px] leading-7 text-white/85 sm:text-base sm:leading-8 lg:text-[17px]">
                 {content.hero.subtitle || 'Manage clinical placements, student nominations, visas, hospital coordination, attendance, certificates and training operations — all in one powerful platform.'}
               </p>
 
