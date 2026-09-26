@@ -32,6 +32,23 @@ import {
 } from '../services/landingPageCms.service';
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
+const TESTIMONIALS = [
+  { name: 'Dr. [Name 01]', role: 'Dean of Medicine', organization: 'Jamhuriya University', quote: 'AIMN provides a dependable placement process and clear institutional coordination from nomination through clinical training.' },
+  { name: 'Dr. [Name 02]', role: 'Clinical Coordinator', organization: 'Benadir University', quote: 'The structured workflow makes student placements easier to manage and gives institutions better visibility throughout training.' },
+  { name: 'Prof. [Name 03]', role: 'Faculty Representative', organization: 'Islamic University in Uganda', quote: 'AIMN strengthens collaboration between universities and hospitals while keeping clinical training practical and well organized.' },
+  { name: 'Dr. [Name 04]', role: 'Academic Director', organization: 'Kampala International University', quote: 'Placement reliability and responsive coordination are major strengths of the AIMN model.' },
+  { name: 'Dr. [Name 05]', role: 'Dean of Health Sciences', organization: 'Busitema University', quote: 'The platform supports consistent communication, supervised rotations and a smoother experience for students and institutions.' },
+  { name: 'Prof. [Name 06]', role: 'Medical Education Lead', organization: 'Makerere University', quote: 'AIMN brings structure to clinical attachments and helps partners coordinate placements efficiently.' },
+  { name: 'Dr. [Name 07]', role: 'University Liaison', organization: 'Mogadishu University', quote: 'The nomination and placement journey is clear, traceable and easier for academic teams to follow.' },
+  { name: 'Dr. [Name 08]', role: 'Clinical Training Lead', organization: 'Zamzam University', quote: 'Students benefit from organized clinical exposure while institutions benefit from reliable coordination and documentation.' },
+  { name: 'Prof. [Name 09]', role: 'Dean of Medicine', organization: 'Partner University', quote: 'AIMN creates a practical bridge between academic preparation and supervised hospital-based learning.' },
+  { name: 'Dr. [Name 10]', role: 'Hospital Training Coordinator', organization: 'Regional Referral Hospital', quote: 'Hospital coordination is more efficient when student lists, rotations and communication are managed through one workflow.' },
+  { name: 'Dr. [Name 11]', role: 'Clinical Supervisor', organization: 'Teaching Hospital', quote: 'The structured approach supports supervision, accountability and a better clinical training experience.' },
+  { name: 'Prof. [Name 12]', role: 'Institutional Partnership Lead', organization: 'Partner Institution', quote: 'AIMN makes cross-institutional collaboration easier through clear processes and consistent follow-up.' },
+  { name: 'Dr. [Name 13]', role: 'Student Affairs Director', organization: 'Medical University', quote: 'The platform improves visibility of placement progress and gives our team confidence in the coordination process.' },
+  { name: 'Dr. [Name 14]', role: 'Training Programme Lead', organization: 'Clinical Partner', quote: 'AIMN combines dependable placement support with a strong focus on quality clinical learning.' },
+  { name: 'Prof. [Name 15]', role: 'Academic Partnership Director', organization: 'International Partner', quote: 'The partnership workflow is organized, responsive and designed around the needs of universities, hospitals and trainees.' },
+];
 
 const aimnHighlightIcons = [Users, CalendarDays, Stethoscope, TrendingUp, Globe2, Activity, Building2, Award];
 
@@ -442,32 +459,43 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {content.news.length > 0 && (
-        <section id="news" className="bg-[#f6fbf8] py-20 text-slate-800">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#008267]">Latest Updates</p>
-                <h2 className="mt-2 text-4xl font-black text-[#073f35]" style={headingFont}>News from the AIMN network</h2>
-              </div>
-              <span className="text-sm font-bold text-[#008267]">View all updates →</span>
-            </div>
-            <div className="grid gap-6 lg:grid-cols-3">
-              {content.news.map((item, index) => (
-                <article key={`${item.title}-${index}`} className="overflow-hidden rounded-[24px] border border-emerald-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                  {item.image ? <img src={item.image} alt={item.title} className="h-48 w-full object-cover" /> : <div className="flex h-48 items-center justify-center bg-emerald-50"><CalendarDays className="h-14 w-14 text-[#008267]/40" /></div>}
-                  <div className="p-5">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#008267]">{item.label}</p>
-                    <h3 className="mt-2 text-xl font-black leading-7 text-[#073f35]" style={headingFont}>{item.title}</h3>
-                    {item.summary && <p className="mt-3 text-sm leading-6 text-slate-600">{item.summary}</p>}
-                    <SmartLink to={item.link || '/login'} className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#006d56]">Read more <ArrowRight className="h-4 w-4" /></SmartLink>
-                  </div>
-                </article>
+      <section id="testimonials" aria-labelledby="testimonials-title" className="bg-[#f6fbf8] py-16 text-slate-800 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#008267]">Partner Experience</p>
+            <h2 id="testimonials-title" className="mt-3 text-3xl font-black text-[#073f35] sm:text-4xl" style={headingFont}>What Our Partners Say</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">Sample testimonial placeholders for verified institutional feedback about placements, clinical training and partnership coordination.</p>
+          </div>
+
+          <div className="aimn-testimonial-window mt-10 overflow-hidden" aria-label="Partner testimonials">
+            <div className="aimn-testimonial-track">
+              {[false, true].map((duplicate) => (
+                <div key={duplicate ? 'testimonials-copy' : 'testimonials-original'} className="flex shrink-0 gap-4 pr-4" aria-hidden={duplicate ? 'true' : undefined}>
+                  {TESTIMONIALS.map((item, index) => (
+                    <article
+                      key={`${duplicate ? 'copy' : 'original'}-${index}`}
+                      className="w-[280px] shrink-0 rounded-2xl border border-emerald-100 bg-white p-5 text-left shadow-sm sm:w-[310px]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#303b8e] text-sm font-black text-white">
+                          {String(index + 1).padStart(2, '0')}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-black text-[#073f35]">{item.name}</h3>
+                          <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">{item.role}</p>
+                          <p className="mt-0.5 truncate text-[11px] text-slate-500">{item.organization}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
+                      <p className="mt-3 line-clamp-4 text-sm leading-6 text-slate-600">“{item.quote}”</p>
+                    </article>
+                  ))}
+                </div>
               ))}
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {content.gallery.length > 0 && (
         <section className="bg-white py-20 text-slate-800">
