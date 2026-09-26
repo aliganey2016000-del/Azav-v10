@@ -584,7 +584,7 @@ export const LandingPage: React.FC = () => {
               { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: '/memberships/uganda-hospital-emblem.png' },
               { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck, logo: '/memberships/uganda-hospital-emblem.png' },
               { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: '/memberships/uganda-hospital-emblem.png' },
-              { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: '/memberships/uganda-hospital-emblem.png' },
+              { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: 'https://www.education.go.ug/wp-content/uploads/2019/07/NewLogo2.png' },
             ].map(({ name, icon: Icon, logo }) => (
               <article key={name} className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm transition hover:border-[#008267]/40 hover:shadow-md">
                 <div className="flex h-20 w-20 items-center justify-center">
