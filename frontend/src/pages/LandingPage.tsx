@@ -518,14 +518,22 @@ export const LandingPage: React.FC = () => {
         <section id="videos" className="bg-[#002f28] py-20" style={heroPattern}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-[#ffbf2f]"><PlayCircle className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">{content.sectionHeadings.videosEyebrow}</span></div>
-            <h2 className="mt-3 text-4xl font-black text-white" style={headingFont}>{content.sectionHeadings.videosTitle}</h2>
+            <h2
+              className="mt-3 max-w-4xl text-[30px] font-black leading-[1.08] tracking-[-0.02em] text-white sm:text-[36px] lg:text-[42px] [text-wrap:balance]"
+              style={headingFont}
+            >
+              {content.sectionHeadings.videosTitle}
+            </h2>
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
               {content.videos.map((item, index) => {
                 const embed = youtubeEmbed(item.url);
                 return (
                   <article key={index} className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.05]">
                     <div className="aspect-video bg-black">{embed ? <iframe src={embed} title={item.title} className="h-full w-full" allowFullScreen /> : <video src={item.url} controls poster={item.thumbnail} className="h-full w-full object-cover" />}</div>
-                    <div className="p-5"><h3 className="text-xl font-black text-white" style={headingFont}>{item.title}</h3><p className="mt-2 text-sm leading-6 text-emerald-50/60">{item.description}</p></div>
+                    <div className="p-5 sm:p-6">
+                      <h3 className="text-lg font-black leading-tight text-white sm:text-xl [text-wrap:balance]" style={headingFont}>{item.title}</h3>
+                      {item.description && <p className="mt-2 text-justify text-sm leading-6 text-emerald-50/70">{item.description}</p>}
+                    </div>
                   </article>
                 );
               })}
