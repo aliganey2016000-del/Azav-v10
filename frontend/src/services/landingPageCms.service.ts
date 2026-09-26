@@ -147,8 +147,15 @@ export const defaultLandingPageContent: LandingPageContent = {
     { name: 'Jamhuriya University of Science and Technology', logo: '/memberships/jamhuriya.png', url: 'https://www.just.edu.so/' },
     { name: 'Benadir University', logo: '/memberships/benadir.png', url: 'https://bu.edu.so/' },
     { name: 'Jobkey University', logo: '/memberships/jobkey.png', url: 'https://jobkey.edu.so/v2/' },
+    { name: 'Busitema University', logo: '/memberships/busitema.png', url: 'https://busitema.ac.ug/' },
+    { name: 'Islamic University in Uganda', logo: '/memberships/iuiu.webp', url: 'https://www.iuiu.ac.ug/' },
+    { name: 'Kampala International University', logo: '/memberships/kiu.png', url: 'https://kiu.ac.ug/' },
+    { name: 'Team University', logo: '/memberships/team.jpg', url: 'https://teamuniversity.ac.ug/' },
+    { name: 'Kampala University', logo: '/memberships/kampala.png', url: 'https://ku.ac.ug/' },
+    { name: 'Makerere University', logo: '/memberships/makerere.png', url: 'https://www.mak.ac.ug/' },
+    { name: 'Mbarara University of Science and Technology', logo: '/memberships/must.png', url: 'https://www.must.ac.ug/' },
   ],
-  membershipSeedVersion: 2,
+  membershipSeedVersion: 3,
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -164,9 +171,10 @@ export const defaultLandingPageContent: LandingPageContent = {
 const mergeMemberships = (value: Partial<LandingPageContent> | undefined): MembershipItem[] => {
   const existing = value?.memberships;
   if (!Array.isArray(existing)) return defaultLandingPageContent.memberships;
-  if ((value?.membershipSeedVersion || 0) >= 2) return existing;
+  const seedVersion = value?.membershipSeedVersion || 0;
+  if (seedVersion >= 3) return existing;
   if (existing.length === 0) return defaultLandingPageContent.memberships;
-  const newlyAdded = defaultLandingPageContent.memberships.slice(8).filter((item) =>
+  const newlyAdded = defaultLandingPageContent.memberships.slice(seedVersion >= 2 ? 12 : 8).filter((item) =>
     !existing.some((member) => member.name?.toLowerCase() === item.name.toLowerCase()),
   );
   return [...existing, ...newlyAdded];
@@ -188,7 +196,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   videos: Array.isArray(value?.videos) ? value!.videos : defaultLandingPageContent.videos,
   networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
   memberships: mergeMemberships(value),
-  membershipSeedVersion: 2,
+  membershipSeedVersion: 3,
 });
 
 export const LandingPageCmsService = {
