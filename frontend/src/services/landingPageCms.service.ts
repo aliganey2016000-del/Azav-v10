@@ -160,22 +160,23 @@ export const defaultLandingPageContent: LandingPageContent = {
   ],
   membershipSeedVersion: 3,
   hospitals: [
-    {
-      name: 'Mbale Regional Referral Hospital',
-      image: '/memberships/mbale-hospital.jpg',
-      location: 'Mbale, Uganda',
-      description: 'A clinical training setting for supervised, hands-on learning.',
-      url: 'https://www.mbalehospital.go.ug/',
-    },
-    {
-      name: 'Fort Portal Regional Referral Hospital',
-      image: '/memberships/fort-portal-hospital.webp',
-      location: 'Fort Portal, Uganda',
-      description: 'A regional referral hospital supporting supervised clinical learning.',
-      url: 'https://kiu.ac.ug/clinical-training-sites/fort-portal-regional-referral-hospital',
-    },
+    { name: 'Mbale Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: 'https://www.mbalehospital.go.ug/' },
+    { name: 'Jinja Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: 'https://jinjahospital.go.ug/about-us/' },
+    { name: 'Fort Portal Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: 'https://kiu.ac.ug/clinical-training-sites/fort-portal-regional-referral-hospital' },
+    { name: 'Masaka Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Mubende Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Kiboga General Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Kabale Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Iganga General Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Tororo General Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Mityana General Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Bwera General Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Arua Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Nebbi General Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Yumbe General Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' },
+    { name: 'Mbarara Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' }
   ],
-  hospitalSeedVersion: 1,
+  hospitalSeedVersion: 2,
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -203,11 +204,16 @@ const mergeMemberships = (value: Partial<LandingPageContent> | undefined): Membe
 const mergeHospitals = (value: Partial<LandingPageContent> | undefined): HospitalItem[] => {
   const existing = value?.hospitals;
   if (!Array.isArray(existing)) return defaultLandingPageContent.hospitals;
-  if ((value?.hospitalSeedVersion || 0) >= 1) return existing;
-  const newlyAdded = defaultLandingPageContent.hospitals.slice(1).filter((item) =>
-    !existing.some((hospital) => hospital.name?.toLowerCase() === item.name.toLowerCase()),
-  );
-  return [...existing, ...newlyAdded];
+  if ((value?.hospitalSeedVersion || 0) >= 2) return existing;
+  const defaults = defaultLandingPageContent.hospitals;
+  const names = new Set(defaults.map((hospital) => hospital.name.toLowerCase()));
+  return [
+    ...defaults.map((hospital) => {
+      const previous = existing.find((item) => item.name?.toLowerCase() === hospital.name.toLowerCase());
+      return previous ? { ...previous, image: hospital.image } : hospital;
+    }),
+    ...existing.filter((hospital) => !names.has(hospital.name?.toLowerCase())),
+  ];
 };
 
 const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): LandingPageContent => ({
@@ -228,7 +234,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   memberships: mergeMemberships(value),
   membershipSeedVersion: 3,
   hospitals: mergeHospitals(value),
-  hospitalSeedVersion: 1,
+  hospitalSeedVersion: 2,
 });
 
 export const LandingPageCmsService = {

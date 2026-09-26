@@ -523,10 +523,9 @@ export const LandingPage: React.FC = () => {
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
             <div className="mt-10 flex flex-wrap justify-center gap-4">
               {content.hospitals.filter((hospital) => hospital.name?.trim()).map((hospital, index) => (
-                <article key={`${hospital.name}-${index}`} aria-label={hospital.name} title={hospital.name} className="flex h-32 w-40 items-center justify-center rounded-xl border border-emerald-100 bg-white p-4 shadow-sm sm:h-36 sm:w-44">
-                  {hospital.image && hospital.image !== '/memberships/fort-portal-hospital.webp'
-                    ? <img src={hospital.image} alt={hospital.name} loading="lazy" className="max-h-full max-w-full object-contain" />
-                    : <Building2 className="h-16 w-16 text-[#303b8e]" aria-hidden="true" />}
+                <article key={`${hospital.name}-${index}`} className="flex min-h-44 w-40 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-4 shadow-sm sm:w-44">
+                  <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt="" loading="lazy" className="h-20 w-20 object-contain" />
+                  <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
                 </article>
               ))}
             </div>
