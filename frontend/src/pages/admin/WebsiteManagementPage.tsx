@@ -26,11 +26,11 @@ import {
   VideoItem,
 } from '../../services/landingPageCms.service';
 
-type TabKey = 'hero' | 'about' | 'programs' | 'updates' | 'media' | 'network' | 'seo';
+type TabKey = 'hero' | 'strategy' | 'programs' | 'updates' | 'media' | 'network' | 'seo';
 
 const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'hero', label: 'Hero', icon: LayoutTemplate },
-  { key: 'about', label: 'About', icon: Globe2 },
+  { key: 'strategy', label: 'Strategy & Values', icon: Globe2 },
   { key: 'programs', label: 'Programs', icon: LayoutTemplate },
   { key: 'updates', label: 'Updates', icon: Newspaper },
   { key: 'media', label: 'Gallery & Videos', icon: ImageIcon },
@@ -165,8 +165,6 @@ export const WebsiteManagementPage: React.FC = () => {
   };
 
   const updateHero = (key: keyof LandingPageContent['hero'], value: string) => mark({ ...content, hero: { ...content.hero, [key]: value } });
-  const updateAbout = (key: 'eyebrow' | 'bannerTitle' | 'title' | 'establishedIn' | 'location' | 'experienceYears', value: string) =>
-    mark({ ...content, about: { ...content.about, [key]: value } });
   const updateCta = (key: keyof LandingPageContent['cta'], value: string) => mark({ ...content, cta: { ...content.cta, [key]: value } });
   const updateContact = (key: keyof LandingPageContent['contact'], value: string) => mark({ ...content, contact: { ...content.contact, [key]: value } });
   const updateSeo = (key: keyof LandingPageContent['seo'], value: string) => mark({ ...content, seo: { ...content.seo, [key]: value } });
@@ -248,23 +246,18 @@ export const WebsiteManagementPage: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'about' && (
+      {activeTab === 'strategy' && (
         <div className="grid gap-5 lg:grid-cols-2">
-          <Card title="About section">
-            <Field label="Eyebrow" value={content.about.eyebrow} onChange={(v) => updateAbout('eyebrow', v)} />
-            <Field label="Banner title" value={content.about.bannerTitle} onChange={(v) => updateAbout('bannerTitle', v)} />
-            <Field label="Title" value={content.about.title} onChange={(v) => updateAbout('title', v)} multiline />
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Established in" value={content.about.establishedIn} onChange={(v) => updateAbout('establishedIn', v)} />
-              <Field label="Location" value={content.about.location} onChange={(v) => updateAbout('location', v)} />
-              <Field label="Years of experience" value={content.about.experienceYears} onChange={(v) => updateAbout('experienceYears', v)} />
-            </div>
-            {content.about.paragraphs.map((p, index) => <div key={index} className="flex items-start gap-2"><div className="flex-1"><Field label={`Paragraph ${index + 1}`} value={p} onChange={(v) => { const paragraphs=[...content.about.paragraphs]; paragraphs[index]=v; mark({...content,about:{...content.about,paragraphs}}); }} multiline /></div><button onClick={() => mark({...content,about:{...content.about,paragraphs:content.about.paragraphs.filter((_,i)=>i!==index)}})} className="mt-7 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button></div>)}
-            <button onClick={() => mark({...content,about:{...content.about,paragraphs:[...content.about.paragraphs,'']}})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add paragraph</button>
+          <Card title="Our Vision">
+            <Field label="Vision" value={content.strategy.vision} onChange={(vision) => mark({ ...content, strategy: { ...content.strategy, vision } })} multiline />
           </Card>
-          <Card title="About images">
-            {content.about.images.map((image, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><ImageField label={`Image ${index + 1}`} value={image} onChange={(v) => { const images=[...content.about.images]; images[index]=v; mark({...content,about:{...content.about,images}}); }} onError={showError} /><div className="mt-2 flex items-center gap-3">{image && <img src={image} alt="" className="h-16 w-24 rounded-lg object-cover" />}<button onClick={() => mark({...content,about:{...content.about,images:content.about.images.filter((_,i)=>i!==index)}})} className="text-xs font-bold text-rose-600">Remove</button></div></div>)}
-            <button onClick={() => mark({...content,about:{...content.about,images:[...content.about.images,'']}})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add image</button>
+          <Card title="Our Mission">
+            {content.strategy.mission.map((item, index) => <div key={index} className="flex items-start gap-2"><div className="flex-1"><Field label={`Mission point ${index + 1}`} value={item} onChange={(value) => mark({ ...content, strategy: { ...content.strategy, mission: content.strategy.mission.map((point, i) => i === index ? value : point) } })} multiline /></div><button type="button" aria-label={`Remove mission point ${index + 1}`} onClick={() => mark({ ...content, strategy: { ...content.strategy, mission: content.strategy.mission.filter((_, i) => i !== index) } })} className="mt-7 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button></div>)}
+            <button type="button" onClick={() => mark({ ...content, strategy: { ...content.strategy, mission: [...content.strategy.mission, ''] } })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add mission point</button>
+          </Card>
+          <Card title="Core Values">
+            {content.strategy.values.map((item, index) => <div key={index} className="flex items-end gap-2"><div className="flex-1"><Field label={`Value ${index + 1}`} value={item} onChange={(value) => mark({ ...content, strategy: { ...content.strategy, values: content.strategy.values.map((v, i) => i === index ? value : v) } })} /></div><button type="button" aria-label={`Remove value ${index + 1}`} onClick={() => mark({ ...content, strategy: { ...content.strategy, values: content.strategy.values.filter((_, i) => i !== index) } })} className="mb-1 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button></div>)}
+            <button type="button" onClick={() => mark({ ...content, strategy: { ...content.strategy, values: [...content.strategy.values, ''] } })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add value</button>
           </Card>
         </div>
       )}

@@ -29,6 +29,11 @@ export type LandingPageContent = {
     location: string;
     experienceYears: string;
   };
+  strategy: {
+    vision: string;
+    mission: string[];
+    values: string[];
+  };
   programs: ProgramItem[];
   news: NewsItem[];
   gallery: GalleryItem[];
@@ -89,6 +94,15 @@ export const defaultLandingPageContent: LandingPageContent = {
     location: 'Mogadishu, Somalia',
     experienceYears: '15+',
   },
+  strategy: {
+    vision: 'To become a trusted international network for clinical education, connecting aspiring healthcare professionals with high-quality supervised training.',
+    mission: [
+      'To connect students and universities with approved hospitals and clinical supervisors.',
+      'To deliver practical training that strengthens clinical skills and patient care.',
+      'To support ethical, accountable partnerships across healthcare institutions.',
+    ],
+    values: ['Integrity', 'Clinical Excellence', 'Innovation', 'Accountability', 'Social Responsibility'],
+  },
   programs: [
     { title: 'Internal Medicine', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=800&q=85', link: '/register' },
     { title: 'Surgery & Emergency Medicine', image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=85', link: '/register' },
@@ -139,6 +153,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   ...(value || {}),
   hero: { ...defaultLandingPageContent.hero, ...(value?.hero || {}) },
   about: { ...defaultLandingPageContent.about, ...(value?.about || {}) },
+  strategy: { ...defaultLandingPageContent.strategy, ...(value?.strategy || {}) },
   cta: { ...defaultLandingPageContent.cta, ...(value?.cta || {}) },
   contact: { ...defaultLandingPageContent.contact, ...(value?.contact || {}) },
   seo: { ...defaultLandingPageContent.seo, ...(value?.seo || {}) },

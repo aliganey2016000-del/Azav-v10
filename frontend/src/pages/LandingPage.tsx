@@ -18,8 +18,11 @@ import {
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  Target,
   TrendingUp,
   Users,
+  Telescope,
+  Diamond,
 } from 'lucide-react';
 import {
   defaultLandingPageContent,
@@ -329,29 +332,30 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      <section id="about" className="relative overflow-hidden bg-[#f6fbf8] py-20 text-slate-800">
-        <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-emerald-50 to-transparent" />
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8">
-          <div className="relative">
-            <div className="absolute -left-5 -top-5 h-28 w-28 rounded-3xl bg-[#ffb612]" />
-            <img src={content.about.images[0] || content.hero.backgroundImage} alt="AIMN clinical training" className="relative h-[430px] w-full rounded-[28px] object-cover shadow-2xl" />
-            <div className="absolute -bottom-5 right-5 rounded-2xl bg-[#003d33] px-5 py-4 text-white shadow-xl">
-              <p className="text-3xl font-black text-[#ffbf2f]" style={headingFont}>{content.about.experienceYears || '15+'}</p>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-50/70">Years of experience</p>
-            </div>
-          </div>
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#006d56]">
-              <Sparkles className="h-3.5 w-3.5" /> {content.about.eyebrow}
-            </div>
-            <h2 className="mt-5 text-4xl font-black leading-tight text-[#073f35] sm:text-5xl" style={headingFont}>{content.about.title}</h2>
-            <div className="mt-5 space-y-4 text-[15px] leading-8 text-slate-600">
-              {content.about.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-            </div>
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Established in</p><p className="mt-1 font-black text-[#073f35]">{content.about.establishedIn || '2011'}</p></div>
-              <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Location</p><p className="mt-1 font-black text-[#073f35]">{content.about.location || 'Mogadishu, Somalia'}</p></div>
-            </div>
+      <section id="about" className="bg-[#f7f8fa] px-4 py-20 text-[#303b89] sm:px-6 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">Our Strategy &amp; Values</h2>
+          <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-[#00aa60]" />
+          <div className="mt-12 grid gap-5 md:grid-cols-3 md:items-stretch lg:gap-7">
+            <article className="rounded-[4px] bg-[#303b8e] p-7 text-white shadow-sm sm:p-8">
+              <span className="flex h-12 w-12 items-center justify-center rounded bg-white/10"><Telescope className="h-6 w-6" aria-hidden="true" /></span>
+              <h3 className="mt-6 text-xl font-bold">Our Vision</h3>
+              <p className="mt-4 text-base leading-7 text-white/90">{content.strategy.vision}</p>
+            </article>
+            <article className="rounded-[4px] bg-white p-7 shadow-sm sm:p-8">
+              <span className="flex h-12 w-12 items-center justify-center text-[#3949a3]"><Target className="h-6 w-6" aria-hidden="true" /></span>
+              <h3 className="mt-6 text-xl font-bold">Our Mission</h3>
+              <ul className="mt-4 space-y-4">
+                {content.strategy.mission.filter(Boolean).map((item, index) => <li key={index} className="flex gap-3 text-base leading-7"><CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#00a960]" aria-hidden="true" /><span>{item}</span></li>)}
+              </ul>
+            </article>
+            <article className="rounded-[4px] bg-[#00a653] p-7 text-white shadow-sm sm:p-8">
+              <span className="flex h-12 w-12 items-center justify-center rounded bg-white/10"><Diamond className="h-6 w-6" aria-hidden="true" /></span>
+              <h3 className="mt-6 text-xl font-bold">Core Values</h3>
+              <ul className="mt-4 space-y-3">
+                {content.strategy.values.filter(Boolean).map((value, index) => <li key={index} className="rounded bg-white/10 px-3 py-2.5 text-base font-semibold">•&nbsp; {value}</li>)}
+              </ul>
+            </article>
           </div>
         </div>
       </section>
