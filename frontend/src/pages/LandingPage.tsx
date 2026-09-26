@@ -227,6 +227,13 @@ export const LandingPage: React.FC = () => {
     { name: 'Association of Somali Universities (ASU)', icon: GraduationCap, logo: 'https://asu.org.so/favicon.ico', url: 'https://asu.org.so/' },
     { name: 'Somali Medical Association', icon: Stethoscope, logo: 'https://www.facebook.com/favicon.ico', url: 'https://www.facebook.com/SomaliMedicalAssoc/about/' },
   ];
+  const heroNetworkStats = [
+    { label: 'Partner Universities', value: memberships.length, icon: GraduationCap },
+    { label: 'Training Hospitals', value: hospitals.length, icon: Building2 },
+    { label: 'Official Recognitions', value: recognitions.length, icon: ShieldCheck },
+    { label: 'Clinical Training Programs', value: content.programs.filter((program) => program.title?.trim()).length, icon: Stethoscope },
+  ];
+
   const membershipCard = (item: LandingPageContent['memberships'][number], index: number, duplicate = false) => {
     const isMakerere = item.logo === '/memberships/makerere.png';
     const isKampala = item.logo === '/memberships/kampala.png';
@@ -342,18 +349,24 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          {content.highlights.length > 0 && (
-            <div className="mt-16 overflow-hidden rounded-[24px] border border-white/15 bg-white/[0.08] shadow-xl backdrop-blur-xl">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4">
-                {content.highlights.slice(0,4).map((item, index) => (
-                  <div key={`${item.label}-${index}`} className="border-white/10 px-6 py-6 text-center sm:border-r last:border-r-0">
-                    <div className="text-3xl font-black text-[#ffbf2f]" style={headingFont}>{item.value}</div>
-                    <div className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/60">{item.label}</div>
+          <div className="mt-16 overflow-hidden rounded-[24px] border border-white/15 bg-white/[0.08] shadow-xl backdrop-blur-xl">
+            <div className="grid grid-cols-2 lg:grid-cols-4">
+              {heroNetworkStats.map(({ label, value, icon: Icon }, index) => (
+                <div
+                  key={label}
+                  className={`flex min-h-28 flex-col items-center justify-center px-4 py-5 text-center sm:min-h-32 sm:px-6 sm:py-6 ${index % 2 === 0 ? 'border-r border-white/10 lg:border-r' : ''} ${index < 2 ? 'border-b border-white/10 lg:border-b-0' : ''} ${index > 0 ? 'lg:border-l lg:border-white/10' : ''}`}
+                >
+                  <Icon className="mb-2 h-5 w-5 text-white/70 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
+                  <div className="text-3xl font-black text-[#ffbf2f] sm:text-4xl" style={headingFont}>
+                    {String(value).padStart(2, '0')}
                   </div>
-                ))}
-              </div>
+                  <div className="mt-2 text-[9px] font-black uppercase tracking-[0.14em] text-white/65 sm:text-[10px] sm:tracking-[0.18em]">
+                    {label}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
         </div>
       </section>
 
