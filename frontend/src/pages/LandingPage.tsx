@@ -581,26 +581,27 @@ export const LandingPage: React.FC = () => {
           </p>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: 'https://mofa.go.ug/sites/default/files/footer.png' },
+              { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: '/memberships/uganda-hospital-emblem.png' },
               { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck, logo: '/memberships/uganda-hospital-emblem.png' },
-              { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: 'https://health.go.ug/wp-content/uploads/2025/02/MoH-Logo-Round.png' },
-              { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap },
+              { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: '/memberships/uganda-hospital-emblem.png' },
+              { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: '/memberships/uganda-hospital-emblem.png' },
             ].map(({ name, icon: Icon, logo }) => (
               <article key={name} className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm transition hover:border-[#008267]/40 hover:shadow-md">
-                {logo ? (
-                  <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white">
-                    <img
-                      src={logo}
-                      alt="Ministry of Foreign Affairs Uganda"
-                      loading="lazy"
-                      className="absolute left-1/2 h-[70px] max-w-none -translate-x-1/2"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
+                <div className="flex h-20 w-20 items-center justify-center">
+                  <img
+                    src={logo}
+                    alt={name}
+                    loading="lazy"
+                    className="h-20 w-20 object-contain"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                      event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <div className="hidden h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
                     <Icon className="h-6 w-6" />
                   </div>
-                )}
+                </div>
                 <h3 className="mt-4 text-sm font-black leading-6 text-slate-900">{name}</h3>
               </article>
             ))}
