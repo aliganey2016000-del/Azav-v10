@@ -6,6 +6,7 @@ export type NewsItem = { title: string; label: string; summary: string; image: s
 export type GalleryItem = { title: string; image: string; caption: string };
 export type VideoItem = { title: string; url: string; thumbnail: string; description: string };
 export type MembershipItem = { name: string; logo: string; url: string };
+export type HospitalItem = { name: string; image: string; location: string; description: string; url: string };
 
 export type LandingPageContent = {
   hero: {
@@ -43,6 +44,7 @@ export type LandingPageContent = {
   networkRoles: string[];
   memberships: MembershipItem[];
   membershipSeedVersion: number;
+  hospitals: HospitalItem[];
   contact: {
     email: string;
     phone: string;
@@ -156,6 +158,15 @@ export const defaultLandingPageContent: LandingPageContent = {
     { name: 'Mbarara University of Science and Technology', logo: '/memberships/must.png', url: 'https://www.must.ac.ug/' },
   ],
   membershipSeedVersion: 3,
+  hospitals: [
+    {
+      name: 'Mbale Regional Referral Hospital',
+      image: '/memberships/mbale-hospital.jpg',
+      location: 'Mbale, Uganda',
+      description: 'A clinical training setting for supervised, hands-on learning.',
+      url: 'https://www.mbalehospital.go.ug/',
+    },
+  ],
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -197,6 +208,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
   memberships: mergeMemberships(value),
   membershipSeedVersion: 3,
+  hospitals: Array.isArray(value?.hospitals) ? value.hospitals : defaultLandingPageContent.hospitals,
 });
 
 export const LandingPageCmsService = {

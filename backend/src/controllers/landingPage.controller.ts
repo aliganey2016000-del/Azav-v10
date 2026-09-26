@@ -103,6 +103,15 @@ const DEFAULT_CONTENT = {
     { name: 'Mbarara University of Science and Technology', logo: '/memberships/must.png', url: 'https://www.must.ac.ug/' },
   ],
   membershipSeedVersion: 3,
+  hospitals: [
+    {
+      name: 'Mbale Regional Referral Hospital',
+      image: '/memberships/mbale-hospital.jpg',
+      location: 'Mbale, Uganda',
+      description: 'A clinical training setting for supervised, hands-on learning.',
+      url: 'https://www.mbalehospital.go.ug/',
+    },
+  ],
   contact: {
     email: 'info@azaammedics.org',
     phone: '',

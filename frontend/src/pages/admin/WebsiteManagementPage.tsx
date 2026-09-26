@@ -19,6 +19,7 @@ import {
 import {
   defaultLandingPageContent,
   GalleryItem,
+  HospitalItem,
   LandingPageCmsService,
   LandingPageContent,
   MembershipItem,
@@ -36,7 +37,7 @@ const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: 'programs', label: 'Programs', icon: LayoutTemplate },
   { key: 'updates', label: 'Updates', icon: Newspaper },
   { key: 'media', label: 'Gallery & Videos', icon: ImageIcon },
-  { key: 'network', label: 'Memberships', icon: Users },
+  { key: 'network', label: 'Partners & Hospitals', icon: Users },
   { key: 'seo', label: 'Contact & SEO', icon: Search },
 ];
 
@@ -195,6 +196,11 @@ export const WebsiteManagementPage: React.FC = () => {
     mark({ ...content, memberships });
   };
 
+  const updateHospital = (index: number, key: keyof HospitalItem, value: string) => {
+    const hospitals = content.hospitals.map((item, i) => i === index ? { ...item, [key]: value } : item);
+    mark({ ...content, hospitals });
+  };
+
   if (loading) return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm font-bold text-slate-600">Loading website management...</div>;
 
   return (
@@ -311,11 +317,28 @@ export const WebsiteManagementPage: React.FC = () => {
       )}
 
       {activeTab === 'network' && (
-        <div className="max-w-3xl">
+        <div className="max-w-3xl space-y-5">
           <Card title="Our Partners">
             <p className="text-sm leading-6 text-slate-600">Add confirmed organizations with their logos. The logos scroll across the page; View more reveals the full list.</p>
             {content.memberships.map((item, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><div className="space-y-3"><Field label="Organization name" value={item.name} onChange={(v) => updateMembership(index, 'name', v)} /><ImageField label="Organization logo" value={item.logo} onChange={(v) => updateMembership(index, 'logo', v)} onError={showError} /><Field label="Website URL (optional)" value={item.url} onChange={(v) => updateMembership(index, 'url', v)} /></div><div className="mt-3 flex items-center justify-between gap-3">{item.logo && <img src={item.logo} alt="" className="h-12 w-24 object-contain" />}<button type="button" onClick={() => mark({ ...content, memberships: content.memberships.filter((_, i) => i !== index) })} className="ml-auto text-xs font-bold text-rose-600">Remove</button></div></div>)}
             <button type="button" onClick={() => mark({ ...content, memberships: [...content.memberships, { name: '', logo: '', url: '' }] })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add organization</button>
+          </Card>
+          <Card title="Our Training Hospitals">
+            <p className="text-sm leading-6 text-slate-600">Add hospitals where students undertake supervised clinical training. They appear below the university partners on the landing page.</p>
+            {content.hospitals.map((hospital, index) => (
+              <div key={index} className="space-y-3 rounded-xl border border-slate-200 p-3">
+                <Field label="Hospital name" value={hospital.name} onChange={(value) => updateHospital(index, 'name', value)} />
+                <ImageField label="Hospital image or emblem" value={hospital.image} onChange={(value) => updateHospital(index, 'image', value)} onError={showError} />
+                <Field label="Location" value={hospital.location} onChange={(value) => updateHospital(index, 'location', value)} />
+                <Field label="Description" value={hospital.description} onChange={(value) => updateHospital(index, 'description', value)} multiline />
+                <Field label="Hospital website" value={hospital.url} onChange={(value) => updateHospital(index, 'url', value)} />
+                <div className="flex items-center justify-between gap-3">
+                  {hospital.image && <img src={hospital.image} alt="" className="h-12 w-16 object-contain" />}
+                  <button type="button" onClick={() => mark({ ...content, hospitals: content.hospitals.filter((_, i) => i !== index) })} className="ml-auto text-xs font-bold text-rose-600">Remove</button>
+                </div>
+              </div>
+            ))}
+            <button type="button" onClick={() => mark({ ...content, hospitals: [...content.hospitals, { name: '', image: '', location: '', description: '', url: '' }] })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add hospital</button>
           </Card>
         </div>
       )}

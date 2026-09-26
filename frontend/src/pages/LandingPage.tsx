@@ -493,7 +493,7 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      <section aria-labelledby="memberships-title" className="bg-white px-4 pb-16 pt-10 text-[#202020] sm:px-6 lg:px-8 lg:pb-20">
+      <section id="network" aria-labelledby="memberships-title" className="bg-white px-4 pb-16 pt-10 text-[#202020] sm:px-6 lg:px-8 lg:pb-20">
         <div className="mx-auto max-w-6xl text-center">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Institutional Network</p>
           <h2 id="memberships-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Partners</h2>
@@ -514,6 +514,31 @@ export const LandingPage: React.FC = () => {
           ) : <p className="mx-auto mt-10 max-w-xl rounded border border-slate-200 px-6 py-12 text-base text-slate-600">Our partners will be displayed here when confirmed.</p>}
         </div>
       </section>
+
+      {content.hospitals.some((hospital) => hospital.name?.trim()) && (
+        <section id="training-hospitals" aria-labelledby="training-hospitals-title" className="bg-[#f6fbf8] px-4 py-16 text-slate-800 sm:px-6 lg:px-8 lg:py-20">
+          <div className="mx-auto max-w-6xl text-center">
+            <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Clinical Training Network</p>
+            <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Training Hospitals</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
+            <div className="mt-10 flex flex-wrap justify-center gap-6 text-left">
+              {content.hospitals.filter((hospital) => hospital.name?.trim()).map((hospital, index) => (
+                <article key={`${hospital.name}-${index}`} className="flex w-full max-w-[360px] flex-col rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                  <div className="flex h-44 items-center justify-center rounded-2xl bg-[#f7fbf9] p-4">
+                    {hospital.image ? <img src={hospital.image} alt={hospital.name} loading="lazy" className="max-h-full max-w-full object-contain" /> : <Building2 className="h-16 w-16 text-emerald-600" aria-hidden="true" />}
+                  </div>
+                  <div className="flex flex-1 flex-col pt-5">
+                    {hospital.location && <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">{hospital.location}</p>}
+                    <h3 className="mt-2 text-xl font-black leading-tight text-[#073f35]">{hospital.name}</h3>
+                    {hospital.description && <p className="mt-3 text-sm leading-6 text-slate-600">{hospital.description}</p>}
+                    {/^https?:\/\//i.test(hospital.url) && <a href={hospital.url} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-bold text-[#006d56] hover:underline">Visit hospital <ArrowRight className="h-4 w-4" /></a>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {(content.contact.email || content.contact.phone || content.contact.address) && (
         <section className="border-t border-white/10 bg-[#002f28]">
