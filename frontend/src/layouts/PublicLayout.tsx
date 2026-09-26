@@ -23,8 +23,10 @@ export const PublicLayout: React.FC = () => {
   // that class for as long as a public page is mounted, and restore it when
   // navigating back into an authenticated portal.
   useEffect(() => {
-    LandingPageCmsService.getPublic().then(setSiteContent).catch(() => setSiteContent(defaultLandingPageContent));
-  }, []);
+    const isPreview = new URLSearchParams(location.search).get('preview') === '1';
+    const request = isPreview ? LandingPageCmsService.getPreview() : LandingPageCmsService.getPublic();
+    request.then(setSiteContent).catch(() => setSiteContent(defaultLandingPageContent));
+  }, [location.search]);
 
   useEffect(() => {
     const root = document.documentElement;
