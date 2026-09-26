@@ -74,7 +74,7 @@ export const PublicLayout: React.FC = () => {
               </button>
             ) : (
               <>
-                <Link to="/login" className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/5">Sign in</Link>
+                <Link to="/login" className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/5">{siteContent.branding.signInLabel}</Link>
                 <Link to="/register" className="inline-flex items-center gap-2 rounded-full bg-[#ffb612] px-6 py-2.5 text-sm font-black text-[#07382f] shadow-lg shadow-amber-400/20 hover:bg-[#ffc533]">
                   Get Started <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -103,8 +103,8 @@ export const PublicLayout: React.FC = () => {
                 return <Link key={`${item.label}-${item.href}`} to={target} onClick={() => setMobileMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-white/5">{item.label}</Link>;
               })}
               <div className="grid grid-cols-2 gap-2 pt-2">
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="rounded-full border border-white/20 px-4 py-2.5 text-center">Sign in</Link>
-                <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="rounded-full bg-[#ffb612] px-4 py-2.5 text-center font-black text-[#07382f]">Get Started</Link>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="rounded-full border border-white/20 px-4 py-2.5 text-center">{siteContent.branding.signInLabel}</Link>
+                <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="rounded-full bg-[#ffb612] px-4 py-2.5 text-center font-black text-[#07382f]">{siteContent.branding.getStartedLabel}</Link>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ export const PublicLayout: React.FC = () => {
               </ul>
             </div>
             <div>
-              <h3 className="mb-4 text-xs font-black uppercase tracking-[0.18em] text-[#ffbf2f]">Quality</h3>
+              <h3 className="mb-4 text-xs font-black uppercase tracking-[0.18em] text-[#ffbf2f]">{siteContent.footer.qualityColumnTitle}</h3>
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                 <div className="flex items-center gap-2 font-bold text-white"><ShieldCheck className="h-4 w-4 text-[#ffbf2f]" /> {siteContent.footer.qualityTitle}</div>
                 <p className="mt-2 text-sm leading-6">{siteContent.footer.qualityDescription}</p>
