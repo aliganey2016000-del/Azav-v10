@@ -357,19 +357,19 @@ export const LandingPage: React.FC = () => {
           <div className="mt-12 grid gap-5 md:grid-cols-3 md:items-stretch lg:gap-7">
             <article className="rounded-[4px] bg-[#303b8e] p-7 text-white shadow-sm sm:p-8">
               <span className="flex h-12 w-12 items-center justify-center rounded bg-white/10"><Telescope className="h-6 w-6" aria-hidden="true" /></span>
-              <h3 className="mt-6 text-xl font-bold">Our Vision</h3>
+              <h3 className="mt-6 text-xl font-bold">{content.sectionHeadings.visionTitle}</h3>
               <p className="mt-4 text-base leading-7 text-white/90">{content.strategy.vision}</p>
             </article>
             <article className="rounded-[4px] bg-white p-7 shadow-sm sm:p-8">
               <span className="flex h-12 w-12 items-center justify-center text-[#3949a3]"><Target className="h-6 w-6" aria-hidden="true" /></span>
-              <h3 className="mt-6 text-xl font-bold">Our Mission</h3>
+              <h3 className="mt-6 text-xl font-bold">{content.sectionHeadings.missionTitle}</h3>
               <ul className="mt-4 space-y-4">
                 {content.strategy.mission.filter(Boolean).map((item, index) => <li key={index} className="flex gap-3 text-base leading-7"><CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#00a960]" aria-hidden="true" /><span>{item}</span></li>)}
               </ul>
             </article>
             <article className="rounded-[4px] bg-[#00a653] p-7 text-white shadow-sm sm:p-8">
               <span className="flex h-12 w-12 items-center justify-center rounded bg-white/10"><Diamond className="h-6 w-6" aria-hidden="true" /></span>
-              <h3 className="mt-6 text-xl font-bold">Core Values</h3>
+              <h3 className="mt-6 text-xl font-bold">{content.sectionHeadings.valuesTitle}</h3>
               <ul className="mt-4 space-y-3">
                 {content.strategy.values.filter(Boolean).map((value, index) => <li key={index} className="rounded bg-white/10 px-3 py-2.5 text-base font-semibold">•&nbsp; {value}</li>)}
               </ul>
@@ -391,8 +391,8 @@ export const LandingPage: React.FC = () => {
               </div>;
             })}
             <div className="col-span-2 flex min-h-40 flex-col items-center justify-center border-b border-r border-white/15 bg-white px-4 text-center text-[#303b8e] md:col-span-1 md:min-h-44">
-              <strong className="text-4xl font-black tracking-tight sm:text-5xl">AIMN</strong>
-              <span className="mt-1 text-xs font-bold uppercase tracking-wider">AZAAM Medics Network</span>
+              <strong className="text-4xl font-black tracking-tight sm:text-5xl">{content.sectionHeadings.highlightsCenterTitle}</strong>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider">{content.sectionHeadings.highlightsCenterSubtitle}</span>
             </div>
             {content.aimnHighlights.slice(4, 8).map((item, offset) => {
               const Icon = aimnHighlightIcons[offset + 4];
@@ -421,7 +421,7 @@ export const LandingPage: React.FC = () => {
                 </div>
                 <div className="p-5">
                   <h3 className="text-lg font-black text-white">{program.title}</h3>
-                  <SmartLink to={program.link || '/register'} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#ffbf2f]">Explore more <ArrowRight className="h-4 w-4" /></SmartLink>
+                  <SmartLink to={program.link || '/register'} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#ffbf2f]">{content.sectionHeadings.programButtonLabel} <ArrowRight className="h-4 w-4" /></SmartLink>
                 </div>
               </article>
             ))}
@@ -712,9 +712,9 @@ export const LandingPage: React.FC = () => {
       {(content.contact.email || content.contact.phone || content.contact.address) && (
         <section className="border-t border-white/15 bg-[#303b8e]">
           <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 text-sm sm:grid-cols-3 sm:px-6 lg:px-8">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">Email</p><p className="mt-1 font-bold text-white">{content.contact.email || '—'}</p></div>
-            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">Phone</p><p className="mt-1 font-bold text-white">{content.contact.phone || '—'}</p></div>
-            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">Address</p><p className="mt-1 font-bold text-white">{content.contact.address || '—'}</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">{content.sectionHeadings.contactEmailLabel}</p><p className="mt-1 font-bold text-white">{content.contact.email || '—'}</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">{content.sectionHeadings.contactPhoneLabel}</p><p className="mt-1 font-bold text-white">{content.contact.phone || '—'}</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">{content.sectionHeadings.contactAddressLabel}</p><p className="mt-1 font-bold text-white">{content.contact.address || '—'}</p></div>
           </div>
         </section>
       )}
