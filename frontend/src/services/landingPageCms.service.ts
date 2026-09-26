@@ -19,6 +19,7 @@ export type LandingPageContent = {
     secondaryButtonUrl: string;
   };
   highlights: HighlightItem[];
+  aimnHighlights: HighlightItem[];
   about: {
     eyebrow: string;
     bannerTitle: string;
@@ -76,6 +77,16 @@ export const defaultLandingPageContent: LandingPageContent = {
     { label: 'ESTABLISHED', value: '2011' },
     { label: 'CLINICAL SPECIALTY AREAS', value: '10+' },
     { label: 'PLACEMENT SUCCESS RATE', value: '92%' },
+  ],
+  aimnHighlights: [
+    { label: 'YEARS OF EXPERIENCE', value: '15+' },
+    { label: 'ESTABLISHED', value: '2011' },
+    { label: 'CLINICAL SPECIALTY AREAS', value: '10+' },
+    { label: 'PLACEMENT SUCCESS RATE', value: '92%' },
+    { label: 'MEDICAL NETWORK', value: 'International' },
+    { label: 'CLINICAL ROTATIONS', value: 'Supervised' },
+    { label: 'HOST INSTITUTIONS', value: 'Approved' },
+    { label: 'CERTIFICATES', value: 'Verified' },
   ],
   about: {
     eyebrow: 'About AIMN',
@@ -158,6 +169,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   contact: { ...defaultLandingPageContent.contact, ...(value?.contact || {}) },
   seo: { ...defaultLandingPageContent.seo, ...(value?.seo || {}) },
   highlights: Array.isArray(value?.highlights) ? value!.highlights : defaultLandingPageContent.highlights,
+  aimnHighlights: Array.isArray(value?.aimnHighlights) ? value!.aimnHighlights : defaultLandingPageContent.aimnHighlights,
   programs: Array.isArray(value?.programs) ? value!.programs : defaultLandingPageContent.programs,
   news: Array.isArray(value?.news) ? value!.news : defaultLandingPageContent.news,
   gallery: Array.isArray(value?.gallery) ? value!.gallery : defaultLandingPageContent.gallery,

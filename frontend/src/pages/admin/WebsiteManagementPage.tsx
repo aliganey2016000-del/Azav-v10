@@ -26,11 +26,12 @@ import {
   VideoItem,
 } from '../../services/landingPageCms.service';
 
-type TabKey = 'hero' | 'strategy' | 'programs' | 'updates' | 'media' | 'network' | 'seo';
+type TabKey = 'hero' | 'strategy' | 'highlights' | 'programs' | 'updates' | 'media' | 'network' | 'seo';
 
 const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'hero', label: 'Hero', icon: LayoutTemplate },
   { key: 'strategy', label: 'Strategy & Values', icon: Globe2 },
+  { key: 'highlights', label: 'AIMN Highlights', icon: LayoutTemplate },
   { key: 'programs', label: 'Programs', icon: LayoutTemplate },
   { key: 'updates', label: 'Updates', icon: Newspaper },
   { key: 'media', label: 'Gallery & Videos', icon: ImageIcon },
@@ -260,6 +261,15 @@ export const WebsiteManagementPage: React.FC = () => {
             <button type="button" onClick={() => mark({ ...content, strategy: { ...content.strategy, values: [...content.strategy.values, ''] } })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add value</button>
           </Card>
         </div>
+      )}
+
+      {activeTab === 'highlights' && (
+        <Card title="AIMN Highlights · eight tiles around the AIMN logo">
+          <p className="text-sm text-slate-600">Set the value and label for each tile. The logo stays in the centre.</p>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {content.aimnHighlights.slice(0, 8).map((item, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><p className="mb-3 text-xs font-black text-slate-500">Tile {index + 1}</p><div className="space-y-3"><Field label="Value" value={item.value} onChange={(value) => mark({ ...content, aimnHighlights: content.aimnHighlights.map((current, i) => i === index ? { ...current, value } : current) })} /><Field label="Label" value={item.label} onChange={(label) => mark({ ...content, aimnHighlights: content.aimnHighlights.map((current, i) => i === index ? { ...current, label } : current) })} /></div></div>)}
+          </div>
+        </Card>
       )}
 
       {activeTab === 'programs' && (

@@ -20,6 +20,16 @@ const DEFAULT_CONTENT = {
     { label: 'CLINICAL SPECIALTY AREAS', value: '10+' },
     { label: 'PLACEMENT SUCCESS RATE', value: '92%' },
   ],
+  aimnHighlights: [
+    { label: 'YEARS OF EXPERIENCE', value: '15+' },
+    { label: 'ESTABLISHED', value: '2011' },
+    { label: 'CLINICAL SPECIALTY AREAS', value: '10+' },
+    { label: 'PLACEMENT SUCCESS RATE', value: '92%' },
+    { label: 'MEDICAL NETWORK', value: 'International' },
+    { label: 'CLINICAL ROTATIONS', value: 'Supervised' },
+    { label: 'HOST INSTITUTIONS', value: 'Approved' },
+    { label: 'CERTIFICATES', value: 'Verified' },
+  ],
   about: {
     eyebrow: 'About AIMN',
     bannerTitle: 'About Us',

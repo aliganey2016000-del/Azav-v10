@@ -33,6 +33,8 @@ import {
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
 
+const aimnHighlightIcons = [Users, CalendarDays, Stethoscope, TrendingUp, Globe2, Activity, Building2, Award];
+
 const SmartLink: React.FC<{ to: string; className?: string; children: React.ReactNode }> = ({ to, className, children }) => {
   if (/^https?:\/\//i.test(to)) {
     return <a href={to} className={className} target="_blank" rel="noreferrer">{children}</a>;
@@ -356,6 +358,34 @@ export const LandingPage: React.FC = () => {
                 {content.strategy.values.filter(Boolean).map((value, index) => <li key={index} className="rounded bg-white/10 px-3 py-2.5 text-base font-semibold">•&nbsp; {value}</li>)}
               </ul>
             </article>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="aimn-highlights-title" className="bg-[#303b8e] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 id="aimn-highlights-title" className="text-center text-2xl font-extrabold uppercase tracking-tight sm:text-3xl">AIMN Highlights</h2>
+          <div className="mt-10 grid grid-cols-2 border-l border-t border-white/15 md:grid-cols-3">
+            {content.aimnHighlights.slice(0, 4).map((item, index) => {
+              const Icon = aimnHighlightIcons[index];
+              return <div key={index} className="flex min-h-40 flex-col items-center justify-center border-b border-r border-white/15 px-3 py-6 text-center sm:min-h-44">
+                <Icon className="mb-3 h-8 w-8 text-white" strokeWidth={1.6} aria-hidden="true" />
+                <p className="max-w-full break-words text-xl font-semibold leading-tight sm:text-3xl">{item.value.endsWith('+') ? <>{item.value.slice(0, -1)}<span className="text-[#00b968]">+</span></> : item.value}</p>
+                <p className="mt-1.5 text-xs font-bold uppercase tracking-wide text-white/65 sm:text-sm">{item.label}</p>
+              </div>;
+            })}
+            <div className="col-span-2 flex min-h-40 flex-col items-center justify-center border-b border-r border-white/15 bg-white px-4 text-center text-[#303b8e] md:col-span-1 md:min-h-44">
+              <strong className="text-4xl font-black tracking-tight sm:text-5xl">AIMN</strong>
+              <span className="mt-1 text-xs font-bold uppercase tracking-wider">AZAAM Medics Network</span>
+            </div>
+            {content.aimnHighlights.slice(4, 8).map((item, offset) => {
+              const Icon = aimnHighlightIcons[offset + 4];
+              return <div key={offset + 4} className="flex min-h-40 flex-col items-center justify-center border-b border-r border-white/15 px-3 py-6 text-center sm:min-h-44">
+                <Icon className="mb-3 h-8 w-8 text-white" strokeWidth={1.6} aria-hidden="true" />
+                <p className="max-w-full break-words text-xl font-semibold leading-tight sm:text-3xl">{item.value.endsWith('+') ? <>{item.value.slice(0, -1)}<span className="text-[#00b968]">+</span></> : item.value}</p>
+                <p className="mt-1.5 text-xs font-bold uppercase tracking-wide text-white/65 sm:text-sm">{item.label}</p>
+              </div>;
+            })}
           </div>
         </div>
       </section>
