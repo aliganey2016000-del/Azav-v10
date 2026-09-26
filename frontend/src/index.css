@@ -525,3 +525,42 @@ html.dark ::-webkit-scrollbar-thumb {
   .aimn-membership-window { overflow-x: auto; }
   .aimn-membership-track { animation: none; }
 }
+
+
+@keyframes aimn-testimonial-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.aimn-testimonial-track {
+  display: flex;
+  width: max-content;
+  animation: aimn-testimonial-scroll 78s linear infinite;
+  will-change: transform;
+}
+
+.aimn-testimonial-window:hover .aimn-testimonial-track,
+.aimn-testimonial-window:focus-within .aimn-testimonial-track {
+  animation-play-state: paused;
+}
+
+@media (max-width: 640px) {
+  .aimn-testimonial-track {
+    animation-duration: 62s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aimn-testimonial-window {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .aimn-testimonial-track {
+    animation: none;
+  }
+
+  .aimn-testimonial-track > div > * {
+    scroll-snap-align: start;
+  }
+}
