@@ -5,7 +5,7 @@ import {
   Globe2,
   Image as ImageIcon,
   LayoutTemplate,
-  Newspaper,
+  MessageSquareQuote,
   Plus,
   RefreshCw,
   Save,
@@ -25,19 +25,24 @@ import {
   MembershipItem,
   NewsItem,
   ProgramItem,
+  RecognitionItem,
+  TestimonialItem,
   VideoItem,
 } from '../../services/landingPageCms.service';
 
-type TabKey = 'hero' | 'strategy' | 'highlights' | 'programs' | 'updates' | 'media' | 'network' | 'seo';
+type TabKey = 'hero' | 'strategy' | 'highlights' | 'programs' | 'testimonials' | 'media' | 'network' | 'recognitions' | 'sections' | 'branding' | 'seo';
 
 const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'hero', label: 'Hero', icon: LayoutTemplate },
   { key: 'strategy', label: 'Strategy & Values', icon: Globe2 },
   { key: 'highlights', label: 'AIMN Highlights', icon: LayoutTemplate },
-  { key: 'programs', label: 'Programs', icon: LayoutTemplate },
-  { key: 'updates', label: 'Updates', icon: Newspaper },
+  { key: 'programs', label: 'Training Programs', icon: LayoutTemplate },
+  { key: 'testimonials', label: 'Testimonials', icon: MessageSquareQuote },
   { key: 'media', label: 'Gallery & Videos', icon: ImageIcon },
   { key: 'network', label: 'Partners & Hospitals', icon: Users },
+  { key: 'recognitions', label: 'Recognitions', icon: CheckCircle2 },
+  { key: 'sections', label: 'Section Text', icon: LayoutTemplate },
+  { key: 'branding', label: 'Header & Footer', icon: Globe2 },
   { key: 'seo', label: 'Contact & SEO', icon: Search },
 ];
 
