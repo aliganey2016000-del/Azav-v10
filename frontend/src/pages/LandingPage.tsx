@@ -171,6 +171,7 @@ export const LandingPage: React.FC = () => {
   const [preview, setPreview] = useState(false);
   const [showAllMemberships, setShowAllMemberships] = useState(false);
   const [showAllHospitals, setShowAllHospitals] = useState(false);
+  const [showAllRecognitions, setShowAllRecognitions] = useState(false);
 
   useEffect(() => {
     const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
@@ -198,6 +199,15 @@ export const LandingPage: React.FC = () => {
   const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
+  const recognitions = [
+    { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://mofa.go.ug/' },
+    { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://www.mia.go.ug/' },
+    { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://health.go.ug/about-moh/' },
+    { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: 'https://www.education.go.ug/wp-content/uploads/2019/07/NewLogo2.png', url: 'https://www.education.go.ug/' },
+    { name: 'Ministry of Health & Human Services — Somalia', icon: Stethoscope, logo: 'https://moh.gov.so/so/favicon.ico', url: 'https://moh.gov.so/so/' },
+    { name: 'Ministry of Foreign Affairs & International Cooperation — Somalia', icon: Globe2, logo: 'https://web.mfa.gov.so/favicon.ico', url: 'https://web.mfa.gov.so/' },
+    { name: 'Association of Somali Universities (ASU)', icon: GraduationCap, logo: 'https://asu.org.so/favicon.ico', url: 'https://asu.org.so/' },
+  ];
   const membershipCard = (item: LandingPageContent['memberships'][number], index: number, duplicate = false) => {
     const isMakerere = item.logo === '/memberships/makerere.png';
     const isKampala = item.logo === '/memberships/kampala.png';
@@ -579,42 +589,90 @@ export const LandingPage: React.FC = () => {
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
             Official institutional recognitions and approvals supporting our international medical education and clinical training activities.
           </p>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://mofa.go.ug/' },
-              { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://www.mia.go.ug/' },
-              { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://health.go.ug/about-moh/' },
-              { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: 'https://www.education.go.ug/wp-content/uploads/2019/07/NewLogo2.png', url: 'https://www.education.go.ug/' },
-              { name: 'Ministry of Health & Human Services — Somalia', icon: Stethoscope, logo: 'https://moh.gov.so/so/favicon.ico', url: 'https://moh.gov.so/so/' },
-              { name: 'Ministry of Foreign Affairs & International Cooperation — Somalia', icon: Globe2, logo: 'https://web.mfa.gov.so/favicon.ico', url: 'https://web.mfa.gov.so/' },
-              { name: 'Association of Somali Universities (ASU)', icon: GraduationCap, logo: 'https://asu.org.so/favicon.ico', url: 'https://asu.org.so/' },
-            ].map(({ name, icon: Icon, logo, url }) => (
-              <a
-                key={name}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#008267]/40 hover:shadow-md"
-              >
-                <div className="flex h-20 w-20 items-center justify-center">
-                  <img
-                    src={logo}
-                    alt={name}
-                    loading="lazy"
-                    className="h-20 w-20 object-contain"
-                    onError={(event) => {
-                      event.currentTarget.style.display = 'none';
-                      event.currentTarget.nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                  <div className="hidden h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
-                    <Icon className="h-6 w-6" />
+
+          {showAllRecognitions ? (
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
+              {recognitions.map(({ name, icon: Icon, logo, url }) => (
+                <a
+                  key={name}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-h-40 w-40 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#008267]/40 hover:shadow-md sm:w-44"
+                >
+                  <div className="flex h-20 w-20 items-center justify-center">
+                    <img
+                      src={logo}
+                      alt={name}
+                      loading="lazy"
+                      className="h-20 w-20 object-contain"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                        event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <div className="hidden h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
+                      <Icon className="h-6 w-6" />
+                    </div>
                   </div>
-                </div>
-                <h3 className="mt-4 text-sm font-black leading-6 text-slate-900">{name}</h3>
-              </a>
-            ))}
-          </div>
+                  <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Official recognitions">
+              <div
+                className="aimn-membership-track"
+                style={{ animationDuration: `${Math.max(36, recognitions.length * 3.4)}s` }}
+              >
+                {[false, true].map((duplicate) => (
+                  <div
+                    key={duplicate ? 'recognitions-copy' : 'recognitions-original'}
+                    className="flex shrink-0 gap-4 pr-4"
+                    aria-hidden={duplicate ? 'true' : undefined}
+                  >
+                    {recognitions.map(({ name, icon: Icon, logo, url }, index) => (
+                      <a
+                        key={`${duplicate ? 'copy' : 'original'}-${name}-${index}`}
+                        href={duplicate ? undefined : url}
+                        target={duplicate ? undefined : '_blank'}
+                        rel={duplicate ? undefined : 'noopener noreferrer'}
+                        tabIndex={duplicate ? -1 : undefined}
+                        className="flex min-h-40 w-40 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#008267]/40 hover:shadow-md sm:w-44"
+                      >
+                        <div className="flex h-20 w-20 items-center justify-center">
+                          <img
+                            src={logo}
+                            alt={duplicate ? '' : name}
+                            loading="lazy"
+                            className="h-20 w-20 object-contain"
+                            onError={(event) => {
+                              event.currentTarget.style.display = 'none';
+                              event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
+                            <Icon className="h-6 w-6" />
+                          </div>
+                        </div>
+                        <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
+                      </a>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recognitions.length > 6 && (
+            <button
+              type="button"
+              onClick={() => setShowAllRecognitions((current) => !current)}
+              className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]"
+            >
+              {showAllRecognitions ? 'View less' : 'View more'}
+            </button>
+          )}
         </div>
       </section>
 
