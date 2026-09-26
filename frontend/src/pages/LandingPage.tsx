@@ -455,7 +455,7 @@ export const LandingPage: React.FC = () => {
                     <p className="mt-3 text-sm leading-6 text-slate-600">“{item.quote}”</p>
                   </div>
                 </article>
-              )})}
+              ))}
             </div>
           ) : (
             <div className="aimn-testimonial-window mt-10 overflow-hidden" aria-label="Partner testimonials">
@@ -478,7 +478,7 @@ export const LandingPage: React.FC = () => {
                           <p className="mt-3 line-clamp-5 text-sm leading-6 text-slate-600">“{item.quote}”</p>
                         </div>
                       </article>
-                    )})}
+                    ))}
                   </div>
                 ))}
               </div>
