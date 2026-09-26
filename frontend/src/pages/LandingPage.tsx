@@ -170,6 +170,7 @@ export const LandingPage: React.FC = () => {
   const [content, setContent] = useState<LandingPageContent>(defaultLandingPageContent);
   const [preview, setPreview] = useState(false);
   const [showAllMemberships, setShowAllMemberships] = useState(false);
+  const [showAllHospitals, setShowAllHospitals] = useState(false);
 
   useEffect(() => {
     const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
@@ -196,6 +197,7 @@ export const LandingPage: React.FC = () => {
 
   const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
+  const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
   const membershipCard = (item: LandingPageContent['memberships'][number], index: number, duplicate = false) => {
     const isMakerere = item.logo === '/memberships/makerere.png';
     const isKampala = item.logo === '/memberships/kampala.png';
@@ -515,37 +517,57 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {content.hospitals.some((hospital) => hospital.name?.trim()) && (
+      {hospitals.length > 0 && (
         <section id="training-hospitals" aria-labelledby="training-hospitals-title" className="bg-[#303b8e] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-6xl text-center">
             <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-200">Clinical Training Network</p>
             <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">Our Training Hospitals</h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
-            <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Training hospitals">
-              <div
-                className="aimn-membership-track"
-                style={{ animationDuration: `${Math.max(36, content.hospitals.filter((hospital) => hospital.name?.trim()).length * 3.2)}s` }}
-              >
-                {[false, true].map((duplicate) => (
-                  <div key={duplicate ? 'hospitals-copy' : 'hospitals-original'} className="flex shrink-0 gap-4 pr-4" aria-hidden={duplicate ? 'true' : undefined}>
-                    {content.hospitals.filter((hospital) => hospital.name?.trim()).map((hospital, index) => (
-                      <article
-                        key={`${duplicate ? 'copy' : 'original'}-${hospital.name}-${index}`}
-                        className="flex min-h-44 w-40 shrink-0 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-4 shadow-sm sm:w-44"
-                      >
-                        <img
-                          src={hospital.image || '/memberships/uganda-hospital-emblem.png'}
-                          alt={duplicate ? '' : hospital.name}
-                          loading="lazy"
-                          className="h-20 w-20 object-contain"
-                        />
+
+            {showAllHospitals ? (
+              <div className="mt-10 flex flex-wrap justify-center gap-4">
+                {hospitals.map((hospital, index) => (
+                  <article key={`${hospital.name}-${index}`} className="flex min-h-44 w-40 shrink-0 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-4 shadow-sm sm:w-44">
+                    <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt={hospital.name} loading="lazy" className="h-20 w-20 object-contain" />
+                    <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Training hospitals">
+                <div
+                  className="aimn-membership-track"
+                  style={{ animationDuration: `${Math.max(36, hospitals.length * 3.2)}s` }}
+                >
+                  <div className="flex shrink-0 gap-4 pr-4">
+                    {hospitals.map((hospital, index) => (
+                      <article key={`original-${hospital.name}-${index}`} className="flex min-h-44 w-40 shrink-0 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-4 shadow-sm sm:w-44">
+                        <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt={hospital.name} loading="lazy" className="h-20 w-20 object-contain" />
                         <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
                       </article>
                     ))}
                   </div>
-                ))}
+                  <div className="flex shrink-0 gap-4 pr-4" aria-hidden="true">
+                    {hospitals.map((hospital, index) => (
+                      <article key={`copy-${hospital.name}-${index}`} className="flex min-h-44 w-40 shrink-0 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-4 shadow-sm sm:w-44">
+                        <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt="" loading="lazy" className="h-20 w-20 object-contain" />
+                        <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
+                      </article>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {hospitals.length > 6 && (
+              <button
+                type="button"
+                onClick={() => setShowAllHospitals((current) => !current)}
+                className="mt-8 rounded bg-white px-7 py-2.5 text-sm font-bold text-[#303b8e] transition hover:bg-slate-100"
+              >
+                {showAllHospitals ? 'View less' : 'View more'}
+              </button>
+            )}
           </div>
         </section>
       )}
