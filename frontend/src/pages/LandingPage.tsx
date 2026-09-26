@@ -521,18 +521,12 @@ export const LandingPage: React.FC = () => {
             <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-200">Clinical Training Network</p>
             <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">Our Training Hospitals</h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
-            <div className="mt-10 flex flex-wrap justify-center gap-6 text-left">
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
               {content.hospitals.filter((hospital) => hospital.name?.trim()).map((hospital, index) => (
-                <article key={`${hospital.name}-${index}`} className="flex w-full max-w-[360px] flex-col rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                  <div className="flex h-44 items-center justify-center rounded-2xl bg-[#f7fbf9] p-4">
-                    {hospital.image ? <img src={hospital.image} alt={hospital.name} loading="lazy" className="max-h-full max-w-full object-contain" /> : <Building2 className="h-16 w-16 text-emerald-600" aria-hidden="true" />}
-                  </div>
-                  <div className="flex flex-1 flex-col pt-5">
-                    {hospital.location && <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">{hospital.location}</p>}
-                    <h3 className="mt-2 text-xl font-black leading-tight text-[#073f35]">{hospital.name}</h3>
-                    {hospital.description && <p className="mt-3 text-sm leading-6 text-slate-600">{hospital.description}</p>}
-                    {/^https?:\/\//i.test(hospital.url) && <a href={hospital.url} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex w-fit items-center gap-2 text-sm font-bold text-[#006d56] hover:underline">Learn more <ArrowRight className="h-4 w-4" /></a>}
-                  </div>
+                <article key={`${hospital.name}-${index}`} aria-label={hospital.name} title={hospital.name} className="flex h-32 w-40 items-center justify-center rounded-xl border border-emerald-100 bg-white p-4 shadow-sm sm:h-36 sm:w-44">
+                  {hospital.image && hospital.image !== '/memberships/fort-portal-hospital.webp'
+                    ? <img src={hospital.image} alt={hospital.name} loading="lazy" className="max-h-full max-w-full object-contain" />
+                    : <Building2 className="h-16 w-16 text-[#303b8e]" aria-hidden="true" />}
                 </article>
               ))}
             </div>
