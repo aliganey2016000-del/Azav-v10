@@ -493,31 +493,6 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      <section id="recognitions" aria-labelledby="recognitions-title" className="bg-white px-4 py-16 text-[#202020] sm:px-6 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Institutional Recognition</p>
-          <h2 id="recognitions-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Official Recognitions &amp; Approvals</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Official institutional recognitions and approvals supporting our international medical education and clinical training activities.
-          </p>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2 },
-              { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck },
-              { name: 'Ministry of Health — Uganda', icon: Stethoscope },
-              { name: 'Ministry of Education & Sports — Uganda', icon: GraduationCap },
-            ].map(({ name, icon: Icon }) => (
-              <article key={name} className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm transition hover:border-[#008267]/40 hover:shadow-md">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
-                  <Icon className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 text-sm font-black leading-6 text-slate-900">{name}</h3>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="network" aria-labelledby="memberships-title" className="bg-white px-4 pb-16 pt-10 text-[#202020] sm:px-6 lg:px-8 lg:pb-20">
         <div className="mx-auto max-w-6xl text-center">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Institutional Network</p>
@@ -574,6 +549,31 @@ export const LandingPage: React.FC = () => {
           </div>
         </section>
       )}
+
+      <section id="recognitions" aria-labelledby="recognitions-title" className="bg-white px-4 py-16 text-[#202020] sm:px-6 lg:px-8 lg:py-20">
+        <div className="mx-auto max-w-6xl text-center">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Institutional Recognition</p>
+          <h2 id="recognitions-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Official Recognitions &amp; Approvals</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+            Official institutional recognitions and approvals supporting our international medical education and clinical training activities.
+          </p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2 },
+              { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck },
+              { name: 'Ministry of Health — Uganda', icon: Stethoscope },
+              { name: 'Ministry of Education & Sports — Uganda', icon: GraduationCap },
+            ].map(({ name, icon: Icon }) => (
+              <article key={name} className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm transition hover:border-[#008267]/40 hover:shadow-md">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-sm font-black leading-6 text-slate-900">{name}</h3>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {(content.contact.email || content.contact.phone || content.contact.address) && (
         <section className="border-t border-white/15 bg-[#303b8e]">
