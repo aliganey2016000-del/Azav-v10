@@ -245,8 +245,8 @@ export const WebsiteManagementPage: React.FC = () => {
           </Card>
           <Card title="Hero media">
             <ImageField label="Background image" value={content.hero.backgroundImage} onChange={(v) => updateHero('backgroundImage', v)} onError={showError} />
-            <Field label="Background video URL (optional)" value={content.hero.backgroundVideo} onChange={(v) => updateHero('backgroundVideo', v)} placeholder="YouTube or MP4 URL" />
-            <p className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800">If a video URL is present it takes priority over the background image. Use a public HTTPS media URL.</p>
+            <Field label="Organization video URL (YouTube or MP4)" value={content.hero.backgroundVideo} onChange={(v) => updateHero('backgroundVideo', v)} placeholder="https://www.youtube.com/watch?v=... or MP4 URL" />
+            <p className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800">Paste a YouTube or public MP4 link here. The video is embedded in the landing-page hero and visitors can watch it without leaving your website.</p>
             <div className="overflow-hidden rounded-xl bg-slate-100">{content.hero.backgroundImage && <img src={content.hero.backgroundImage} alt="Hero preview" className="h-48 w-full object-cover" />}</div>
           </Card>
           <div className="lg:col-span-2"><Card title="Highlight statistics">
