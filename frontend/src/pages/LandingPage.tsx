@@ -690,7 +690,7 @@ export const LandingPage: React.FC = () => {
                         </div>
                         <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
                       </a>
-                    ))}
+                    )})}
                   </div>
                 ))}
               </div>
