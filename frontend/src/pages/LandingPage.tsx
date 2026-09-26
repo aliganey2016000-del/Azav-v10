@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  FileCheck2,
   Globe2,
   GraduationCap,
   Image as ImageIcon,
@@ -214,7 +213,8 @@ export const LandingPage: React.FC = () => {
     if (content.seo.shareImage) setMeta('meta[property="og:image"]', 'content', content.seo.shareImage);
   }, [content.seo]);
 
-  const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
+  const heroShowcaseUrl = content.hero.backgroundVideo || content.videos[0]?.url || '';
+  const heroShowcaseEmbed = heroShowcaseUrl ? youtubeEmbed(heroShowcaseUrl) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
   const recognitions = [
@@ -250,11 +250,11 @@ export const LandingPage: React.FC = () => {
         </div>
       )}
 
-      <section className="relative isolate overflow-hidden" style={heroPattern}>
-        <div className="absolute inset-0 bg-gradient-to-br from-[#173f2f]/50 via-[#003d33]/35 to-[#007256]/45" />
+      <section className="relative isolate overflow-hidden bg-[#303b8e]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.08),transparent_26%),radial-gradient(circle_at_82%_70%,rgba(0,185,104,0.12),transparent_30%)]" />
 
         <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-14 sm:px-6 md:pt-20 lg:px-8 lg:pb-16">
-          <div className="grid items-center gap-14 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#ffb612]/35 bg-[#ffb612]/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-[#ffd55b]">
                 <Sparkles className="h-3.5 w-3.5" /> {content.hero.eyebrow || 'Trusted by medical schools & hospitals worldwide'}
@@ -267,7 +267,7 @@ export const LandingPage: React.FC = () => {
                 <span className="block text-white">Platform</span>
               </h1>
 
-              <p className="mt-6 max-w-xl text-base leading-8 text-emerald-50/85 sm:text-lg">
+              <p className="mt-6 max-w-xl text-base leading-8 text-white/85 sm:text-lg">
                 {content.hero.subtitle || 'Manage clinical placements, student nominations, visas, hospital coordination, attendance, certificates and training operations — all in one powerful platform.'}
               </p>
 
@@ -275,93 +275,69 @@ export const LandingPage: React.FC = () => {
                 <SmartLink to={content.hero.primaryButtonUrl} className="inline-flex items-center gap-2 rounded-full bg-[#ffb612] px-7 py-3.5 text-sm font-black text-[#063b31] shadow-lg shadow-amber-500/20 transition hover:bg-[#ffc83d]">
                   {content.hero.primaryButtonText || 'Get Started'} <ArrowRight className="h-4 w-4" />
                 </SmartLink>
-                <a href={content.videos.length > 0 ? '#videos' : '#programs'} className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.04] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.08]">
-                  <Play className="h-4 w-4" /> {content.videos.length > 0 ? 'Watch Demo' : 'Explore Programs'}
+                <a
+                  href={heroShowcaseUrl ? '#organization-video' : '#programs'}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.05] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.10]"
+                >
+                  <Play className="h-4 w-4" /> {heroShowcaseUrl ? 'Watch Video' : 'Explore Programs'}
                 </a>
               </div>
 
               <div className="mt-7 flex items-center gap-4">
                 <div className="flex -space-x-2">
                   {['#ffb612','#3fd0b6','#4bb6ff','#f270b5'].map((color, index) => (
-                    <span key={index} className="h-8 w-8 rounded-full border-2 border-[#00483b]" style={{ backgroundColor: color }} />
+                    <span key={index} className="h-8 w-8 rounded-full border-2 border-[#303b8e]" style={{ backgroundColor: color }} />
                   ))}
                 </div>
                 <div>
                   <div className="text-sm tracking-[0.18em] text-[#ffbf2f]">★★★★★</div>
-                  <p className="text-xs text-emerald-50/65">Trusted by universities, hospitals and trainees</p>
+                  <p className="text-xs text-white/65">Trusted by universities, hospitals and trainees</p>
                 </div>
               </div>
             </div>
 
-            <div className="relative mx-auto w-full max-w-[590px]">
-              <div className="absolute -inset-10 rounded-full bg-emerald-300/10 blur-3xl" />
-              <div className="relative rounded-[28px] border border-white/20 bg-white/[0.08] p-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
-                {content.videos.length > 0 ? (
-                  <HeroVideoCarousel videos={content.videos} />
-                ) : (
-                  <div className="rounded-[22px] border border-white/10 bg-[#174f42]/90 p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Stethoscope className="h-6 w-6" /></div>
-                        <div>
-                          <h2 className="font-black text-white">AZAAM Medics</h2>
-                          <p className="text-xs text-emerald-50/60">Clinical Training Dashboard</p>
-                        </div>
-                      </div>
-                      <div className="flex -space-x-2">
-                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#ffb612]" />
-                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#39d0b2]" />
-                        <span className="h-7 w-7 rounded-full border-2 border-[#174f42] bg-[#45baff]" />
-                      </div>
-                    </div>
-
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      {[
-                        { icon: Users, label: 'Total Trainees', value: '1,248', accent: '+12%' },
-                        { icon: Building2, label: 'Active Placements', value: '386', accent: '+8%' },
-                        { icon: FileCheck2, label: 'Visa Pipeline', value: '214', accent: '+24%' },
-                        { icon: Award, label: 'Certificates Issued', value: '892', accent: '+18%' },
-                      ].map(({ icon: Icon, label, value, accent }) => (
-                        <div key={label} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
-                          <Icon className="h-5 w-5 text-[#45d2aa]" />
-                          <p className="mt-3 text-[10px] font-bold text-emerald-50/60">{label}</p>
-                          <div className="mt-1 flex items-end gap-2"><span className="text-xl font-black text-white">{value}</span><span className="pb-0.5 text-[9px] font-bold text-[#54d9a7]">{accent}</span></div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-black text-white">Placements Trend</p>
-                          <p className="mt-1 text-[10px] text-emerald-50/50">Last 6 months</p>
-                        </div>
-                        <span className="rounded-full border border-white/10 px-3 py-1 text-[9px] text-emerald-50/60">Live</span>
-                      </div>
-                      <div className="mt-5 flex h-28 items-end gap-3">
-                        {[28,42,55,66,70,80,95].map((height, index) => (
-                          <div key={index} className="flex flex-1 flex-col items-center gap-2">
-                            <div className="w-full rounded-t-md bg-[#45c894]/70" style={{ height: `${height}%` }} />
-                            <span className="text-[9px] text-emerald-50/45">{['Jan','Feb','Mar','Apr','May','Jun','Jul'][index]}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+            <div id="organization-video" className="relative mx-auto w-full max-w-[620px] scroll-mt-28">
+              <div className="absolute -inset-8 rounded-[36px] bg-white/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[28px] border border-white/20 bg-white/[0.08] shadow-2xl shadow-black/25 backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]">AIMN in Action</p>
+                    <h2 className="mt-1 truncate text-base font-black text-white sm:text-lg">Organization Impact &amp; Clinical Training</h2>
                   </div>
-                )}
-              </div>
-
-              <div className="pointer-events-none absolute -left-5 top-[42%] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:block">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full border-4 border-[#ffb612] text-xs font-black text-white">92%</div>
-                  <div><p className="text-[10px] text-emerald-50/55">Placement</p><p className="text-sm font-black text-white">Success Rate</p></div>
+                  <div className="flex shrink-0 items-center gap-1.5" aria-hidden="true">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#ffb612]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#45d2aa]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#4bb6ff]" />
+                  </div>
                 </div>
-              </div>
 
-              <div className="pointer-events-none absolute -bottom-3 right-[-6px] hidden rounded-2xl border border-white/15 bg-[#06473a]/95 px-4 py-3 shadow-xl backdrop-blur sm:flex sm:items-center sm:gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33]"><Award className="h-5 w-5" /></div>
-                <div><p className="text-[10px] text-emerald-50/55">Certificates</p><p className="text-sm font-black text-white">Auto-generated & Verified</p></div>
-                <CheckCircle2 className="h-5 w-5 text-[#4be0a7]" />
+                <div className="aspect-video w-full bg-[#18236f]">
+                  {heroShowcaseEmbed ? (
+                    <iframe
+                      src={`${heroShowcaseEmbed}${heroShowcaseEmbed.includes('?') ? '&' : '?'}rel=0&modestbranding=1&playsinline=1`}
+                      title="AIMN organization impact video"
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  ) : heroShowcaseUrl ? (
+                    <video src={heroShowcaseUrl} controls playsInline className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ffb612] text-[#303b8e] shadow-lg">
+                        <Play className="ml-1 h-7 w-7" fill="currentColor" />
+                      </div>
+                      <p className="mt-5 text-lg font-black text-white">Organization video</p>
+                      <p className="mt-2 max-w-sm text-sm leading-6 text-white/65">Add a YouTube or MP4 link from Website Management → Hero media. The video will play directly inside this page.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-white/10 px-5 py-4 sm:px-6">
+                  <p className="text-sm leading-6 text-white/70">
+                    Watch AIMN’s institutional partnerships, placement coordination and supervised clinical training activities without leaving the website.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -372,7 +348,7 @@ export const LandingPage: React.FC = () => {
                 {content.highlights.slice(0,4).map((item, index) => (
                   <div key={`${item.label}-${index}`} className="border-white/10 px-6 py-6 text-center sm:border-r last:border-r-0">
                     <div className="text-3xl font-black text-[#ffbf2f]" style={headingFont}>{item.value}</div>
-                    <div className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-50/60">{item.label}</div>
+                    <div className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/60">{item.label}</div>
                   </div>
                 ))}
               </div>
