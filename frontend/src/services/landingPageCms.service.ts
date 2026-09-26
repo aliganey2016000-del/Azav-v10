@@ -14,10 +14,16 @@ export type FooterLinkItem = { label: string; href: string };
 
 export type SectionHeadings = {
   strategyTitle: string;
+  visionTitle: string;
+  missionTitle: string;
+  valuesTitle: string;
   highlightsTitle: string;
+  highlightsCenterTitle: string;
+  highlightsCenterSubtitle: string;
   programsEyebrow: string;
   programsTitle: string;
   programsDescription: string;
+  programButtonLabel: string;
   testimonialsEyebrow: string;
   testimonialsTitle: string;
   testimonialsDescription: string;
@@ -38,6 +44,9 @@ export type SectionHeadings = {
   heroVideoDescription: string;
   viewMoreLabel: string;
   viewLessLabel: string;
+  contactEmailLabel: string;
+  contactPhoneLabel: string;
+  contactAddressLabel: string;
 };
 
 export type LandingPageContent = {
@@ -87,6 +96,9 @@ export type LandingPageContent = {
     logo: string;
     name: string;
     tagline: string;
+    signInLabel: string;
+    getStartedLabel: string;
+    dashboardLabel: string;
   };
   footer: {
     description: string;
@@ -94,6 +106,7 @@ export type LandingPageContent = {
     exploreLinks: FooterLinkItem[];
     portalsTitle: string;
     portalLinks: FooterLinkItem[];
+    qualityColumnTitle: string;
     qualityTitle: string;
     qualityDescription: string;
     copyrightText: string;
@@ -220,10 +233,16 @@ export const defaultLandingPageContent: LandingPageContent = {
   ],
   sectionHeadings: {
     strategyTitle: 'Our Strategy & Values',
+    visionTitle: 'Our Vision',
+    missionTitle: 'Our Mission',
+    valuesTitle: 'Core Values',
     highlightsTitle: 'AIMN Highlights',
+    highlightsCenterTitle: 'AIMN',
+    highlightsCenterSubtitle: 'AZAAM Medics Network',
     programsEyebrow: 'Clinical Training',
     programsTitle: 'Build experience across essential departments',
     programsDescription: 'Structured rotations designed for practical learning, institutional coordination and supervised clinical exposure.',
+    programButtonLabel: 'Explore more',
     testimonialsEyebrow: 'Partner Experience',
     testimonialsTitle: 'What Our Partners Say',
     testimonialsDescription: 'Sample testimonial placeholders for verified institutional feedback about placements, clinical training and partnership coordination.',
@@ -244,6 +263,9 @@ export const defaultLandingPageContent: LandingPageContent = {
     heroVideoDescription: 'Watch AIMN’s institutional partnerships, placement coordination and supervised clinical training activities without leaving the website.',
     viewMoreLabel: 'View more',
     viewLessLabel: 'View less',
+    contactEmailLabel: 'Email',
+    contactPhoneLabel: 'Phone',
+    contactAddressLabel: 'Address',
   },
   navigation: [
     { label: 'About', href: '#about' },
@@ -256,6 +278,9 @@ export const defaultLandingPageContent: LandingPageContent = {
     logo: '',
     name: 'AZAAM Medics',
     tagline: 'International Medics Network',
+    signInLabel: 'Sign in',
+    getStartedLabel: 'Get Started',
+    dashboardLabel: 'Dashboard',
   },
   footer: {
     description: 'A connected platform for student nominations, clinical placements, hospital coordination, supervision and certification.',
@@ -273,6 +298,7 @@ export const defaultLandingPageContent: LandingPageContent = {
       { label: 'Student Portal', href: '/login' },
       { label: 'Verify Certificate', href: '/verify-certificate' },
     ],
+    qualityColumnTitle: 'Quality',
     qualityTitle: 'Trusted workflow',
     qualityDescription: 'Structured, traceable and institution-connected clinical education management.',
     copyrightText: '© 2026 AZAAM International Medics Network. All rights reserved.',
