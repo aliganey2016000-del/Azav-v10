@@ -281,16 +281,31 @@ export class StorageService {
 
   static getProvider(): IStorageProvider {
     if (!this.provider) {
-      const providerType = (process.env.STORAGE_PROVIDER || env.STORAGE_PROVIDER || 'local').toLowerCase();
+      const explicitProvider = (process.env.STORAGE_PROVIDER || '').trim().toLowerCase();
+
+      const r2AccountId = (process.env.R2_ACCOUNT_ID || env.R2_ACCOUNT_ID || '').trim();
+      const r2Endpoint = (process.env.R2_ENDPOINT || env.R2_ENDPOINT || '').trim()
+        || (r2AccountId ? `https://${r2AccountId}.r2.cloudflarestorage.com` : '');
+      const r2Bucket = (process.env.R2_BUCKET || env.R2_BUCKET || process.env.R2_BUCKET_NAME || env.R2_BUCKET_NAME || '').trim();
+      const r2AccessKeyId = (process.env.R2_ACCESS_KEY_ID || env.R2_ACCESS_KEY_ID || '').trim();
+      const r2SecretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || env.R2_SECRET_ACCESS_KEY || '').trim();
+
+      const hasCompleteR2Config = Boolean(
+        r2Endpoint && r2Bucket && r2AccessKeyId && r2SecretAccessKey
+      );
+
+      // In production, auto-select R2 when the Cloudflare credentials are present.
+      // This keeps uploads persistent even when STORAGE_PROVIDER was not explicitly set.
+      const providerType = explicitProvider || (hasCompleteR2Config ? 'r2' : (env.STORAGE_PROVIDER || 'local').toLowerCase());
 
       if (providerType === 'local') {
         this.provider = new LocalStorageProvider();
       } else if (providerType === 'r2') {
         this.provider = new S3StorageProvider({
-          endpoint: required(process.env.R2_ENDPOINT || env.R2_ENDPOINT, 'R2_ENDPOINT'),
-          bucket: required(process.env.R2_BUCKET || env.R2_BUCKET, 'R2_BUCKET'),
-          accessKeyId: required(process.env.R2_ACCESS_KEY_ID || env.R2_ACCESS_KEY_ID, 'R2_ACCESS_KEY_ID'),
-          secretAccessKey: required(process.env.R2_SECRET_ACCESS_KEY || env.R2_SECRET_ACCESS_KEY, 'R2_SECRET_ACCESS_KEY'),
+          endpoint: required(r2Endpoint, 'R2_ENDPOINT or R2_ACCOUNT_ID'),
+          bucket: required(r2Bucket, 'R2_BUCKET or R2_BUCKET_NAME'),
+          accessKeyId: required(r2AccessKeyId, 'R2_ACCESS_KEY_ID'),
+          secretAccessKey: required(r2SecretAccessKey, 'R2_SECRET_ACCESS_KEY'),
           region: 'auto',
         });
       } else if (providerType === 's3') {
