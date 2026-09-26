@@ -197,7 +197,15 @@ export const LandingPage: React.FC = () => {
   const heroVideoEmbed = content.hero.backgroundVideo ? youtubeEmbed(content.hero.backgroundVideo) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const membershipCard = (item: LandingPageContent['memberships'][number], index: number, duplicate = false) => {
-    const card = <div className="flex h-40 w-40 items-center justify-center rounded border border-slate-200 bg-white p-5 transition hover:border-[#303b8e] sm:h-48 sm:w-44"><img src={item.logo} alt={duplicate ? '' : item.name} loading="eager" className="max-h-full max-w-full object-contain" /></div>;
+    const isMakerere = item.logo === '/memberships/makerere.png';
+    const isKampala = item.logo === '/memberships/kampala.png';
+    const card = <div className={`flex h-40 w-40 items-center justify-center rounded border border-slate-200 bg-white transition hover:border-[#303b8e] sm:h-48 sm:w-44 ${isMakerere || isKampala ? 'p-2' : 'p-5'}`}>
+      {isMakerere ? (
+        <span className="block h-28 w-36 overflow-hidden" role="img" aria-label={item.name}><img src={item.logo} alt="" loading="eager" className="h-full max-w-none" /></span>
+      ) : (
+        <img src={item.logo} alt={duplicate ? '' : item.name} loading="eager" className={`max-h-full max-w-full object-contain ${isKampala ? 'scale-105' : ''}`} />
+      )}
+    </div>;
     return <div key={`${duplicate ? 'copy' : 'original'}-${index}`} className="shrink-0" title={duplicate ? undefined : item.name}>
       {!duplicate && /^https?:\/\//i.test(item.url) ? <a href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${item.name}`}>{card}</a> : card}
     </div>;
