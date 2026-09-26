@@ -404,6 +404,129 @@ export const WebsiteManagementPage: React.FC = () => {
         </div>
       )}
 
+      {activeTab === 'recognitions' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="font-black text-slate-900">Official Recognitions &amp; Approvals</h2><p className="mt-1 text-sm text-slate-600">Manage every recognition card, logo and destination link shown on the landing page.</p></div>
+            <button type="button" onClick={() => mark({ ...content, recognitions: [...content.recognitions, { name: '', logo: '', url: '' }] })} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add recognition</button>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {content.recognitions.map((item, index) => (
+              <Card key={index} title={`Recognition ${index + 1}`} onDelete={() => mark({ ...content, recognitions: content.recognitions.filter((_, i) => i !== index) })}>
+                <Field label="Institution / Recognition name" value={item.name} onChange={(v) => updateRecognition(index, 'name', v)} />
+                <ImageField label="Official logo" value={item.logo} onChange={(v) => updateRecognition(index, 'logo', v)} onError={showError} />
+                <Field label="Official website / source URL" value={item.url} onChange={(v) => updateRecognition(index, 'url', v)} />
+                {item.logo && <img src={item.logo} alt="" className="h-20 w-28 rounded-lg bg-slate-50 object-contain p-2" />}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'sections' && (
+        <div className="grid gap-5 xl:grid-cols-2">
+          <Card title="Strategy & highlights headings">
+            <Field label="Strategy section title" value={content.sectionHeadings.strategyTitle} onChange={(v) => updateSectionHeading('strategyTitle', v)} />
+            <Field label="AIMN Highlights title" value={content.sectionHeadings.highlightsTitle} onChange={(v) => updateSectionHeading('highlightsTitle', v)} />
+          </Card>
+          <Card title="Training Programs section">
+            <Field label="Eyebrow" value={content.sectionHeadings.programsEyebrow} onChange={(v) => updateSectionHeading('programsEyebrow', v)} />
+            <Field label="Title" value={content.sectionHeadings.programsTitle} onChange={(v) => updateSectionHeading('programsTitle', v)} />
+            <Field label="Description" value={content.sectionHeadings.programsDescription} onChange={(v) => updateSectionHeading('programsDescription', v)} multiline />
+          </Card>
+          <Card title="Testimonials section">
+            <Field label="Eyebrow" value={content.sectionHeadings.testimonialsEyebrow} onChange={(v) => updateSectionHeading('testimonialsEyebrow', v)} />
+            <Field label="Title" value={content.sectionHeadings.testimonialsTitle} onChange={(v) => updateSectionHeading('testimonialsTitle', v)} />
+            <Field label="Description" value={content.sectionHeadings.testimonialsDescription} onChange={(v) => updateSectionHeading('testimonialsDescription', v)} multiline />
+          </Card>
+          <Card title="Hero organization video">
+            <Field label="Eyebrow" value={content.sectionHeadings.heroVideoEyebrow} onChange={(v) => updateSectionHeading('heroVideoEyebrow', v)} />
+            <Field label="Video panel title" value={content.sectionHeadings.heroVideoTitle} onChange={(v) => updateSectionHeading('heroVideoTitle', v)} />
+            <Field label="Video panel description" value={content.sectionHeadings.heroVideoDescription} onChange={(v) => updateSectionHeading('heroVideoDescription', v)} multiline />
+          </Card>
+          <Card title="Partners section">
+            <Field label="Eyebrow" value={content.sectionHeadings.partnersEyebrow} onChange={(v) => updateSectionHeading('partnersEyebrow', v)} />
+            <Field label="Title" value={content.sectionHeadings.partnersTitle} onChange={(v) => updateSectionHeading('partnersTitle', v)} />
+          </Card>
+          <Card title="Training Hospitals section">
+            <Field label="Eyebrow" value={content.sectionHeadings.hospitalsEyebrow} onChange={(v) => updateSectionHeading('hospitalsEyebrow', v)} />
+            <Field label="Title" value={content.sectionHeadings.hospitalsTitle} onChange={(v) => updateSectionHeading('hospitalsTitle', v)} />
+            <Field label="Description" value={content.sectionHeadings.hospitalsDescription} onChange={(v) => updateSectionHeading('hospitalsDescription', v)} multiline />
+          </Card>
+          <Card title="Recognitions section">
+            <Field label="Eyebrow" value={content.sectionHeadings.recognitionsEyebrow} onChange={(v) => updateSectionHeading('recognitionsEyebrow', v)} />
+            <Field label="Title" value={content.sectionHeadings.recognitionsTitle} onChange={(v) => updateSectionHeading('recognitionsTitle', v)} />
+            <Field label="Description" value={content.sectionHeadings.recognitionsDescription} onChange={(v) => updateSectionHeading('recognitionsDescription', v)} multiline />
+          </Card>
+          <Card title="Gallery & Videos headings">
+            <Field label="Gallery eyebrow" value={content.sectionHeadings.galleryEyebrow} onChange={(v) => updateSectionHeading('galleryEyebrow', v)} />
+            <Field label="Gallery title" value={content.sectionHeadings.galleryTitle} onChange={(v) => updateSectionHeading('galleryTitle', v)} />
+            <Field label="Videos eyebrow" value={content.sectionHeadings.videosEyebrow} onChange={(v) => updateSectionHeading('videosEyebrow', v)} />
+            <Field label="Videos title" value={content.sectionHeadings.videosTitle} onChange={(v) => updateSectionHeading('videosTitle', v)} />
+          </Card>
+          <Card title="Shared buttons">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="View more label" value={content.sectionHeadings.viewMoreLabel} onChange={(v) => updateSectionHeading('viewMoreLabel', v)} />
+              <Field label="View less label" value={content.sectionHeadings.viewLessLabel} onChange={(v) => updateSectionHeading('viewLessLabel', v)} />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'branding' && (
+        <div className="grid gap-5 xl:grid-cols-2">
+          <Card title="Brand identity">
+            <ImageField label="Brand logo (optional)" value={content.branding.logo} onChange={(v) => updateBranding('logo', v)} onError={showError} />
+            <Field label="Brand name" value={content.branding.name} onChange={(v) => updateBranding('name', v)} />
+            <Field label="Brand tagline" value={content.branding.tagline} onChange={(v) => updateBranding('tagline', v)} />
+            {content.branding.logo && <img src={content.branding.logo} alt="" className="h-20 w-40 rounded-xl bg-slate-50 object-contain p-2" />}
+          </Card>
+
+          <Card title="Header navigation">
+            {content.navigation.map((item, index) => (
+              <div key={index} className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[1fr_1.2fr_auto] sm:items-end">
+                <Field label={`Menu label ${index + 1}`} value={item.label} onChange={(v) => updateNavigation(index, 'label', v)} />
+                <Field label="Link / section" value={item.href} onChange={(v) => updateNavigation(index, 'href', v)} />
+                <button type="button" aria-label="Remove navigation item" onClick={() => mark({ ...content, navigation: content.navigation.filter((_, i) => i !== index) })} className="mb-1 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => mark({ ...content, navigation: [...content.navigation, { label: 'New link', href: '#' }] })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add navigation link</button>
+          </Card>
+
+          <Card title="Footer brand & quality">
+            <Field label="Footer description" value={content.footer.description} onChange={(v) => updateFooter('description', v)} multiline />
+            <Field label="Quality card title" value={content.footer.qualityTitle} onChange={(v) => updateFooter('qualityTitle', v)} />
+            <Field label="Quality card description" value={content.footer.qualityDescription} onChange={(v) => updateFooter('qualityDescription', v)} multiline />
+            <Field label="Copyright text" value={content.footer.copyrightText} onChange={(v) => updateFooter('copyrightText', v)} />
+            <Field label="Footer motto" value={content.footer.motto} onChange={(v) => updateFooter('motto', v)} />
+          </Card>
+
+          <Card title="Footer Explore links">
+            <Field label="Column title" value={content.footer.exploreTitle} onChange={(v) => updateFooter('exploreTitle', v)} />
+            {content.footer.exploreLinks.map((item, index) => (
+              <div key={index} className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[1fr_1.2fr_auto] sm:items-end">
+                <Field label="Label" value={item.label} onChange={(v) => updateFooterLink('exploreLinks', index, 'label', v)} />
+                <Field label="Link" value={item.href} onChange={(v) => updateFooterLink('exploreLinks', index, 'href', v)} />
+                <button type="button" onClick={() => mark({ ...content, footer: { ...content.footer, exploreLinks: content.footer.exploreLinks.filter((_, i) => i !== index) } })} className="mb-1 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => mark({ ...content, footer: { ...content.footer, exploreLinks: [...content.footer.exploreLinks, { label: 'New link', href: '#' }] } })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add Explore link</button>
+          </Card>
+
+          <Card title="Footer Portal links">
+            <Field label="Column title" value={content.footer.portalsTitle} onChange={(v) => updateFooter('portalsTitle', v)} />
+            {content.footer.portalLinks.map((item, index) => (
+              <div key={index} className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[1fr_1.2fr_auto] sm:items-end">
+                <Field label="Label" value={item.label} onChange={(v) => updateFooterLink('portalLinks', index, 'label', v)} />
+                <Field label="Link" value={item.href} onChange={(v) => updateFooterLink('portalLinks', index, 'href', v)} />
+                <button type="button" onClick={() => mark({ ...content, footer: { ...content.footer, portalLinks: content.footer.portalLinks.filter((_, i) => i !== index) } })} className="mb-1 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => mark({ ...content, footer: { ...content.footer, portalLinks: [...content.footer.portalLinks, { label: 'New link', href: '/login' }] } })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add Portal link</button>
+          </Card>
+        </div>
+      )}
+
       {activeTab === 'seo' && (
         <div className="grid gap-5 lg:grid-cols-2">
           <Card title="Contact information"><Field label="Email" value={content.contact.email} onChange={(v)=>updateContact('email',v)} /><Field label="Phone" value={content.contact.phone} onChange={(v)=>updateContact('phone',v)} /><Field label="Address" value={content.contact.address} onChange={(v)=>updateContact('address',v)} multiline /></Card>
