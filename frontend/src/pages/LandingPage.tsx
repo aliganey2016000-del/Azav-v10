@@ -581,12 +581,21 @@ export const LandingPage: React.FC = () => {
           </p>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: '/memberships/uganda-hospital-emblem.png' },
-              { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck, logo: '/memberships/uganda-hospital-emblem.png' },
-              { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: '/memberships/uganda-hospital-emblem.png' },
-              { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: 'https://www.education.go.ug/wp-content/uploads/2019/07/NewLogo2.png' },
-            ].map(({ name, icon: Icon, logo }) => (
-              <article key={name} className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm transition hover:border-[#008267]/40 hover:shadow-md">
+              { name: 'Ministry of Foreign Affairs — Uganda', icon: Globe2, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://mofa.go.ug/' },
+              { name: 'Ministry of Internal Affairs — Uganda', icon: ShieldCheck, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://www.mia.go.ug/' },
+              { name: 'Ministry of Health — Uganda', icon: Stethoscope, logo: '/memberships/uganda-hospital-emblem.png', url: 'https://health.go.ug/about-moh/' },
+              { name: 'Ministry of Education and Sports — Uganda', icon: GraduationCap, logo: 'https://www.education.go.ug/wp-content/uploads/2019/07/NewLogo2.png', url: 'https://www.education.go.ug/' },
+              { name: 'Ministry of Health & Human Services — Somalia', icon: Stethoscope, logo: 'https://moh.gov.so/so/favicon.ico', url: 'https://moh.gov.so/so/' },
+              { name: 'Ministry of Foreign Affairs & International Cooperation — Somalia', icon: Globe2, logo: 'https://web.mfa.gov.so/favicon.ico', url: 'https://web.mfa.gov.so/' },
+              { name: 'Association of Somali Universities (ASU)', icon: GraduationCap, logo: 'https://asu.org.so/favicon.ico', url: 'https://asu.org.so/' },
+            ].map(({ name, icon: Icon, logo, url }) => (
+              <a
+                key={name}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#008267]/40 hover:shadow-md"
+              >
                 <div className="flex h-20 w-20 items-center justify-center">
                   <img
                     src={logo}
@@ -603,7 +612,7 @@ export const LandingPage: React.FC = () => {
                   </div>
                 </div>
                 <h3 className="mt-4 text-sm font-black leading-6 text-slate-900">{name}</h3>
-              </article>
+              </a>
             ))}
           </div>
         </div>
