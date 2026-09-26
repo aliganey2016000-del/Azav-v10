@@ -90,7 +90,12 @@ const DEFAULT_CONTENT = {
     { name: 'East Africa University', logo: '/memberships/east-africa.png', url: '' },
     { name: 'University of Bosaso', logo: '/memberships/bosaso.png', url: '' },
     { name: 'Salaam University', logo: '/memberships/salaam.png', url: '' },
+    { name: 'Aden Adde International University', logo: '/memberships/aden-adde.png', url: 'https://aaiu.edu.so/' },
+    { name: 'Jamhuriya University of Science and Technology', logo: '/memberships/jamhuriya.png', url: 'https://www.just.edu.so/' },
+    { name: 'Benadir University', logo: '/memberships/benadir.png', url: 'https://bu.edu.so/' },
+    { name: 'Jobkey University', logo: '/memberships/jobkey.png', url: 'https://jobkey.edu.so/v2/' },
   ],
+  membershipSeedVersion: 2,
   contact: {
     email: 'info@azaammedics.org',
     phone: '',

@@ -42,6 +42,7 @@ export type LandingPageContent = {
   videos: VideoItem[];
   networkRoles: string[];
   memberships: MembershipItem[];
+  membershipSeedVersion: number;
   contact: {
     email: string;
     phone: string;
@@ -142,7 +143,12 @@ export const defaultLandingPageContent: LandingPageContent = {
     { name: 'East Africa University', logo: '/memberships/east-africa.png', url: '' },
     { name: 'University of Bosaso', logo: '/memberships/bosaso.png', url: '' },
     { name: 'Salaam University', logo: '/memberships/salaam.png', url: '' },
+    { name: 'Aden Adde International University', logo: '/memberships/aden-adde.png', url: 'https://aaiu.edu.so/' },
+    { name: 'Jamhuriya University of Science and Technology', logo: '/memberships/jamhuriya.png', url: 'https://www.just.edu.so/' },
+    { name: 'Benadir University', logo: '/memberships/benadir.png', url: 'https://bu.edu.so/' },
+    { name: 'Jobkey University', logo: '/memberships/jobkey.png', url: 'https://jobkey.edu.so/v2/' },
   ],
+  membershipSeedVersion: 2,
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -153,6 +159,17 @@ export const defaultLandingPageContent: LandingPageContent = {
     description: 'International medical education, clinical attachments and supervised healthcare training.',
     shareImage: '',
   },
+};
+
+const mergeMemberships = (value: Partial<LandingPageContent> | undefined): MembershipItem[] => {
+  const existing = value?.memberships;
+  if (!Array.isArray(existing)) return defaultLandingPageContent.memberships;
+  if ((value?.membershipSeedVersion || 0) >= 2) return existing;
+  if (existing.length === 0) return defaultLandingPageContent.memberships;
+  const newlyAdded = defaultLandingPageContent.memberships.slice(8).filter((item) =>
+    !existing.some((member) => member.name?.toLowerCase() === item.name.toLowerCase()),
+  );
+  return [...existing, ...newlyAdded];
 };
 
 const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): LandingPageContent => ({
@@ -170,7 +187,8 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   gallery: Array.isArray(value?.gallery) ? value!.gallery : defaultLandingPageContent.gallery,
   videos: Array.isArray(value?.videos) ? value!.videos : defaultLandingPageContent.videos,
   networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
-  memberships: Array.isArray(value?.memberships) && value!.memberships.length > 0 ? value!.memberships : defaultLandingPageContent.memberships,
+  memberships: mergeMemberships(value),
+  membershipSeedVersion: 2,
 });
 
 export const LandingPageCmsService = {
