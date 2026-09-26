@@ -717,15 +717,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {(content.contact.email || content.contact.phone || content.contact.address) && (
-        <section className="border-t border-white/15 bg-[#303b8e]">
-          <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 text-sm sm:grid-cols-3 sm:px-6 lg:px-8">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">{content.sectionHeadings.contactEmailLabel}</p><p className="mt-1 font-bold text-white">{content.contact.email || '—'}</p></div>
-            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">{content.sectionHeadings.contactPhoneLabel}</p><p className="mt-1 font-bold text-white">{content.contact.phone || '—'}</p></div>
-            <div><p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100/40">{content.sectionHeadings.contactAddressLabel}</p><p className="mt-1 font-bold text-white">{content.contact.address || '—'}</p></div>
-          </div>
-        </section>
-      )}
     </div>
   );
 };
