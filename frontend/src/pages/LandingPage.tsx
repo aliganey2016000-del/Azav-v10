@@ -521,13 +521,30 @@ export const LandingPage: React.FC = () => {
             <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-200">Clinical Training Network</p>
             <h2 id="training-hospitals-title" className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">Our Training Hospitals</h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">Hospitals where students gain practical experience through supervised clinical training.</p>
-            <div className="mt-10 flex flex-wrap justify-center gap-4">
-              {content.hospitals.filter((hospital) => hospital.name?.trim()).map((hospital, index) => (
-                <article key={`${hospital.name}-${index}`} className="flex min-h-44 w-40 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-4 shadow-sm sm:w-44">
-                  <img src={hospital.image || '/memberships/uganda-hospital-emblem.png'} alt="" loading="lazy" className="h-20 w-20 object-contain" />
-                  <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
-                </article>
-              ))}
+            <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Training hospitals">
+              <div
+                className="aimn-membership-track"
+                style={{ animationDuration: `${Math.max(36, content.hospitals.filter((hospital) => hospital.name?.trim()).length * 3.2)}s` }}
+              >
+                {[false, true].map((duplicate) => (
+                  <div key={duplicate ? 'hospitals-copy' : 'hospitals-original'} className="flex shrink-0 gap-4 pr-4" aria-hidden={duplicate ? 'true' : undefined}>
+                    {content.hospitals.filter((hospital) => hospital.name?.trim()).map((hospital, index) => (
+                      <article
+                        key={`${duplicate ? 'copy' : 'original'}-${hospital.name}-${index}`}
+                        className="flex min-h-44 w-40 shrink-0 flex-col items-center justify-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-4 shadow-sm sm:w-44"
+                      >
+                        <img
+                          src={hospital.image || '/memberships/uganda-hospital-emblem.png'}
+                          alt={duplicate ? '' : hospital.name}
+                          loading="lazy"
+                          className="h-20 w-20 object-contain"
+                        />
+                        <h3 className="text-center text-xs font-bold leading-snug text-[#073f35]">{hospital.name}</h3>
+                      </article>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
