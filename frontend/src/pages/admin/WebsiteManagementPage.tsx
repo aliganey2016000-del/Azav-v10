@@ -338,11 +338,26 @@ export const WebsiteManagementPage: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'updates' && (
+      {activeTab === 'testimonials' && (
         <div className="space-y-4">
-          <div className="flex justify-end"><button onClick={() => mark({...content,news:[...content.news,{title:'New update',label:'Update',summary:'',image:'',link:'/login'}]})} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add update</button></div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {content.news.map((item,index) => <Card key={index} title={`Update ${index+1}`} onDelete={() => mark({...content,news:content.news.filter((_,i)=>i!==index)})}><Field label="Label" value={item.label} onChange={(v)=>updateNews(index,'label',v)} /><Field label="Title" value={item.title} onChange={(v)=>updateNews(index,'title',v)} multiline /><Field label="Summary" value={item.summary} onChange={(v)=>updateNews(index,'summary',v)} multiline /><ImageField label="Image" value={item.image} onChange={(v)=>updateNews(index,'image',v)} onError={showError} /><Field label="Read more link" value={item.link} onChange={(v)=>updateNews(index,'link',v)} /></Card>)}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="font-black text-slate-900">Testimonials</h2><p className="mt-1 text-sm text-slate-600">Manage every person, portrait, title, organization, rating and quote shown in the testimonial carousel.</p></div>
+            <button type="button" onClick={() => mark({ ...content, testimonials: [...content.testimonials, { name: 'New testimonial', role: '', organization: '', image: '', rating: '5', quote: '' }] })} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add testimonial</button>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {content.testimonials.map((item, index) => (
+              <Card key={index} title={`Testimonial ${index + 1}`} onDelete={() => mark({ ...content, testimonials: content.testimonials.filter((_, i) => i !== index) })}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Name" value={item.name} onChange={(v) => updateTestimonial(index, 'name', v)} />
+                  <Field label="Title / Role" value={item.role} onChange={(v) => updateTestimonial(index, 'role', v)} />
+                </div>
+                <Field label="Organization / University" value={item.organization} onChange={(v) => updateTestimonial(index, 'organization', v)} />
+                <ImageField label="Portrait image" value={item.image} onChange={(v) => updateTestimonial(index, 'image', v)} onError={showError} />
+                <Field label="Rating (1–5)" value={item.rating} onChange={(v) => updateTestimonial(index, 'rating', v)} />
+                <Field label="Testimonial quote" value={item.quote} onChange={(v) => updateTestimonial(index, 'quote', v)} multiline />
+                {item.image && <img src={item.image} alt="" className="h-44 w-full rounded-xl object-cover object-top" />}
+              </Card>
+            ))}
           </div>
         </div>
       )}
