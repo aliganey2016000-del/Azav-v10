@@ -408,7 +408,7 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      <section id="programs" className="bg-[#003d33] py-20" style={heroPattern}>
+      <section id="programs" className="bg-[#00a653] py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 max-w-2xl">
             <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]"><GraduationCap className="h-4 w-4" /> Clinical Training</div>
