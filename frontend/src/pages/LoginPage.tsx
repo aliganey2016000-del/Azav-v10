@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
@@ -35,6 +35,11 @@ export const LoginPage: React.FC = () => {
           <button type="submit" disabled={loading} className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-all shadow-md text-xs flex items-center justify-center gap-2"><span>{loading ? 'Authenticating...' : 'Sign In'}</span><ArrowRight className="w-4 h-4" /></button>
           <div className="text-center text-xs text-slate-400 pt-2">Don't have an account? <Link to="/register" className="text-sky-400 font-semibold hover:underline">Apply Now</Link></div>
         </form>
+        <div className="text-center">
+          <Link to="/" className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400">
+            <ArrowLeft className="h-4 w-4" /> Back to Home
+          </Link>
+        </div>
       </div>
     </div>
   );
