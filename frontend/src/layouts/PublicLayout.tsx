@@ -38,20 +38,20 @@ export const PublicLayout: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#003d33] text-white">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#003d33]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-[78px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-3">
+    <div className="min-h-screen overflow-x-hidden bg-[#003d33] text-white">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#003d33]/95 shadow-[0_10px_30px_rgba(0,0,0,0.10)] backdrop-blur-xl">
+        <div className="mx-auto flex h-[94px] max-w-7xl items-center justify-between px-4 sm:h-[88px] sm:px-6 lg:px-8">
+          <Link to="/" className="flex min-w-0 items-center gap-4 sm:gap-3">
             {siteContent.branding.logo ? (
-              <img src={siteContent.branding.logo} alt={siteContent.branding.name} className="h-10 w-10 rounded-xl bg-white object-contain p-1 shadow-lg" />
+              <img src={siteContent.branding.logo} alt={siteContent.branding.name} className="h-14 w-14 shrink-0 rounded-[18px] bg-white object-contain p-1.5 shadow-lg sm:h-12 sm:w-12 sm:rounded-2xl" />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ffb612] text-[#003d33] shadow-lg shadow-amber-400/20">
-                <Activity className="h-5 w-5" />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-[#ffb612] text-[#003d33] shadow-lg shadow-amber-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+                <Activity className="h-7 w-7 sm:h-6 sm:w-6" />
               </div>
             )}
-            <div>
-              <div className="text-[18px] font-black leading-none text-white" style={headingFont}>{siteContent.branding.name}</div>
-              <div className="mt-1 text-[9px] font-black uppercase tracking-[0.22em] text-emerald-100/65">{siteContent.branding.tagline}</div>
+            <div className="min-w-0">
+              <div className="truncate text-[23px] font-black leading-none text-white sm:text-[22px]" style={headingFont}>{siteContent.branding.name}</div>
+              <div className="mt-1.5 truncate text-[8px] font-black uppercase tracking-[0.18em] text-emerald-100/65 sm:text-[10px] sm:tracking-[0.22em]">{siteContent.branding.tagline}</div>
             </div>
           </Link>
 
@@ -86,10 +86,10 @@ export const PublicLayout: React.FC = () => {
 
           <button
             onClick={() => setMobileMenuOpen((value) => !value)}
-            className="rounded-xl border border-white/15 p-2.5 text-white lg:hidden"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-white/15 text-white transition hover:bg-white/5 lg:hidden"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
           </button>
         </div>
 
