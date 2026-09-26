@@ -189,6 +189,7 @@ export const LandingPage: React.FC = () => {
   const [showAllMemberships, setShowAllMemberships] = useState(false);
   const [showAllHospitals, setShowAllHospitals] = useState(false);
   const [showAllRecognitions, setShowAllRecognitions] = useState(false);
+  const [showAllTestimonials, setShowAllTestimonials] = useState(false);
 
   useEffect(() => {
     const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
@@ -459,40 +460,74 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      <section id="testimonials" aria-labelledby="testimonials-title" className="bg-[#f6fbf8] py-16 text-slate-800 sm:py-20">
+      <section id="testimonials" aria-labelledby="testimonials-title" className="bg-[#303b8e] py-16 text-white sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#008267]">Partner Experience</p>
-            <h2 id="testimonials-title" className="mt-3 text-3xl font-black text-[#073f35] sm:text-4xl" style={headingFont}>What Our Partners Say</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">Sample testimonial placeholders for verified institutional feedback about placements, clinical training and partnership coordination.</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-200">Partner Experience</p>
+            <h2 id="testimonials-title" className="mt-3 text-3xl font-black text-white sm:text-4xl" style={headingFont}>What Our Partners Say</h2>
+            <p className="mt-4 text-sm leading-7 text-white/75 sm:text-base">Sample testimonial placeholders for verified institutional feedback about placements, clinical training and partnership coordination.</p>
           </div>
 
-          <div className="aimn-testimonial-window mt-10 overflow-hidden" aria-label="Partner testimonials">
-            <div className="aimn-testimonial-track">
-              {[false, true].map((duplicate) => (
-                <div key={duplicate ? 'testimonials-copy' : 'testimonials-original'} className="flex shrink-0 gap-4 pr-4" aria-hidden={duplicate ? 'true' : undefined}>
-                  {TESTIMONIALS.map((item, index) => (
-                    <article
-                      key={`${duplicate ? 'copy' : 'original'}-${index}`}
-                      className="w-[280px] shrink-0 rounded-2xl border border-emerald-100 bg-white p-5 text-left shadow-sm sm:w-[310px]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#303b8e] text-sm font-black text-white">
-                          {String(index + 1).padStart(2, '0')}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-black text-[#073f35]">{item.name}</h3>
-                          <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">{item.role}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-slate-500">{item.organization}</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
-                      <p className="mt-3 line-clamp-4 text-sm leading-6 text-slate-600">“{item.quote}”</p>
-                    </article>
-                  ))}
-                </div>
+          {showAllTestimonials ? (
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {TESTIMONIALS.map((item, index) => (
+                <article
+                  key={`testimonial-grid-${index}`}
+                  className="rounded-2xl border border-white/15 bg-white p-5 text-left text-slate-800 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#303b8e] text-sm font-black text-white">
+                      {String(index + 1).padStart(2, '0')}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-black text-[#073f35]">{item.name}</h3>
+                      <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">{item.role}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-slate-500">{item.organization}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">“{item.quote}”</p>
+                </article>
               ))}
             </div>
+          ) : (
+            <div className="aimn-testimonial-window mt-10 overflow-hidden" aria-label="Partner testimonials">
+              <div className="aimn-testimonial-track">
+                {[false, true].map((duplicate) => (
+                  <div key={duplicate ? 'testimonials-copy' : 'testimonials-original'} className="flex shrink-0 gap-4 pr-4" aria-hidden={duplicate ? 'true' : undefined}>
+                    {TESTIMONIALS.map((item, index) => (
+                      <article
+                        key={`${duplicate ? 'copy' : 'original'}-${index}`}
+                        className="w-[280px] shrink-0 rounded-2xl border border-white/15 bg-white p-5 text-left text-slate-800 shadow-sm sm:w-[310px]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#303b8e] text-sm font-black text-white">
+                            {String(index + 1).padStart(2, '0')}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-black text-[#073f35]">{item.name}</h3>
+                            <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">{item.role}</p>
+                            <p className="mt-0.5 truncate text-[11px] text-slate-500">{item.organization}</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
+                        <p className="mt-3 line-clamp-4 text-sm leading-6 text-slate-600">“{item.quote}”</p>
+                      </article>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAllTestimonials((current) => !current)}
+              className="rounded bg-white px-7 py-2.5 text-sm font-bold text-[#303b8e] transition hover:bg-slate-100"
+            >
+              {showAllTestimonials ? 'View less' : 'View more'}
+            </button>
           </div>
         </div>
       </section>
