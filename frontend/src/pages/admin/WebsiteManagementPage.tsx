@@ -274,22 +274,32 @@ export const WebsiteManagementPage: React.FC = () => {
         <div className="grid gap-5 lg:grid-cols-[1fr_0.8fr]">
           <Card title="Hero content">
             <Field label="Eyebrow" value={content.hero.eyebrow} onChange={(v) => updateHero('eyebrow', v)} />
-            <Field label="Main title" value={content.hero.title} onChange={(v) => updateHero('title', v)} multiline />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {content.hero.titleLines.map((line, index) => (
+                <div key={index} className="flex items-end gap-2">
+                  <div className="flex-1"><Field label={`Title line ${index + 1}`} value={line} onChange={(value) => mark({ ...content, hero: { ...content.hero, titleLines: content.hero.titleLines.map((item, i) => i === index ? value : item) } })} /></div>
+                  <button type="button" aria-label={`Remove title line ${index + 1}`} onClick={() => mark({ ...content, hero: { ...content.hero, titleLines: content.hero.titleLines.filter((_, i) => i !== index) } })} className="mb-1 rounded-lg bg-rose-50 p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={() => mark({ ...content, hero: { ...content.hero, titleLines: [...content.hero.titleLines, 'New title line'] } })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add title line</button>
             <Field label="Subtitle" value={content.hero.subtitle} onChange={(v) => updateHero('subtitle', v)} multiline />
+            <Field label="Trust text" value={content.hero.trustText} onChange={(v) => updateHero('trustText', v)} />
             <div className="grid gap-4 sm:grid-cols-2"><Field label="Primary button text" value={content.hero.primaryButtonText} onChange={(v) => updateHero('primaryButtonText', v)} /><Field label="Primary button link" value={content.hero.primaryButtonUrl} onChange={(v) => updateHero('primaryButtonUrl', v)} /></div>
             <div className="grid gap-4 sm:grid-cols-2"><Field label="Secondary button text" value={content.hero.secondaryButtonText} onChange={(v) => updateHero('secondaryButtonText', v)} /><Field label="Secondary button link" value={content.hero.secondaryButtonUrl} onChange={(v) => updateHero('secondaryButtonUrl', v)} /></div>
           </Card>
-          <Card title="Hero media">
-            <ImageField label="Background image" value={content.hero.backgroundImage} onChange={(v) => updateHero('backgroundImage', v)} onError={showError} />
-            <Field label="Organization video URL (YouTube or MP4)" value={content.hero.backgroundVideo} onChange={(v) => updateHero('backgroundVideo', v)} placeholder="https://www.youtube.com/watch?v=... or MP4 URL" />
-            <p className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800">Paste a YouTube or public MP4 link here. The video is embedded in the landing-page hero and visitors can watch it without leaving your website.</p>
-            <div className="overflow-hidden rounded-xl bg-slate-100">{content.hero.backgroundImage && <img src={content.hero.backgroundImage} alt="Hero preview" className="h-48 w-full object-cover" />}</div>
+          <Card title="Organization video">
+            <Field label="YouTube or MP4 URL" value={content.hero.backgroundVideo} onChange={(v) => updateHero('backgroundVideo', v)} placeholder="https://www.youtube.com/watch?v=... or MP4 URL" />
+            <p className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-800">This video appears inside the hero section and plays on the website without sending visitors away from the landing page.</p>
           </Card>
-          <div className="lg:col-span-2"><Card title="Highlight statistics">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {content.highlights.map((item, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><div className="grid gap-3 sm:grid-cols-2"><Field label="Value" value={item.value} onChange={(v) => { const highlights=[...content.highlights]; highlights[index]={...item,value:v}; mark({...content,highlights}); }} /><Field label="Label" value={item.label} onChange={(v) => { const highlights=[...content.highlights]; highlights[index]={...item,label:v}; mark({...content,highlights}); }} /></div><button onClick={() => mark({...content,highlights:content.highlights.filter((_,i)=>i!==index)})} className="mt-2 text-xs font-bold text-rose-600">Remove</button></div>)}
+          <div className="lg:col-span-2"><Card title="Live hero counter labels">
+            <p className="text-sm leading-6 text-slate-600">The numbers are counted automatically from Partners, Hospitals, Recognitions and Training Programs. Edit only the labels below.</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Field label="Universities label" value={content.hero.statsLabels.universities} onChange={(value) => mark({ ...content, hero: { ...content.hero, statsLabels: { ...content.hero.statsLabels, universities: value } } })} />
+              <Field label="Hospitals label" value={content.hero.statsLabels.hospitals} onChange={(value) => mark({ ...content, hero: { ...content.hero, statsLabels: { ...content.hero.statsLabels, hospitals: value } } })} />
+              <Field label="Recognitions label" value={content.hero.statsLabels.recognitions} onChange={(value) => mark({ ...content, hero: { ...content.hero, statsLabels: { ...content.hero.statsLabels, recognitions: value } } })} />
+              <Field label="Programs label" value={content.hero.statsLabels.programs} onChange={(value) => mark({ ...content, hero: { ...content.hero, statsLabels: { ...content.hero.statsLabels, programs: value } } })} />
             </div>
-            <button onClick={() => mark({...content,highlights:[...content.highlights,{label:'NEW HIGHLIGHT',value:'00'}]})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add highlight</button>
           </Card></div>
         </div>
       )}
