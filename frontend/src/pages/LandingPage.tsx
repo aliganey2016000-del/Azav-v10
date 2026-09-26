@@ -239,97 +239,108 @@ export const LandingPage: React.FC = () => {
       )}
 
       <section className="relative isolate overflow-hidden bg-[#303b8e]">
-        {content.hero.backgroundImage && (
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-full bg-cover bg-[position:72%_center] opacity-25 sm:w-[72%] sm:opacity-35 lg:w-[58%] lg:opacity-45"
-            style={{
-              backgroundImage: `linear-gradient(90deg, rgba(48,59,142,1) 0%, rgba(48,59,142,0.82) 30%, rgba(48,59,142,0.28) 72%, rgba(48,59,142,0.16) 100%), url("${content.hero.backgroundImage}")`,
-              WebkitMaskImage: 'linear-gradient(to left, black 55%, transparent 100%)',
-              maskImage: 'linear-gradient(to left, black 55%, transparent 100%)',
-            }}
-            aria-hidden="true"
-          />
-        )}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(255,182,18,0.11),transparent_25%),radial-gradient(circle_at_82%_38%,rgba(74,184,255,0.16),transparent_32%),linear-gradient(180deg,rgba(34,46,132,0.05),rgba(25,40,128,0.28))]" />
-        <div className="pointer-events-none absolute -right-24 top-32 hidden h-[560px] w-[560px] rounded-full border border-cyan-200/15 sm:block lg:-right-8">
-          <div className="absolute inset-10 rounded-full border border-cyan-200/10" />
-          <div className="absolute inset-24 rounded-full border border-cyan-200/10" />
-          <Globe2 className="absolute inset-0 m-auto h-72 w-72 text-cyan-100/[0.08]" strokeWidth={0.7} />
-        </div>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.08),transparent_26%),radial-gradient(circle_at_82%_70%,rgba(0,185,104,0.12),transparent_30%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-12 sm:px-6 sm:pb-16 sm:pt-16 lg:px-8 lg:pb-20 lg:pt-20">
-          <div className="max-w-[900px]">
-            <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#ffbf2f]/45 bg-white/[0.04] px-4 py-2.5 text-[10px] font-black uppercase leading-5 tracking-[0.18em] text-[#ffd15a] backdrop-blur sm:px-5 sm:text-[11px] sm:tracking-[0.22em]">
-              <Globe2 className="h-4 w-4 shrink-0 text-[#ffbf2f]" />
-              <span>{content.hero.eyebrow || 'Global Clinical Training • Institutional Partnerships • Capacity Development'}</span>
-            </div>
-
-            <h1
-              className="mt-8 max-w-[880px] text-[46px] font-black leading-[0.92] tracking-[-0.045em] text-white sm:text-[64px] md:text-[72px] lg:text-[82px]"
-              style={headingFont}
-            >
-              {content.hero.titleLines.map((line, index) => (
-                <span key={index} className={`block ${index % 2 === 1 ? 'text-[#ffbf2f]' : 'text-white'}`}>
-                  {line}
-                </span>
-              ))}
-            </h1>
-
-            <p className="mt-8 max-w-[780px] text-[15px] leading-7 text-white/85 sm:text-[17px] sm:leading-8 lg:text-[18px]">
-              {content.hero.subtitle || 'AZAAM Medics connects universities, teaching hospitals, healthcare institutions, and medical professionals through structured clinical training, professional development, and international collaboration.'}
-            </p>
-
-            <div className="mt-9 grid w-full max-w-[670px] grid-cols-2 gap-3 sm:gap-4">
-              <SmartLink
-                to={content.hero.primaryButtonUrl || '/register'}
-                className="inline-flex min-h-14 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#ffb612] px-4 text-[11px] font-black text-[#063b31] shadow-xl shadow-amber-500/20 transition hover:-translate-y-0.5 hover:bg-[#ffc83d] sm:px-7 sm:text-sm"
-              >
-                {content.hero.primaryButtonText || 'Explore Opportunities'}
-                <ArrowRight className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-              </SmartLink>
-              <SmartLink
-                to={content.hero.secondaryButtonUrl || '/verify-certificate'}
-                className="inline-flex min-h-14 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-white/30 bg-white/[0.04] px-4 text-[11px] font-black text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/[0.10] sm:px-7 sm:text-sm"
-              >
-                <ShieldCheck className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                {content.hero.secondaryButtonText || 'Verify Certificate'}
-              </SmartLink>
-            </div>
-
-            <div className="mt-10 flex max-w-[760px] flex-col gap-5 sm:flex-row sm:items-center sm:gap-7">
-              <div className="flex -space-x-2.5" aria-label="AZAAM Medics network">
-                {[
-                  { Icon: Building2, bg: 'bg-[#ffb612]', fg: 'text-[#003d33]' },
-                  { Icon: Users, bg: 'bg-[#43cfba]', fg: 'text-[#003d33]' },
-                  { Icon: GraduationCap, bg: 'bg-[#4bb6ff]', fg: 'text-[#17316f]' },
-                  { Icon: Globe2, bg: 'bg-[#ef6cb2]', fg: 'text-white' },
-                ].map(({ Icon, bg, fg }, index) => (
-                  <span key={index} className={`flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#303b8e] ${bg} ${fg} sm:h-12 sm:w-12`}>
-                    <Icon className="h-5 w-5" strokeWidth={2} />
-                  </span>
-                ))}
+        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-14 sm:px-6 md:pt-20 lg:px-8 lg:pb-16">
+          <div className="grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#ffb612]/35 bg-[#ffb612]/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-[#ffd55b]">
+                <Sparkles className="h-3.5 w-3.5" /> {content.hero.eyebrow || 'Trusted by medical schools & hospitals worldwide'}
               </div>
-              <div className="min-w-0">
-                <div className="text-base tracking-[0.16em] text-[#ffbf2f]" aria-label="Five star network">★★★★★</div>
-                <p className="mt-1 max-w-xl text-[13px] leading-5 text-white/65 sm:text-sm">
-                  {content.hero.trustText || 'Connecting universities, hospitals, educators, and healthcare professionals across borders.'}
-                </p>
+
+              <h1 className="mt-6 max-w-[680px] text-[40px] font-black leading-[0.98] tracking-[-0.035em] text-white sm:text-[54px] lg:text-[62px] xl:text-[66px]" style={headingFont}>
+                {content.hero.titleLines.map((line, index) => (
+                  <span key={index} className={`block ${index > 0 && index < content.hero.titleLines.length - 1 ? 'text-[#ffbf2f]' : 'text-white'}`}>{line}</span>
+                ))}
+              </h1>
+
+              <p className="mt-6 max-w-2xl text-[15px] leading-7 text-white/85 sm:text-base sm:leading-8 lg:text-[17px]">
+                {content.hero.subtitle || 'Manage clinical placements, student nominations, visas, hospital coordination, attendance, certificates and training operations — all in one powerful platform.'}
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <SmartLink to={content.hero.primaryButtonUrl} className="inline-flex items-center gap-2 rounded-full bg-[#ffb612] px-7 py-3.5 text-sm font-black text-[#063b31] shadow-lg shadow-amber-500/20 transition hover:bg-[#ffc83d]">
+                  {content.hero.primaryButtonText || 'Get Started'} <ArrowRight className="h-4 w-4" />
+                </SmartLink>
+                <a
+                  href={content.hero.secondaryButtonUrl || (heroShowcaseUrl ? '#organization-video' : '#programs')}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.05] px-7 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.10]"
+                >
+                  <Play className="h-4 w-4" /> {content.hero.secondaryButtonText || (heroShowcaseUrl ? 'Watch Video' : 'Explore Programs')}
+                </a>
+              </div>
+
+              <div className="mt-7 flex items-center gap-4">
+                <div className="flex -space-x-2">
+                  {['#ffb612','#3fd0b6','#4bb6ff','#f270b5'].map((color, index) => (
+                    <span key={index} className="h-8 w-8 rounded-full border-2 border-[#303b8e]" style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+                <div>
+                  <div className="text-sm tracking-[0.18em] text-[#ffbf2f]">★★★★★</div>
+                  <p className="text-xs text-white/65">{content.hero.trustText}</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="organization-video" className="relative mx-auto w-full max-w-[620px] scroll-mt-28">
+              <div className="absolute -inset-8 rounded-[36px] bg-white/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-[28px] border border-white/20 bg-white/[0.08] shadow-2xl shadow-black/25 backdrop-blur-xl">
+                <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]">{content.sectionHeadings.heroVideoEyebrow}</p>
+                    <h2 className="mt-1 truncate text-base font-black text-white sm:text-lg">{content.sectionHeadings.heroVideoTitle}</h2>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5" aria-hidden="true">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#ffb612]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#45d2aa]" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#4bb6ff]" />
+                  </div>
+                </div>
+
+                <div className="aspect-video w-full bg-[#18236f]">
+                  {heroShowcaseEmbed ? (
+                    <iframe
+                      src={`${heroShowcaseEmbed}${heroShowcaseEmbed.includes('?') ? '&' : '?'}rel=0&modestbranding=1&playsinline=1`}
+                      title="AIMN organization impact video"
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  ) : heroShowcaseUrl ? (
+                    <video src={heroShowcaseUrl} controls playsInline className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ffb612] text-[#303b8e] shadow-lg">
+                        <Play className="ml-1 h-7 w-7" fill="currentColor" />
+                      </div>
+                      <p className="mt-5 text-lg font-black text-white">Organization video</p>
+                      <p className="mt-2 max-w-sm text-sm leading-6 text-white/65">Add a YouTube or MP4 link from Website Management → Hero media. The video will play directly inside this page.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-white/10 px-5 py-4 sm:px-6">
+                  <p className="text-sm leading-6 text-white/70">
+                    {content.sectionHeadings.heroVideoDescription}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-14 overflow-hidden rounded-[26px] border border-white/15 bg-white/[0.07] shadow-2xl shadow-black/10 backdrop-blur-xl sm:mt-16">
+          <div className="mt-16 overflow-hidden rounded-[24px] border border-white/15 bg-white/[0.08] shadow-xl backdrop-blur-xl">
             <div className="grid grid-cols-2 lg:grid-cols-4">
               {heroNetworkStats.map(({ label, value, icon: Icon }, index) => (
                 <div
                   key={label}
-                  className={`flex min-h-24 flex-col items-center justify-center px-3 py-5 text-center sm:min-h-28 sm:px-5 ${index % 2 === 0 ? 'border-r border-white/10 lg:border-r' : ''} ${index < 2 ? 'border-b border-white/10 lg:border-b-0' : ''} ${index > 0 ? 'lg:border-l lg:border-white/10' : ''}`}
+                  className={`flex min-h-28 flex-col items-center justify-center px-4 py-5 text-center sm:min-h-32 sm:px-6 sm:py-6 ${index % 2 === 0 ? 'border-r border-white/10 lg:border-r' : ''} ${index < 2 ? 'border-b border-white/10 lg:border-b-0' : ''} ${index > 0 ? 'lg:border-l lg:border-white/10' : ''}`}
                 >
-                  <Icon className="mb-2 h-5 w-5 text-white/65" strokeWidth={1.8} aria-hidden="true" />
-                  <div className="text-2xl font-black text-[#ffbf2f] sm:text-3xl" style={headingFont}>
+                  <Icon className="mb-2 h-5 w-5 text-white/70 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
+                  <div className="text-3xl font-black text-[#ffbf2f] sm:text-4xl" style={headingFont}>
                     {String(value).padStart(2, '0')}
                   </div>
-                  <div className="mt-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-white/60 sm:text-[10px] sm:tracking-[0.16em]">
+                  <div className="mt-2 text-[9px] font-black uppercase tracking-[0.14em] text-white/65 sm:text-[10px] sm:tracking-[0.18em]">
                     {label}
                   </div>
                 </div>
