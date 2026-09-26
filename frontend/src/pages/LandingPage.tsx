@@ -485,18 +485,6 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      {content.networkRoles.length > 0 && (
-        <section id="network" className="bg-[#f6fbf8] py-20 text-slate-800">
-          <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#006d56]"><Globe2 className="h-3.5 w-3.5" /> Network ecosystem</div>
-            <h2 className="mt-4 text-4xl font-black text-[#073f35]" style={headingFont}>Partners who make safe placement possible</h2>
-            <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {content.networkRoles.map((role, index) => <div key={index} className="rounded-2xl border border-emerald-100 bg-white p-4 text-sm font-bold text-slate-700 shadow-sm">{role}</div>)}
-            </div>
-          </div>
-        </section>
-      )}
-
       <section aria-labelledby="memberships-title" className="bg-white px-4 py-16 text-[#202020] sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-6xl text-center">
           <h2 id="memberships-title" className="text-xl font-extrabold uppercase tracking-tight sm:text-2xl">Local and International Memberships and Agreements</h2>
