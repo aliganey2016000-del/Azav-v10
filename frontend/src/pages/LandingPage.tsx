@@ -33,21 +33,21 @@ import {
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
 const TESTIMONIALS = [
-  { name: 'Dr. [Name 01]', role: 'Dean of Medicine', organization: 'Jamhuriya University', quote: 'AIMN provides a dependable placement process and clear institutional coordination from nomination through clinical training.' },
-  { name: 'Dr. [Name 02]', role: 'Clinical Coordinator', organization: 'Benadir University', quote: 'The structured workflow makes student placements easier to manage and gives institutions better visibility throughout training.' },
-  { name: 'Prof. [Name 03]', role: 'Faculty Representative', organization: 'Islamic University in Uganda', quote: 'AIMN strengthens collaboration between universities and hospitals while keeping clinical training practical and well organized.' },
-  { name: 'Dr. [Name 04]', role: 'Academic Director', organization: 'Kampala International University', quote: 'Placement reliability and responsive coordination are major strengths of the AIMN model.' },
-  { name: 'Dr. [Name 05]', role: 'Dean of Health Sciences', organization: 'Busitema University', quote: 'The platform supports consistent communication, supervised rotations and a smoother experience for students and institutions.' },
-  { name: 'Prof. [Name 06]', role: 'Medical Education Lead', organization: 'Makerere University', quote: 'AIMN brings structure to clinical attachments and helps partners coordinate placements efficiently.' },
-  { name: 'Dr. [Name 07]', role: 'University Liaison', organization: 'Mogadishu University', quote: 'The nomination and placement journey is clear, traceable and easier for academic teams to follow.' },
-  { name: 'Dr. [Name 08]', role: 'Clinical Training Lead', organization: 'Zamzam University', quote: 'Students benefit from organized clinical exposure while institutions benefit from reliable coordination and documentation.' },
-  { name: 'Prof. [Name 09]', role: 'Dean of Medicine', organization: 'Partner University', quote: 'AIMN creates a practical bridge between academic preparation and supervised hospital-based learning.' },
-  { name: 'Dr. [Name 10]', role: 'Hospital Training Coordinator', organization: 'Regional Referral Hospital', quote: 'Hospital coordination is more efficient when student lists, rotations and communication are managed through one workflow.' },
-  { name: 'Dr. [Name 11]', role: 'Clinical Supervisor', organization: 'Teaching Hospital', quote: 'The structured approach supports supervision, accountability and a better clinical training experience.' },
-  { name: 'Prof. [Name 12]', role: 'Institutional Partnership Lead', organization: 'Partner Institution', quote: 'AIMN makes cross-institutional collaboration easier through clear processes and consistent follow-up.' },
-  { name: 'Dr. [Name 13]', role: 'Student Affairs Director', organization: 'Medical University', quote: 'The platform improves visibility of placement progress and gives our team confidence in the coordination process.' },
-  { name: 'Dr. [Name 14]', role: 'Training Programme Lead', organization: 'Clinical Partner', quote: 'AIMN combines dependable placement support with a strong focus on quality clinical learning.' },
-  { name: 'Prof. [Name 15]', role: 'Academic Partnership Director', organization: 'International Partner', quote: 'The partnership workflow is organized, responsive and designed around the needs of universities, hospitals and trainees.' },
+  { name: 'Dr. [Name 01]', role: 'Dean of Medicine', organization: 'Jamhuriya University', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&q=85', quote: 'AIMN provides a dependable placement process and clear institutional coordination from nomination through clinical training.' },
+  { name: 'Dr. [Name 02]', role: 'Clinical Coordinator', organization: 'Benadir University', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=700&q=85', quote: 'The structured workflow makes student placements easier to manage and gives institutions better visibility throughout training.' },
+  { name: 'Prof. [Name 03]', role: 'Faculty Representative', organization: 'Islamic University in Uganda', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=85', quote: 'AIMN strengthens collaboration between universities and hospitals while keeping clinical training practical and well organized.' },
+  { name: 'Dr. [Name 04]', role: 'Academic Director', organization: 'Kampala International University', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=85', quote: 'Placement reliability and responsive coordination are major strengths of the AIMN model.' },
+  { name: 'Dr. [Name 05]', role: 'Dean of Health Sciences', organization: 'Busitema University', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=700&q=85', quote: 'The platform supports consistent communication, supervised rotations and a smoother experience for students and institutions.' },
+  { name: 'Prof. [Name 06]', role: 'Medical Education Lead', organization: 'Makerere University', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=700&q=85', quote: 'AIMN brings structure to clinical attachments and helps partners coordinate placements efficiently.' },
+  { name: 'Dr. [Name 07]', role: 'University Liaison', organization: 'Mogadishu University', image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=700&q=85', quote: 'The nomination and placement journey is clear, traceable and easier for academic teams to follow.' },
+  { name: 'Dr. [Name 08]', role: 'Clinical Training Lead', organization: 'Zamzam University', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=700&q=85', quote: 'Students benefit from organized clinical exposure while institutions benefit from reliable coordination and documentation.' },
+  { name: 'Prof. [Name 09]', role: 'Dean of Medicine', organization: 'Partner University', image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=700&q=85', quote: 'AIMN creates a practical bridge between academic preparation and supervised hospital-based learning.' },
+  { name: 'Dr. [Name 10]', role: 'Hospital Training Coordinator', organization: 'Regional Referral Hospital', image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=700&q=85', quote: 'Hospital coordination is more efficient when student lists, rotations and communication are managed through one workflow.' },
+  { name: 'Dr. [Name 11]', role: 'Clinical Supervisor', organization: 'Teaching Hospital', image: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=700&q=85', quote: 'The structured approach supports supervision, accountability and a better clinical training experience.' },
+  { name: 'Prof. [Name 12]', role: 'Institutional Partnership Lead', organization: 'Partner Institution', image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=700&q=85', quote: 'AIMN makes cross-institutional collaboration easier through clear processes and consistent follow-up.' },
+  { name: 'Dr. [Name 13]', role: 'Student Affairs Director', organization: 'Medical University', image: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c6?auto=format&fit=crop&w=700&q=85', quote: 'The platform improves visibility of placement progress and gives our team confidence in the coordination process.' },
+  { name: 'Dr. [Name 14]', role: 'Training Programme Lead', organization: 'Clinical Partner', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=700&q=85', quote: 'AIMN combines dependable placement support with a strong focus on quality clinical learning.' },
+  { name: 'Prof. [Name 15]', role: 'Academic Partnership Director', organization: 'International Partner', image: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=700&q=85', quote: 'The partnership workflow is organized, responsive and designed around the needs of universities, hospitals and trainees.' },
 ];
 
 const aimnHighlightIcons = [Users, CalendarDays, Stethoscope, TrendingUp, Globe2, Activity, Building2, Award];
@@ -469,24 +469,22 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {showAllTestimonials ? (
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {TESTIMONIALS.map((item, index) => (
                 <article
                   key={`testimonial-grid-${index}`}
-                  className="rounded-2xl border border-white/15 bg-white p-5 text-left text-slate-800 shadow-sm"
+                  className="group overflow-hidden rounded-[22px] border border-white/15 bg-white text-slate-800 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#303b8e] text-sm font-black text-white">
-                      {String(index + 1).padStart(2, '0')}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black text-[#073f35]">{item.name}</h3>
-                      <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">{item.role}</p>
-                      <p className="mt-0.5 truncate text-[11px] text-slate-500">{item.organization}</p>
-                    </div>
+                  <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100">
+                    <img src={item.image} alt={item.name} loading="lazy" className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]" />
                   </div>
-                  <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">“{item.quote}”</p>
+                  <div className="p-5">
+                    <h3 className="text-lg font-black leading-tight text-[#073f35]">{item.name}</h3>
+                    <p className="mt-1 text-sm font-bold text-[#303b8e]">{item.role}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{item.organization}</p>
+                    <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">“{item.quote}”</p>
+                  </div>
                 </article>
               ))}
             </div>
@@ -494,24 +492,22 @@ export const LandingPage: React.FC = () => {
             <div className="aimn-testimonial-window mt-10 overflow-hidden" aria-label="Partner testimonials">
               <div className="aimn-testimonial-track">
                 {[false, true].map((duplicate) => (
-                  <div key={duplicate ? 'testimonials-copy' : 'testimonials-original'} className="flex shrink-0 gap-4 pr-4" aria-hidden={duplicate ? 'true' : undefined}>
+                  <div key={duplicate ? 'testimonials-copy' : 'testimonials-original'} className="flex shrink-0 gap-5 pr-5" aria-hidden={duplicate ? 'true' : undefined}>
                     {TESTIMONIALS.map((item, index) => (
                       <article
                         key={`${duplicate ? 'copy' : 'original'}-${index}`}
-                        className="w-[280px] shrink-0 rounded-2xl border border-white/15 bg-white p-5 text-left text-slate-800 shadow-sm sm:w-[310px]"
+                        className="group w-[82vw] max-w-[320px] shrink-0 overflow-hidden rounded-[22px] border border-white/15 bg-white text-left text-slate-800 shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:w-[320px] lg:w-[340px]"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-[#303b8e] text-sm font-black text-white">
-                            {String(index + 1).padStart(2, '0')}
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="truncate text-sm font-black text-[#073f35]">{item.name}</h3>
-                            <p className="mt-0.5 truncate text-xs font-semibold text-slate-600">{item.role}</p>
-                            <p className="mt-0.5 truncate text-[11px] text-slate-500">{item.organization}</p>
-                          </div>
+                        <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100">
+                          <img src={item.image} alt={duplicate ? '' : item.name} loading="lazy" className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]" />
                         </div>
-                        <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
-                        <p className="mt-3 line-clamp-4 text-sm leading-6 text-slate-600">“{item.quote}”</p>
+                        <div className="p-5">
+                          <h3 className="text-lg font-black leading-tight text-[#073f35]">{item.name}</h3>
+                          <p className="mt-1 text-sm font-bold text-[#303b8e]">{item.role}</p>
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{item.organization}</p>
+                          <div className="mt-4 text-sm tracking-[0.14em] text-[#ffb612]" aria-label="5 out of 5 stars">★★★★★</div>
+                          <p className="mt-3 line-clamp-5 text-sm leading-6 text-slate-600">“{item.quote}”</p>
+                        </div>
                       </article>
                     ))}
                   </div>
