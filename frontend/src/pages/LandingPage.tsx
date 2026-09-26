@@ -12,6 +12,7 @@ import {
   Globe2,
   GraduationCap,
   Image as ImageIcon,
+  Maximize2,
   Play,
   PlayCircle,
   ShieldCheck,
@@ -22,6 +23,7 @@ import {
   Users,
   Telescope,
   Diamond,
+  X,
 } from 'lucide-react';
 import {
   defaultLandingPageContent,
@@ -172,6 +174,7 @@ export const LandingPage: React.FC = () => {
   const [showAllHospitals, setShowAllHospitals] = useState(false);
   const [showAllRecognitions, setShowAllRecognitions] = useState(false);
   const [showAllTestimonials, setShowAllTestimonials] = useState(false);
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
@@ -200,6 +203,7 @@ export const LandingPage: React.FC = () => {
   const heroShowcaseEmbed = heroShowcaseUrl ? youtubeEmbed(heroShowcaseUrl) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
+  const galleryItems = content.gallery.filter((item) => item.image?.trim());
   const recognitions = content.recognitions.filter((item) => item.name?.trim());
   const recognitionIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -498,17 +502,60 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {content.gallery.length > 0 && (
-        <section className="bg-white py-20 text-slate-800">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-2 text-[#008267]"><ImageIcon className="h-5 w-5" /><span className="text-[11px] font-black uppercase tracking-[0.18em]">{content.sectionHeadings.galleryEyebrow}</span></div>
-            <h2 className="mt-3 text-4xl font-black text-[#073f35]" style={headingFont}>{content.sectionHeadings.galleryTitle}</h2>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {content.gallery.map((item, index) => (
-                <figure key={index} className="overflow-hidden rounded-[22px] border border-emerald-100 bg-[#f6fbf8]">
-                  <img src={item.image} alt={item.title || 'AIMN gallery'} className="h-64 w-full object-cover" />
-                  {(item.title || item.caption) && <figcaption className="p-4"><p className="font-black text-[#073f35]">{item.title}</p><p className="mt-1 text-sm text-slate-600">{item.caption}</p></figcaption>}
-                </figure>
+      {galleryItems.length > 0 && (
+        <section className="overflow-hidden bg-[#f8fbfa] py-16 text-slate-800 sm:py-20">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl">
+              <div className="flex items-center gap-2 text-[#008267]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50">
+                  <ImageIcon className="h-5 w-5" />
+                </span>
+                <span className="text-[11px] font-black uppercase tracking-[0.18em]">{content.sectionHeadings.galleryEyebrow}</span>
+              </div>
+              <h2 className="mt-4 text-[36px] font-black leading-[1.02] tracking-[-0.025em] text-[#073f35] sm:text-5xl" style={headingFont}>
+                {content.sectionHeadings.galleryTitle}
+              </h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                Clinical training, institutional partnerships and professional activities from across the AIMN network.
+              </p>
+            </div>
+
+            <div className={`mt-9 grid gap-5 sm:mt-10 ${galleryItems.length === 1 ? 'mx-auto max-w-3xl grid-cols-1' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+              {galleryItems.map((item, index) => (
+                <article key={`${item.image}-${index}`} className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setActiveGalleryIndex(index)}
+                    className="group relative block aspect-[4/3] w-full overflow-hidden rounded-[24px] border border-emerald-100 bg-slate-100 text-left shadow-[0_18px_50px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(7,63,53,0.16)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60 sm:rounded-[28px]"
+                    aria-label={`Open ${item.title || 'AIMN gallery image'}`}
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.title || 'AIMN activity'}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                        event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <div className="hidden absolute inset-0 flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
+                      <ImageIcon className="h-9 w-9 text-[#008267]" />
+                      <p className="text-sm font-black">Image unavailable</p>
+                    </div>
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#032f29]/95 via-[#032f29]/20 to-transparent" />
+                    <span className="pointer-events-none absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/25 text-white opacity-0 backdrop-blur transition group-hover:opacity-100 group-focus:opacity-100 sm:opacity-100">
+                      <Maximize2 className="h-4 w-4" />
+                    </span>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 sm:p-6">
+                      <h3 className="break-words text-lg font-black leading-tight text-white sm:text-xl" style={headingFont}>
+                        {item.title || 'AIMN Activity'}
+                      </h3>
+                      {item.caption && <p className="mt-2 line-clamp-2 text-sm leading-5 text-white/75">{item.caption}</p>}
+                    </div>
+                  </button>
+                </article>
               ))}
             </div>
           </div>
@@ -618,6 +665,44 @@ export const LandingPage: React.FC = () => {
             )}
           </div>
         </section>
+      )}
+
+      {activeGalleryIndex !== null && galleryItems[activeGalleryIndex] && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#001f1a]/90 p-3 backdrop-blur-sm sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Gallery image preview"
+          onClick={() => setActiveGalleryIndex(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveGalleryIndex(null)}
+            className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur transition hover:bg-black/55 sm:right-6 sm:top-6"
+            aria-label="Close image preview"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="w-full max-w-5xl overflow-hidden rounded-[24px] bg-[#062f29] shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex max-h-[76vh] min-h-[280px] items-center justify-center bg-black">
+              <img
+                src={galleryItems[activeGalleryIndex].image}
+                alt={galleryItems[activeGalleryIndex].title || 'AIMN activity'}
+                className="max-h-[76vh] w-full object-contain"
+              />
+            </div>
+            {(galleryItems[activeGalleryIndex].title || galleryItems[activeGalleryIndex].caption) && (
+              <div className="px-5 py-4 text-white sm:px-7 sm:py-5">
+                {galleryItems[activeGalleryIndex].title && (
+                  <h3 className="text-lg font-black sm:text-xl" style={headingFont}>{galleryItems[activeGalleryIndex].title}</h3>
+                )}
+                {galleryItems[activeGalleryIndex].caption && (
+                  <p className="mt-1.5 text-sm leading-6 text-white/70">{galleryItems[activeGalleryIndex].caption}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <section id="recognitions" aria-labelledby="recognitions-title" className="bg-white px-4 py-16 text-[#202020] sm:px-6 lg:px-8 lg:py-20">
