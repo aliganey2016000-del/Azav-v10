@@ -133,17 +133,17 @@ export type LandingPageContent = {
 
 export const defaultLandingPageContent: LandingPageContent = {
   hero: {
-    eyebrow: 'Clinical excellence without borders',
+    eyebrow: 'Global training • Institutional network • Capacity building',
     title: 'AZAAM International Medics Network (AIMN)',
-    subtitle: 'AIMN is an international medical education and clinical attachment network committed to quality training, trusted partnerships, and stronger healthcare practice.',
+    subtitle: 'AIMN is an international institutional network connecting universities, healthcare institutions and professionals to advance high-quality clinical training, strengthen health workforce capacity, and build sustainable partnerships that improve healthcare education and service delivery.',
     backgroundImage: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1600&q=85',
     backgroundVideo: '',
     primaryButtonText: 'Apply Now',
     primaryButtonUrl: '/register',
     secondaryButtonText: 'Watch Video',
     secondaryButtonUrl: '#organization-video',
-    titleLines: ['Complete', 'Clinical Training &', 'Medical Placement', 'Platform'],
-    trustText: 'Trusted by universities, hospitals and trainees',
+    titleLines: ['Advancing Global', 'Clinical Training &', 'Health Workforce', 'Capacity'],
+    trustText: 'Connecting universities, hospitals and health professionals worldwide',
     statsLabels: {
       universities: 'Partner Universities',
       hospitals: 'Training Hospitals',
@@ -408,15 +408,30 @@ const mergeHospitals = (value: Partial<LandingPageContent> | undefined): Hospita
   ];
 };
 
+const normalizeHero = (hero: Partial<LandingPageContent['hero']> | undefined): LandingPageContent['hero'] => {
+  const legacyLines = ['Complete', 'Clinical Training &', 'Medical Placement', 'Platform'];
+  const legacySubtitle = 'AIMN is an international medical education and clinical attachment network committed to quality training, trusted partnerships, and stronger healthcare practice.';
+  const legacyEyebrow = 'Clinical excellence without borders';
+  const legacyTrust = 'Trusted by universities, hospitals and trainees';
+
+  const savedLines = Array.isArray(hero?.titleLines) ? hero!.titleLines : defaultLandingPageContent.hero.titleLines;
+  const isLegacyLines = savedLines.length === legacyLines.length && savedLines.every((line, index) => line === legacyLines[index]);
+
+  return {
+    ...defaultLandingPageContent.hero,
+    ...(hero || {}),
+    titleLines: isLegacyLines ? defaultLandingPageContent.hero.titleLines : savedLines,
+    eyebrow: !hero?.eyebrow || hero.eyebrow === legacyEyebrow ? defaultLandingPageContent.hero.eyebrow : hero.eyebrow,
+    subtitle: !hero?.subtitle || hero.subtitle === legacySubtitle ? defaultLandingPageContent.hero.subtitle : hero.subtitle,
+    trustText: !hero?.trustText || hero.trustText === legacyTrust ? defaultLandingPageContent.hero.trustText : hero.trustText,
+    statsLabels: { ...defaultLandingPageContent.hero.statsLabels, ...(hero?.statsLabels || {}) },
+  };
+};
+
 const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): LandingPageContent => ({
   ...defaultLandingPageContent,
   ...(value || {}),
-  hero: {
-    ...defaultLandingPageContent.hero,
-    ...(value?.hero || {}),
-    titleLines: Array.isArray(value?.hero?.titleLines) ? value!.hero!.titleLines : defaultLandingPageContent.hero.titleLines,
-    statsLabels: { ...defaultLandingPageContent.hero.statsLabels, ...(value?.hero?.statsLabels || {}) },
-  },
+  hero: normalizeHero(value?.hero),
   about: { ...defaultLandingPageContent.about, ...(value?.about || {}) },
   strategy: { ...defaultLandingPageContent.strategy, ...(value?.strategy || {}) },
   sectionHeadings: { ...defaultLandingPageContent.sectionHeadings, ...(value?.sectionHeadings || {}) },
