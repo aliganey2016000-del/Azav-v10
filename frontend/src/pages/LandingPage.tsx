@@ -493,9 +493,10 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      <section aria-labelledby="memberships-title" className="bg-white px-4 py-16 text-[#202020] sm:px-6 lg:px-8 lg:py-20">
+      <section aria-labelledby="memberships-title" className="bg-white px-4 pb-16 pt-10 text-[#202020] sm:px-6 lg:px-8 lg:pb-20">
         <div className="mx-auto max-w-6xl text-center">
-          <h2 id="memberships-title" className="text-xl font-extrabold uppercase tracking-tight sm:text-2xl">Local and International Memberships and Agreements</h2>
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">Institutional Network</p>
+          <h2 id="memberships-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Our Partners</h2>
           {memberships.length > 0 ? (
             <>
               {showAllMemberships ? (
@@ -510,7 +511,7 @@ export const LandingPage: React.FC = () => {
               )}
               {memberships.length > 6 && <button type="button" onClick={() => setShowAllMemberships((current) => !current)} className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]">{showAllMemberships ? 'View less' : 'View more'}</button>}
             </>
-          ) : <p className="mx-auto mt-10 max-w-xl rounded border border-slate-200 px-6 py-12 text-base text-slate-600">Memberships and agreements will be displayed here when confirmed.</p>}
+          ) : <p className="mx-auto mt-10 max-w-xl rounded border border-slate-200 px-6 py-12 text-base text-slate-600">Our partners will be displayed here when confirmed.</p>}
         </div>
       </section>
 
