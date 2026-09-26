@@ -294,9 +294,12 @@ export class StorageService {
         r2Endpoint && r2Bucket && r2AccessKeyId && r2SecretAccessKey
       );
 
-      // In production, auto-select R2 when the Cloudflare credentials are present.
-      // This keeps uploads persistent even when STORAGE_PROVIDER was not explicitly set.
-      const providerType = explicitProvider || (hasCompleteR2Config ? 'r2' : (env.STORAGE_PROVIDER || 'local').toLowerCase());
+      // Prefer Cloudflare R2 whenever a complete R2 configuration exists.
+      // This intentionally overrides a stale STORAGE_PROVIDER=local value in deployment
+      // environments so website uploads remain persistent after redeploys/restarts.
+      const providerType = hasCompleteR2Config
+        ? 'r2'
+        : (explicitProvider || (env.STORAGE_PROVIDER || 'local').toLowerCase());
 
       if (providerType === 'local') {
         this.provider = new LocalStorageProvider();
