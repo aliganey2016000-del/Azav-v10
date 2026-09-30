@@ -225,6 +225,7 @@ export const LandingPage: React.FC = () => {
   const [showAllRecognitions, setShowAllRecognitions] = useState(false);
   const [showAllTestimonials, setShowAllTestimonials] = useState(false);
   const [showAllGallery, setShowAllGallery] = useState(false);
+  const [galleryOffset, setGalleryOffset] = useState(0);
   const [activeGalleryCategory, setActiveGalleryCategory] = useState('All');
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
 
@@ -267,7 +268,15 @@ export const LandingPage: React.FC = () => {
   const filteredGalleryItems = activeGalleryCategory === 'All'
     ? galleryItems
     : galleryItems.filter((item) => (item.category || 'Clinical Training') === activeGalleryCategory);
-  const visibleGalleryItems = showAllGallery ? filteredGalleryItems : filteredGalleryItems.slice(0, 6);
+  const galleryStart = filteredGalleryItems.length ? galleryOffset % filteredGalleryItems.length : 0;
+  const visibleGalleryItems = showAllGallery ? filteredGalleryItems : [
+    ...filteredGalleryItems.slice(galleryStart), ...filteredGalleryItems.slice(0, galleryStart),
+  ].slice(0, 3);
+  const moveGallery = (direction: number) => {
+    if (filteredGalleryItems.length > 1) {
+      setGalleryOffset((current) => (current + direction + filteredGalleryItems.length) % filteredGalleryItems.length);
+    }
+  };
   const recognitions = content.recognitions.filter((item) => item.name?.trim());
   const recognitionIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -629,7 +638,7 @@ export const LandingPage: React.FC = () => {
                 </p>
               </div>
 
-              {filteredGalleryItems.length > 6 && (
+              {filteredGalleryItems.length > 3 && (
                 <button
                   type="button"
                   onClick={() => setShowAllGallery((current) => !current)}
@@ -650,6 +659,7 @@ export const LandingPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setActiveGalleryCategory(label);
+                      setGalleryOffset(0);
                       setShowAllGallery(false);
                     }}
                     className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition sm:text-sm ${
@@ -666,11 +676,24 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {filteredGalleryItems.length > 0 ? (
-              <div className="mt-6 grid gap-4 sm:mt-7 sm:grid-cols-2 lg:grid-cols-3">
-                {visibleGalleryItems.map((item) => {
+              <div className={`relative mt-6 sm:mt-7 ${!showAllGallery && filteredGalleryItems.length > 1 ? 'px-12 sm:px-14' : ''}`} role="region" aria-label="Gallery photos">
+                {!showAllGallery && filteredGalleryItems.length > 1 && (
+                  <>
+                    <button type="button" onClick={() => moveGallery(-1)} aria-label="Previous gallery photo"
+                      className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white text-[#006a61] shadow-md hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                      <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => moveGallery(1)} aria-label="Next gallery photo"
+                      className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white text-[#006a61] shadow-md hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                      <ChevronRight className="h-6 w-6" aria-hidden="true" />
+                    </button>
+                  </>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleGalleryItems.map((item, index) => {
                   const originalIndex = galleryItems.indexOf(item);
                   return (
-                    <article key={`${item.image}-${originalIndex}`} className="min-w-0">
+                    <article key={`${item.image}-${originalIndex}`} className={`min-w-0 ${!showAllGallery ? (index === 1 ? 'hidden sm:block' : index === 2 ? 'hidden lg:block' : '') : ''}`}>
                       <button
                         type="button"
                         onClick={() => setActiveGalleryIndex(originalIndex)}
@@ -731,6 +754,7 @@ export const LandingPage: React.FC = () => {
                     </article>
                   );
                 })}
+                </div>
               </div>
             ) : (
               <div className="mt-8 rounded-2xl border border-dashed border-emerald-200 bg-white px-5 py-12 text-center text-sm text-slate-500">
