@@ -45,6 +45,54 @@ const SmartLink: React.FC<{ to: string; className?: string; children: React.Reac
   return <Link to={to || '/'} className={className}>{children}</Link>;
 };
 
+// Keep manual navigation and autoplay on the same seamless animation timeline.
+const CarouselControls: React.FC<{ label: string; className: string; children: React.ReactNode }> = ({ label, className, children }) => {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    const track = viewportRef.current?.firstElementChild as HTMLElement | null;
+    if (track) track.style.animationPlayState = hovered || focused ? 'paused' : 'running';
+  }, [hovered, focused]);
+
+  const move = (direction: number) => {
+    const viewport = viewportRef.current;
+    const track = viewport?.firstElementChild as HTMLElement | null;
+    const group = track?.firstElementChild as HTMLElement | null;
+    const card = group?.firstElementChild as HTMLElement | null;
+    if (!viewport || !track || !group || !card) return;
+    const step = card.getBoundingClientRect().width + (parseFloat(getComputedStyle(group).columnGap) || 0);
+    const animation = track.getAnimations()[0];
+    const duration = animation?.effect?.getComputedTiming().duration;
+    const loopWidth = track.getBoundingClientRect().width / 2;
+    if (animation && typeof duration === 'number' && duration > 0 && loopWidth > 0) {
+      const next = Number(animation.currentTime || 0) + direction * step / loopWidth * duration;
+      animation.currentTime = ((next % duration) + duration) % duration;
+    } else {
+      // Reduced motion: arrows still work, without animation.
+      viewport.scrollBy({ left: direction * step, behavior: 'instant' });
+    }
+  };
+
+  return (
+    <div className="relative mt-10 px-12 sm:px-14" role="region" aria-label={label} aria-roledescription="carousel"
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false); }}>
+      <button type="button" aria-label={`Previous ${label.toLowerCase()}`} onClick={() => move(-1)}
+        className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-[#303b8e] shadow-md transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+        <ChevronLeft className="h-6 w-6" aria-hidden="true" />
+      </button>
+      <div ref={viewportRef} className={className}>{children}</div>
+      <button type="button" aria-label={`Next ${label.toLowerCase()}`} onClick={() => move(1)}
+        className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-[#303b8e] shadow-md transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+        <ChevronRight className="h-6 w-6" aria-hidden="true" />
+      </button>
+    </div>
+  );
+};
+
 const youtubeEmbed = (url: string) => {
   try {
     const parsed = new URL(url);
@@ -520,14 +568,14 @@ export const LandingPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="aimn-testimonial-window mt-10 overflow-hidden" aria-label="Partner testimonials">
+            <CarouselControls className="aimn-testimonial-window overflow-hidden" label="Partner testimonials">
               <div className="aimn-testimonial-track">
                 {[false, true].map((duplicate) => (
                   <div key={duplicate ? 'testimonials-copy' : 'testimonials-original'} className="flex shrink-0 gap-5 pr-5" aria-hidden={duplicate ? 'true' : undefined}>
                     {content.testimonials.map((item, index) => (
                       <article
                         key={`${duplicate ? 'copy' : 'original'}-${index}`}
-                        className="group w-[82vw] max-w-[320px] shrink-0 overflow-hidden rounded-[22px] border border-white/15 bg-white text-left text-slate-800 shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:w-[320px] lg:w-[340px]"
+                        className="group w-[calc(100vw-128px)] max-w-[320px] shrink-0 overflow-hidden rounded-[22px] border border-white/15 bg-white text-left text-slate-800 shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:w-[320px] lg:w-[340px]"
                       >
                         <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100">
                           <img src={item.image} alt={duplicate ? '' : item.name} loading="lazy" className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.03]" />
@@ -544,7 +592,7 @@ export const LandingPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </CarouselControls>
           )}
 
           <div className="mt-8 text-center">
@@ -730,12 +778,12 @@ export const LandingPage: React.FC = () => {
               {showAllMemberships ? (
                 <div className="mt-10 flex flex-wrap justify-center gap-4">{memberships.map((item, index) => membershipCard(item, index))}</div>
               ) : (
-                <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Partner universities">
+                <CarouselControls className="aimn-membership-window overflow-hidden" label="Partner universities">
                   <div className="aimn-membership-track" style={{ animationDuration: `${Math.max(28, memberships.length * 4)}s` }}>
                     <div className="flex shrink-0 gap-4 pr-4">{memberships.map((item, index) => membershipCard(item, index))}</div>
                     <div className="flex shrink-0 gap-4 pr-4" aria-hidden="true">{memberships.map((item, index) => membershipCard(item, index, true))}</div>
                   </div>
-                </div>
+                </CarouselControls>
               )}
               {memberships.length > 6 && <button type="button" onClick={() => setShowAllMemberships((current) => !current)} className="mt-8 rounded bg-[#303b8e] px-7 py-2.5 text-sm font-bold text-white transition hover:bg-[#253174]">{showAllMemberships ? content.sectionHeadings.viewLessLabel : content.sectionHeadings.viewMoreLabel}</button>}
             </>
@@ -760,7 +808,7 @@ export const LandingPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Training hospitals">
+              <CarouselControls className="aimn-membership-window overflow-hidden" label="Training hospitals">
                 <div
                   className="aimn-membership-track"
                   style={{ animationDuration: `${Math.max(36, hospitals.length * 3.2)}s` }}
@@ -782,7 +830,7 @@ export const LandingPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              </div>
+              </CarouselControls>
             )}
 
             {hospitals.length > 6 && (
@@ -882,7 +930,7 @@ export const LandingPage: React.FC = () => {
               )})}
             </div>
           ) : (
-            <div className="aimn-membership-window mt-10 overflow-hidden" aria-label="Official recognitions">
+            <CarouselControls className="aimn-membership-window overflow-hidden" label="Official recognitions">
               <div
                 className="aimn-membership-track"
                 style={{ animationDuration: `${Math.max(36, recognitions.length * 3.4)}s` }}
@@ -925,7 +973,7 @@ export const LandingPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </CarouselControls>
           )}
 
           {recognitions.length > 6 && (
