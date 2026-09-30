@@ -331,7 +331,13 @@ export const WebsiteManagementPage: React.FC = () => {
 
       {activeTab === 'programs' && (
         <div className="space-y-4">
-          <div className="flex justify-end"><button onClick={() => mark({...content,programs:[...content.programs,{title:'New Program',image:'',link:'/register'}]})} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add program</button></div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-black text-slate-900">Clinical Training Programs</h2>
+              <p className="mt-1 text-sm text-slate-600">Manage the ten core clinical departments shown on the landing page. You can replace titles, images or links at any time.</p>
+            </div>
+            <button onClick={() => mark({...content,programs:[...content.programs,{title:'New Program',image:'',link:'/register'}]})} className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add program</button>
+          </div>
           <div className="grid gap-4 lg:grid-cols-2">
             {content.programs.map((program,index) => <Card key={index} title={`Program ${index+1}`} onDelete={() => mark({...content,programs:content.programs.filter((_,i)=>i!==index)})}><Field label="Title" value={program.title} onChange={(v)=>updateProgram(index,'title',v)} /><ImageField label="Image" value={program.image} onChange={(v)=>updateProgram(index,'image',v)} onError={showError} /><Field label="Button link" value={program.link} onChange={(v)=>updateProgram(index,'link',v)} />{program.image && <img src={program.image} alt="" className="h-36 w-full rounded-xl object-cover" />}</Card>)}
           </div>

@@ -96,6 +96,7 @@ export type LandingPageContent = {
     values: string[];
   };
   programs: ProgramItem[];
+  programSeedVersion: number;
   news: NewsItem[];
   testimonials: TestimonialItem[];
   recognitions: RecognitionItem[];
@@ -203,11 +204,18 @@ export const defaultLandingPageContent: LandingPageContent = {
     values: ['Integrity', 'Clinical Excellence', 'Innovation', 'Accountability', 'Social Responsibility'],
   },
   programs: [
-    { title: 'Internal Medicine', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=800&q=85', link: '/register' },
-    { title: 'Surgery & Emergency Medicine', image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=85', link: '/register' },
-    { title: 'Pediatrics', image: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=800&q=85', link: '/register' },
-    { title: 'Obstetrics & Gynecology', image: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=85', link: '/register' },
+    { title: 'Internal Medicine', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Surgery & Emergency Medicine', image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Pediatrics', image: 'https://images.unsplash.com/photo-1576765608866-5b51046452be?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Obstetrics & Gynecology', image: 'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Laboratory & Diagnostics', image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Community Health', image: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Radiology & Imaging', image: 'https://images.unsplash.com/photo-1516841273335-e39b37888115?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Anesthesia & Critical Care', image: 'https://images.unsplash.com/photo-1628348068343-c6a848d2b6dd?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Orthopedics & Trauma', image: 'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1000&q=88', link: '/register' },
+    { title: 'Mental Health & Psychiatry', image: 'https://images.unsplash.com/photo-1573497620053-ea5300f94f21?auto=format&fit=crop&w=1000&q=88', link: '/register' },
   ],
+  programSeedVersion: 2,
   news: [
     { title: 'Clinical attachment applications are now open for university-nominated students', label: 'Placement update', summary: 'Universities can nominate eligible students through the AIMN university portal.', image: '', link: '/login' },
     { title: 'AIMN coordinates international clinical training with approved host institutions', label: 'Network update', summary: 'Structured coordination connects universities, trainees and approved host institutions.', image: '', link: '/login' },
@@ -257,6 +265,7 @@ export const defaultLandingPageContent: LandingPageContent = {
     testimonialsDescription: 'Sample testimonial placeholders for verified institutional feedback about placements, clinical training and partnership coordination.',
     galleryEyebrow: 'Gallery',
     galleryTitle: 'AIMN in Action',
+    galleryDescription: 'Showcasing the real experiences of our students during clinical training at partner hospitals worldwide.',
     videosEyebrow: 'Videos',
     videosTitle: 'News, Events & Training Highlights',
     partnersEyebrow: 'Institutional Network',
@@ -379,6 +388,17 @@ export const defaultLandingPageContent: LandingPageContent = {
   },
 };
 
+const mergePrograms = (value: Partial<LandingPageContent> | undefined): ProgramItem[] => {
+  const existing = Array.isArray(value?.programs) ? value!.programs.filter((item) => item.title?.trim() && item.title.trim().toLowerCase() !== 'new program') : [];
+  if (existing.length === 0) return defaultLandingPageContent.programs;
+
+  if ((value?.programSeedVersion || 0) >= 2) return existing;
+
+  const existingTitles = new Set(existing.map((item) => item.title.trim().toLowerCase()));
+  const missingDefaults = defaultLandingPageContent.programs.filter((item) => !existingTitles.has(item.title.toLowerCase()));
+  return [...existing, ...missingDefaults];
+};
+
 const mergeMemberships = (value: Partial<LandingPageContent> | undefined): MembershipItem[] => {
   const existing = value?.memberships;
   if (!Array.isArray(existing)) return defaultLandingPageContent.memberships;
@@ -466,7 +486,8 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   seo: { ...defaultLandingPageContent.seo, ...(value?.seo || {}) },
   highlights: Array.isArray(value?.highlights) ? value!.highlights : defaultLandingPageContent.highlights,
   aimnHighlights: Array.isArray(value?.aimnHighlights) ? value!.aimnHighlights : defaultLandingPageContent.aimnHighlights,
-  programs: Array.isArray(value?.programs) ? value!.programs : defaultLandingPageContent.programs,
+  programs: mergePrograms(value),
+  programSeedVersion: 2,
   news: Array.isArray(value?.news) ? value!.news : defaultLandingPageContent.news,
   testimonials: Array.isArray(value?.testimonials) ? value!.testimonials : defaultLandingPageContent.testimonials,
   recognitions: mergeRecognitions(value),

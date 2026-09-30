@@ -427,22 +427,63 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      <section id="programs" className="bg-[#00a653] py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#ffbf2f]"><GraduationCap className="h-4 w-4" /> {content.sectionHeadings.programsEyebrow}</div>
-            <h2 className="mt-3 text-4xl font-black text-white sm:text-5xl" style={headingFont}>{content.sectionHeadings.programsTitle}</h2>
-            <p className="mt-4 text-sm leading-7 text-emerald-50/65">{content.sectionHeadings.programsDescription}</p>
+      <section
+        id="programs"
+        className="relative isolate overflow-hidden bg-[#009b58] py-16 sm:py-20 lg:py-24"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(255,255,255,0.10),transparent_28%),radial-gradient(circle_at_90%_22%,rgba(0,92,69,0.28),transparent_34%),linear-gradient(135deg,rgba(0,105,77,0.10),transparent_48%)]" />
+        <div className="pointer-events-none absolute -right-56 -top-44 h-[560px] w-[560px] rounded-full bg-white/[0.035]" />
+
+        <div className="relative mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 max-w-3xl sm:mb-10">
+            <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#ffbf2f] sm:text-[11px]">
+              <GraduationCap className="h-4 w-4" />
+              {content.sectionHeadings.programsEyebrow}
+            </div>
+            <h2
+              className="mt-3 max-w-3xl text-[38px] font-black leading-[0.98] tracking-[-0.035em] text-white sm:text-[48px] lg:text-[54px]"
+              style={headingFont}
+            >
+              {content.sectionHeadings.programsTitle}
+            </h2>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-emerald-50/80 sm:text-base">
+              {content.sectionHeadings.programsDescription}
+            </p>
           </div>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            {content.programs.map((program, index) => (
-              <article key={`${program.title}-${index}`} className="group overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.06] shadow-lg">
-                <div className="h-48 overflow-hidden bg-[#0c5648]">
-                  {program.image ? <img src={program.image} alt={program.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center"><Stethoscope className="h-12 w-12 text-[#ffbf2f]" /></div>}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {content.programs.slice(0, 10).map((program, index) => (
+              <article
+                key={`${program.title}-${index}`}
+                className="group min-w-0 overflow-hidden rounded-[18px] border border-white/15 bg-[#08785c]/80 shadow-[0_16px_38px_rgba(0,70,50,0.16)] transition duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_22px_48px_rgba(0,70,50,0.24)]"
+              >
+                <div className="aspect-[4/3] overflow-hidden bg-[#0b5f50]">
+                  {program.image ? (
+                    <img
+                      src={program.image}
+                      alt={program.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Stethoscope className="h-12 w-12 text-[#ffbf2f]" />
+                    </div>
+                  )}
                 </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-black text-white">{program.title}</h3>
-                  <SmartLink to={program.link || '/register'} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#ffbf2f]">{content.sectionHeadings.programButtonLabel} <ArrowRight className="h-4 w-4" /></SmartLink>
+
+                <div className="flex min-h-[112px] flex-col p-4 sm:min-h-[118px]">
+                  <h3 className="text-[15px] font-black leading-snug text-white sm:text-base">
+                    {program.title}
+                  </h3>
+                  <SmartLink
+                    to={program.link || '/register'}
+                    className="mt-auto inline-flex items-center gap-2 pt-4 text-xs font-black text-[#ffbf2f] transition group-hover:gap-3 sm:text-[13px]"
+                  >
+                    {content.sectionHeadings.programButtonLabel}
+                    <ArrowRight className="h-4 w-4" />
+                  </SmartLink>
                 </div>
               </article>
             ))}
