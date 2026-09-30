@@ -28,6 +28,7 @@ import {
   BarChart3,
   CalendarDays,
   Image as ImageIcon,
+  KeyRound,
 } from 'lucide-react';
 import { UserRole } from '../types/frontend';
 
@@ -190,6 +191,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
   {
     title: 'DOCUMENTS & CERTIFICATION',
     items: [
+      {
+        label: 'Recognition Access Codes',
+        path: '/admin/recognition-access',
+        icon: KeyRound,
+        roles: [UserRole.SUPER_ADMIN],
+      },
       {
         label: 'Documents',
         path: '/admin/documents',

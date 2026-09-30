@@ -26,6 +26,7 @@ import { OrganizationDepartmentsPage } from '../pages/organization/OrganizationD
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
 import { WebsiteManagementPage } from '../pages/admin/WebsiteManagementPage';
 import { PresentationGalleryPage } from '../pages/admin/PresentationGalleryPage';
+import { RecognitionEvidenceAccessPage } from '../pages/admin/RecognitionEvidenceAccessPage';
 import { PresentationViewPage } from '../pages/PresentationViewPage';
 import { UsersManagementPage } from '../pages/admin/UsersManagementPage';
 import { UniversitiesPage } from '../pages/admin/UniversitiesPage';
@@ -76,6 +77,7 @@ export const AppRouter: React.FC = () => (
           <Route path="/admin/website" element={<WebsiteManagementPage />} />
           <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]} />}>
             <Route path="/admin/presentation-gallery" element={<PresentationGalleryPage />} />
+            <Route path="/admin/recognition-access" element={<RecognitionEvidenceAccessPage />} />
           </Route>
           <Route path="/admin/users" element={<UsersManagementPage />} />
           <Route path="/admin/students" element={<StudentsManagementPage />} />

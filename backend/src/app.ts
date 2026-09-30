@@ -22,6 +22,7 @@ import { rotationRouter } from './routes/rotation.routes.js';
 import { landingPageRouter } from './routes/landingPage.routes.js';
 import { siteAssetRouter } from './routes/siteAsset.routes.js';
 import { presentationGalleryRouter } from './routes/presentationGallery.routes.js';
+import { recognitionEvidenceRouter } from './routes/recognitionEvidence.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { isDatabaseConnected } from './config/database.js';
 import { env } from './config/env.js';
@@ -67,6 +68,7 @@ export function createApp() {
   app.use('/api/v1/landing-page', landingPageRouter);
   app.use('/api/v1/site-assets', siteAssetRouter);
   app.use('/api/v1/presentation-galleries', presentationGalleryRouter);
+  app.use('/api/v1/recognition-evidence', recognitionEvidenceRouter);
   app.use('/api/v1/applications', applicationRouter);
   app.use('/api/v1/documents', documentRouter);
   app.use('/api/v1/placements', placementRouter);

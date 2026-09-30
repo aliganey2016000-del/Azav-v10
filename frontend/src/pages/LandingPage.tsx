@@ -33,6 +33,11 @@ import {
   LandingPageContent,
   VideoItem,
 } from '../services/landingPageCms.service';
+import {
+  RecognitionEvidenceDocument,
+  RecognitionEvidenceService,
+  resolveRecognitionEvidenceUrl,
+} from '../services/recognitionEvidence.service';
 
 const headingFont = { fontFamily: "Georgia, 'Times New Roman', serif" };
 
@@ -228,6 +233,13 @@ export const LandingPage: React.FC = () => {
   const [galleryOffset, setGalleryOffset] = useState(0);
   const [activeGalleryCategory, setActiveGalleryCategory] = useState('All');
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
+  const [recognitionAccessTarget, setRecognitionAccessTarget] = useState<LandingPageContent['recognitions'][number] | null>(null);
+  const [recognitionAccessCode, setRecognitionAccessCode] = useState('');
+  const [recognitionAccessError, setRecognitionAccessError] = useState('');
+  const [recognitionAccessBusy, setRecognitionAccessBusy] = useState(false);
+  const [recognitionDocuments, setRecognitionDocuments] = useState<RecognitionEvidenceDocument[]>([]);
+  const [recognitionViewExpiresAt, setRecognitionViewExpiresAt] = useState('');
+  const [activeRecognitionDocument, setActiveRecognitionDocument] = useState<RecognitionEvidenceDocument | null>(null);
 
   useEffect(() => {
     const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
@@ -285,6 +297,74 @@ export const LandingPage: React.FC = () => {
     if (lower.includes('foreign')) return Globe2;
     return ShieldCheck;
   };
+  const openRecognitionEvidence = (item: LandingPageContent['recognitions'][number]) => {
+    setRecognitionAccessTarget(item);
+    setRecognitionAccessCode('');
+    setRecognitionAccessError('');
+    setRecognitionDocuments([]);
+    setRecognitionViewExpiresAt('');
+    setActiveRecognitionDocument(null);
+  };
+
+  const closeRecognitionEvidence = () => {
+    setRecognitionAccessTarget(null);
+    setRecognitionAccessCode('');
+    setRecognitionAccessError('');
+    setRecognitionDocuments([]);
+    setRecognitionViewExpiresAt('');
+    setActiveRecognitionDocument(null);
+  };
+
+  const verifyRecognitionEvidence = async () => {
+    if (!recognitionAccessTarget || !/^\d{6}$/.test(recognitionAccessCode)) {
+      setRecognitionAccessError('Enter the 6-digit access code provided by AZAAM Medics.');
+      return;
+    }
+    try {
+      setRecognitionAccessBusy(true);
+      setRecognitionAccessError('');
+      const access = await RecognitionEvidenceService.verify(recognitionAccessTarget.name, recognitionAccessCode);
+      setRecognitionDocuments(access.documents || []);
+      setRecognitionViewExpiresAt(access.viewExpiresAt || '');
+      setRecognitionAccessCode('');
+    } catch (error: any) {
+      setRecognitionAccessError(error?.response?.data?.error?.message || 'The access code could not be verified.');
+    } finally {
+      setRecognitionAccessBusy(false);
+    }
+  };
+
+  const recognitionCard = (item: LandingPageContent['recognitions'][number], index: number, duplicate = false) => {
+    const Icon = recognitionIcon(item.name);
+    return (
+      <button
+        key={`${duplicate ? 'copy' : 'original'}-${item.name}-${index}`}
+        type="button"
+        onClick={() => openRecognitionEvidence(item)}
+        tabIndex={duplicate ? -1 : undefined}
+        className="flex min-h-40 w-40 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#008267]/40 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008267] sm:w-44"
+        aria-label={`View protected evidence for ${item.name}`}
+      >
+        <div className="flex h-20 w-20 items-center justify-center">
+          <img
+            src={item.logo}
+            alt={duplicate ? '' : item.name}
+            loading="lazy"
+            className="h-20 w-20 object-contain"
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+              event.currentTarget.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+          <div className="hidden h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
+            <Icon className="h-6 w-6" />
+          </div>
+        </div>
+        <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{item.name}</h3>
+      </button>
+    );
+  };
+
   const heroNetworkStats = [
     { label: content.hero.statsLabels.universities, value: memberships.length, icon: GraduationCap },
     { label: content.hero.statsLabels.hospitals, value: hospitals.length, icon: Building2 },
@@ -924,34 +1004,7 @@ export const LandingPage: React.FC = () => {
 
           {showAllRecognitions ? (
             <div className="mt-10 flex flex-wrap justify-center gap-4">
-              {recognitions.map(({ name, logo, url }) => {
-                const Icon = recognitionIcon(name);
-                return (
-                <a
-                  key={name}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex min-h-40 w-40 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#008267]/40 hover:shadow-md sm:w-44"
-                >
-                  <div className="flex h-20 w-20 items-center justify-center">
-                    <img
-                      src={logo}
-                      alt={name}
-                      loading="lazy"
-                      className="h-20 w-20 object-contain"
-                      onError={(event) => {
-                        event.currentTarget.style.display = 'none';
-                        event.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className="hidden h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                  </div>
-                  <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
-                </a>
-              )})}
+              {recognitions.map((item, index) => recognitionCard(item, index))}
             </div>
           ) : (
             <CarouselControls className="aimn-membership-window overflow-hidden" label="Official recognitions">
@@ -965,35 +1018,7 @@ export const LandingPage: React.FC = () => {
                     className="flex shrink-0 gap-4 pr-4"
                     aria-hidden={duplicate ? 'true' : undefined}
                   >
-                    {recognitions.map(({ name, logo, url }, index) => {
-                      const Icon = recognitionIcon(name);
-                      return (
-                      <a
-                        key={`${duplicate ? 'copy' : 'original'}-${name}-${index}`}
-                        href={duplicate ? undefined : url}
-                        target={duplicate ? undefined : '_blank'}
-                        rel={duplicate ? undefined : 'noopener noreferrer'}
-                        tabIndex={duplicate ? -1 : undefined}
-                        className="flex min-h-40 w-40 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#008267]/40 hover:shadow-md sm:w-44"
-                      >
-                        <div className="flex h-20 w-20 items-center justify-center">
-                          <img
-                            src={logo}
-                            alt={duplicate ? '' : name}
-                            loading="lazy"
-                            className="h-20 w-20 object-contain"
-                            onError={(event) => {
-                              event.currentTarget.style.display = 'none';
-                              event.currentTarget.nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                          <div className="hidden h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-[#008267]">
-                            <Icon className="h-6 w-6" />
-                          </div>
-                        </div>
-                        <h3 className="mt-4 text-center text-xs font-bold leading-snug text-slate-900">{name}</h3>
-                      </a>
-                    )})}
+                    {recognitions.map((item, index) => recognitionCard(item, index, duplicate))}
                   </div>
                 ))}
               </div>
@@ -1011,6 +1036,139 @@ export const LandingPage: React.FC = () => {
           )}
         </div>
       </section>
+
+      {recognitionAccessTarget && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Protected recognition evidence"
+          onClick={closeRecognitionEvidence}
+        >
+          <div
+            className="w-full max-w-3xl overflow-hidden rounded-[24px] border border-white/10 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-[#073f35] px-5 py-5 text-white sm:px-6">
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Protected Recognition Evidence</div>
+                <h2 className="mt-1 break-words text-lg font-black sm:text-xl">{recognitionAccessTarget.name}</h2>
+              </div>
+              <button type="button" onClick={closeRecognitionEvidence} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white" aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {recognitionDocuments.length === 0 ? (
+              <div className="p-5 sm:p-7">
+                <div className="mx-auto max-w-lg text-center">
+                  <ShieldCheck className="mx-auto h-11 w-11 text-[#008267]" />
+                  <h3 className="mt-3 text-lg font-black text-slate-900">Enter the 6-digit access code</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">This evidence is private. Use the one-time code shared directly by AZAAM Medics.</p>
+                  <input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={recognitionAccessCode}
+                    onChange={(event) => setRecognitionAccessCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onKeyDown={(event) => event.key === 'Enter' && verifyRecognitionEvidence()}
+                    placeholder="000000"
+                    className="mt-5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-center font-mono text-3xl font-black tracking-[0.32em] text-slate-900 outline-none transition focus:border-[#008267] focus:ring-4 focus:ring-emerald-100"
+                  />
+                  {recognitionAccessError && <p className="mt-3 text-sm font-semibold text-rose-600">{recognitionAccessError}</p>}
+                  <button
+                    type="button"
+                    disabled={recognitionAccessBusy || recognitionAccessCode.length !== 6}
+                    onClick={verifyRecognitionEvidence}
+                    className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#303b8e] px-5 text-sm font-black text-white disabled:opacity-50"
+                  >
+                    {recognitionAccessBusy ? 'Verifying...' : 'View Evidence'}
+                  </button>
+                  <p className="mt-4 text-[11px] leading-5 text-slate-400">Each code can be verified once. A verified viewing session is temporary.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-5 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-black text-slate-900">Recognition & Agreement Documents</h3>
+                    <p className="mt-1 text-xs text-slate-500">Protected view-only session. No download action is provided.</p>
+                  </div>
+                  {recognitionViewExpiresAt && (
+                    <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black text-emerald-700">Temporary access active</span>
+                  )}
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {recognitionDocuments.map((doc) => (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      onClick={() => setActiveRecognitionDocument(doc)}
+                      className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition hover:border-[#008267]/40 hover:bg-emerald-50/50"
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[#303b8e]">
+                        {doc.mimeType === 'application/pdf' ? <ShieldCheck className="h-5 w-5" /> : <ImageIcon className="h-5 w-5" />}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-black text-slate-900">{doc.title || doc.originalName}</div>
+                        <div className="mt-1 text-[10px] text-slate-500">{doc.mimeType === 'application/pdf' ? 'Protected PDF' : 'Protected image'}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeRecognitionDocument && (
+        <div
+          className="fixed inset-0 z-[120] flex flex-col bg-black"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Protected evidence document viewer"
+          onContextMenu={(event) => event.preventDefault()}
+          onKeyDown={(event) => {
+            const key = event.key.toLowerCase();
+            if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'p')) event.preventDefault();
+            if (event.key === 'PrintScreen') event.preventDefault();
+            if (event.key === 'Escape') setActiveRecognitionDocument(null);
+          }}
+          tabIndex={-1}
+        >
+          <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#071d1a] px-4 text-white sm:px-6">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-black">{activeRecognitionDocument.title || activeRecognitionDocument.originalName}</div>
+              <div className="text-[10px] uppercase tracking-wide text-white/45">AZAAM Medics · Protected View</div>
+            </div>
+            <button type="button" onClick={() => setActiveRecognitionDocument(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10" aria-label="Close document">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-[#111] select-none">
+            {activeRecognitionDocument.mimeType === 'application/pdf' ? (
+              <iframe
+                src={`${resolveRecognitionEvidenceUrl(activeRecognitionDocument.url)}#toolbar=0&navpanes=0`}
+                title={activeRecognitionDocument.title || activeRecognitionDocument.originalName}
+                className="h-full w-full border-0 bg-white"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center p-3 sm:p-6">
+                <img
+                  src={resolveRecognitionEvidenceUrl(activeRecognitionDocument.url)}
+                  alt={activeRecognitionDocument.title || activeRecognitionDocument.originalName}
+                  draggable={false}
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+              <div className="-rotate-12 whitespace-nowrap text-3xl font-black uppercase tracking-[0.18em] text-white/[0.08] sm:text-5xl">AZAAM MEDICS · CONFIDENTIAL · VIEW ONLY</div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
