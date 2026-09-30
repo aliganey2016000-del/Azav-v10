@@ -263,7 +263,7 @@ export class PresentationGalleryController {
         res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Presentation not found.' } });
         return;
       }
-      const media = gallery.media.id(req.params.mediaId) as any;
+      const media = (gallery.media as any).id(req.params.mediaId) as any;
       if (!media) {
         res.status(404).json({ success: false, error: { code: 'MEDIA_NOT_FOUND', message: 'Media item not found.' } });
         return;
@@ -281,7 +281,7 @@ export class PresentationGalleryController {
   static async adminStream(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gallery = await PresentationGallery.findById(req.params.id);
-      const media = gallery?.media.id(req.params.mediaId) as any;
+      const media = gallery ? (gallery.media as any).id(req.params.mediaId) as any : null;
       if (!gallery || !media) {
         res.status(404).json({ success: false, error: { code: 'MEDIA_NOT_FOUND', message: 'Media item not found.' } });
         return;
