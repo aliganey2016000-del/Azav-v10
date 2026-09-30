@@ -21,6 +21,7 @@ import { notificationRouter } from './routes/notification.routes.js';
 import { rotationRouter } from './routes/rotation.routes.js';
 import { landingPageRouter } from './routes/landingPage.routes.js';
 import { siteAssetRouter } from './routes/siteAsset.routes.js';
+import { presentationGalleryRouter } from './routes/presentationGallery.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { isDatabaseConnected } from './config/database.js';
 import { env } from './config/env.js';
@@ -39,8 +40,8 @@ export function createApp() {
   }));
   // Nomination documents are uploaded as base64 JSON. A 5MB file expands to ~6.7MB in base64,
   // so the parser limit must safely exceed the validated file-size limit.
-  app.use(express.json({ limit: '12mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '12mb' }));
+  app.use(express.json({ limit: '45mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '45mb' }));
 
   // Global Rate Limiter
   const apiLimiter = rateLimit({
@@ -65,6 +66,7 @@ export function createApp() {
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/landing-page', landingPageRouter);
   app.use('/api/v1/site-assets', siteAssetRouter);
+  app.use('/api/v1/presentation-galleries', presentationGalleryRouter);
   app.use('/api/v1/applications', applicationRouter);
   app.use('/api/v1/documents', documentRouter);
   app.use('/api/v1/placements', placementRouter);

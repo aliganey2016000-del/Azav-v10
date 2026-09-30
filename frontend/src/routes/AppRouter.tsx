@@ -25,6 +25,8 @@ import { UniversityRotationsPage } from '../pages/university/UniversityRotations
 import { OrganizationDepartmentsPage } from '../pages/organization/OrganizationDepartmentsPage';
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage';
 import { WebsiteManagementPage } from '../pages/admin/WebsiteManagementPage';
+import { PresentationGalleryPage } from '../pages/admin/PresentationGalleryPage';
+import { PresentationViewPage } from '../pages/PresentationViewPage';
 import { UsersManagementPage } from '../pages/admin/UsersManagementPage';
 import { UniversitiesPage } from '../pages/admin/UniversitiesPage';
 import { UniversityDetailPage } from '../pages/admin/UniversityDetailPage';
@@ -65,12 +67,16 @@ export const AppRouter: React.FC = () => (
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/presentation/:token" element={<PresentationViewPage />} />
       <Route path="/portal" element={<ProtectedRoute />}><Route index element={<PortalRedirect />} /></Route>
 
       <Route element={<ProtectedRoute />}>
         <Route element={<PortalLayout />}>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/website" element={<WebsiteManagementPage />} />
+          <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]} />}>
+            <Route path="/admin/presentation-gallery" element={<PresentationGalleryPage />} />
+          </Route>
           <Route path="/admin/users" element={<UsersManagementPage />} />
           <Route path="/admin/students" element={<StudentsManagementPage />} />
           <Route path="/admin/bulk-journey" element={<BulkJourneyAdminPage />} />

@@ -27,6 +27,7 @@ import {
   TrendingUp,
   BarChart3,
   CalendarDays,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { UserRole } from '../types/frontend';
 
@@ -82,6 +83,12 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         label: 'Website Management',
         path: '/admin/website',
         icon: Settings,
+        roles: [UserRole.SUPER_ADMIN],
+      },
+      {
+        label: 'Private Presentation Gallery',
+        path: '/admin/presentation-gallery',
+        icon: ImageIcon,
         roles: [UserRole.SUPER_ADMIN],
       },
       {
