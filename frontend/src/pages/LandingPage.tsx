@@ -629,18 +629,25 @@ export const LandingPage: React.FC = () => {
                         className="group relative block aspect-[16/10] w-full overflow-hidden rounded-[20px] bg-slate-200 text-left shadow-[0_12px_34px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(7,63,53,0.18)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60"
                         aria-label={`Open ${item.title || 'AIMN gallery image'}`}
                       >
+                        <div
+                          className="absolute inset-0 scale-110 bg-cover bg-center opacity-35 blur-xl"
+                          style={{ backgroundImage: `url("${item.image}")` }}
+                          aria-hidden="true"
+                        />
                         <img
                           src={item.image}
                           alt={item.title || 'AIMN clinical training activity'}
                           loading="lazy"
                           decoding="async"
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
+                          className="relative z-[1] h-full w-full object-contain transition duration-500 group-hover:scale-[1.015]"
                           onError={(event) => {
                             event.currentTarget.style.display = 'none';
-                            event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            const fallback = event.currentTarget.parentElement?.querySelector('[data-gallery-fallback]');
+                            fallback?.classList.remove('hidden');
+                            fallback?.classList.add('flex');
                           }}
                         />
-                        <div className="hidden absolute inset-0 flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
+                        <div data-gallery-fallback className="hidden absolute inset-0 z-[2] flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
                           <ImageIcon className="h-9 w-9 text-[#008267]" />
                           <p className="text-sm font-black">Image unavailable</p>
                         </div>
