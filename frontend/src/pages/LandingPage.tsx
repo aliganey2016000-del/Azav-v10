@@ -617,9 +617,9 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {galleryItems.length > 0 && (
-        <section className="overflow-hidden bg-[#f8fbfa] py-14 text-slate-800 sm:py-18 lg:py-20">
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <section className="overflow-hidden bg-[#f8fbfa] py-8 text-slate-800 sm:py-10 lg:py-12">
+          <div className="mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-4xl">
                 <div className="flex items-center gap-2 text-[#006a61]">
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-100 bg-white shadow-sm">
@@ -628,12 +628,12 @@ export const LandingPage: React.FC = () => {
                   <span className="text-[11px] font-black uppercase tracking-[0.2em]">{content.sectionHeadings.galleryEyebrow}</span>
                 </div>
                 <h2
-                  className="mt-4 text-[38px] font-black leading-[0.98] tracking-[-0.035em] text-[#073f35] sm:text-[50px] lg:text-[58px]"
+                  className="mt-2.5 text-[36px] font-black leading-[0.98] tracking-[-0.035em] text-[#073f35] sm:text-[46px] lg:text-[54px]"
                   style={headingFont}
                 >
                   {content.sectionHeadings.galleryTitle}
                 </h2>
-                <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+                <p className="mt-2.5 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
                   {content.sectionHeadings.galleryDescription}
                 </p>
               </div>
@@ -650,7 +650,7 @@ export const LandingPage: React.FC = () => {
               )}
             </div>
 
-            <div className="mt-7 flex flex-wrap gap-2 sm:gap-3">
+            <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-3">
               {galleryCategories.map(({ label, icon: Icon }) => {
                 const active = activeGalleryCategory === label;
                 return (
@@ -676,15 +676,15 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {filteredGalleryItems.length > 0 ? (
-              <div className={`relative mt-6 sm:mt-7 ${!showAllGallery && filteredGalleryItems.length > 1 ? 'px-12 sm:px-14' : ''}`} role="region" aria-label="Gallery photos">
+              <div className="relative mt-4 sm:mt-5" role="region" aria-label="Gallery photos">
                 {!showAllGallery && filteredGalleryItems.length > 1 && (
                   <>
                     <button type="button" onClick={() => moveGallery(-1)} aria-label="Previous gallery photo"
-                      className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white text-[#006a61] shadow-md hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                      className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white/95 text-[#006a61] shadow-md backdrop-blur hover:bg-emerald-50 sm:-left-4 lg:-left-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
                       <ChevronLeft className="h-6 w-6" aria-hidden="true" />
                     </button>
                     <button type="button" onClick={() => moveGallery(1)} aria-label="Next gallery photo"
-                      className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white text-[#006a61] shadow-md hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
+                      className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white/95 text-[#006a61] shadow-md backdrop-blur hover:bg-emerald-50 sm:-right-4 lg:-right-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
                       <ChevronRight className="h-6 w-6" aria-hidden="true" />
                     </button>
                   </>
@@ -697,7 +697,7 @@ export const LandingPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setActiveGalleryIndex(originalIndex)}
-                        className="group relative block aspect-[16/10] w-full overflow-hidden rounded-[20px] bg-slate-200 text-left shadow-[0_12px_34px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(7,63,53,0.18)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60"
+                        className="group relative block aspect-[4/3] w-full overflow-hidden rounded-[20px] bg-slate-200 text-left shadow-[0_12px_34px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(7,63,53,0.18)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60"
                         aria-label={`Open ${item.title || 'AIMN gallery image'}`}
                       >
                         <div
