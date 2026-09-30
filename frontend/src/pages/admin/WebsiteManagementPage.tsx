@@ -30,6 +30,8 @@ import {
   VideoItem,
 } from '../../services/landingPageCms.service';
 
+const galleryCategories = ['Clinical Training', 'Hospital Visits', 'Students', 'Partnerships', 'Events'];
+
 type TabKey = 'hero' | 'strategy' | 'highlights' | 'programs' | 'testimonials' | 'media' | 'network' | 'recognitions' | 'sections' | 'branding' | 'seo';
 
 const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -107,6 +109,49 @@ export const WebsiteManagementPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [bulkCategory, setBulkCategory] = useState('Clinical Training');
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0, added: 0 });
+  const [bulkFailures, setBulkFailures] = useState<{ file: File; reason: string }[]>([]);
+  const bulkInputRef = useRef<HTMLInputElement>(null);
+  const bulkBusyRef = useRef(false);
+
+  const uploadGalleryBatch = async (files: File[]) => {
+    if (!files.length || bulkBusyRef.current || saving || publishing) return;
+    bulkBusyRef.current = true;
+    setBulkUploading(true);
+    setBulkFailures([]);
+    setBulkProgress({ done: 0, total: files.length, added: 0 });
+    const category = bulkCategory;
+    const failures: { file: File; reason: string }[] = [];
+    let added = 0;
+    try {
+      // Upload individually to avoid loading an entire batch into memory.
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        try {
+          if (!file.type.startsWith('image/')) throw new Error('Please select an image file.');
+          const image = await LandingPageCmsService.uploadAsset(file);
+          const item: GalleryItem = {
+            title: file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' '),
+            image, category, caption: '', location: '', date: '', photoCount: '',
+          };
+          setContent((current) => ({ ...current, gallery: [...current.gallery, item] }));
+          setDirty(true);
+          added += 1;
+        } catch (error: any) {
+          failures.push({ file, reason: error?.response?.data?.error?.message || error.message || 'Upload failed.' });
+        }
+        setBulkProgress({ done: index + 1, total: files.length, added });
+      }
+      setBulkFailures(failures);
+      setMessage(`${added} photo(s) added to ${category}. ${failures.length ? `${failures.length} failed; retry them below. ` : ''}Save Draft or Publish to keep your changes.`);
+    } finally {
+      bulkBusyRef.current = false;
+      setBulkUploading(false);
+    }
+  };
+
 
   useEffect(() => {
     LandingPageCmsService.getAdmin()
@@ -128,6 +173,7 @@ export const WebsiteManagementPage: React.FC = () => {
   const showError = (text: string) => setMessage(text);
 
   const saveDraft = async () => {
+    if (bulkBusyRef.current) return;
     try {
       setSaving(true);
       const result = await LandingPageCmsService.saveDraft(content);
@@ -142,6 +188,7 @@ export const WebsiteManagementPage: React.FC = () => {
   };
 
   const publish = async () => {
+    if (bulkBusyRef.current) return;
     try {
       setPublishing(true);
       if (dirty) await LandingPageCmsService.saveDraft(content);
@@ -157,6 +204,7 @@ export const WebsiteManagementPage: React.FC = () => {
   };
 
   const resetDraft = async () => {
+    if (bulkBusyRef.current) return;
     if (!window.confirm('Reset the draft to the AIMN default content? The currently published page will not change until you publish again.')) return;
     try {
       setSaving(true);
@@ -249,10 +297,10 @@ export const WebsiteManagementPage: React.FC = () => {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Manage every visible landing-page section, testimonial, partner, hospital, recognition, header, footer, contact detail and SEO setting without editing code.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={resetDraft} disabled={saving || publishing} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-black hover:bg-white/15"><RefreshCw className="h-4 w-4" /> Reset Draft</button>
+            <button onClick={resetDraft} disabled={saving || publishing || bulkUploading} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-black hover:bg-white/15"><RefreshCw className="h-4 w-4" /> Reset Draft</button>
             <button onClick={() => window.open('/?preview=1', '_blank')} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-black hover:bg-white/15"><Eye className="h-4 w-4" /> Preview</button>
-            <button onClick={saveDraft} disabled={saving || publishing} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950 hover:bg-slate-100"><Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save Draft'}</button>
-            <button onClick={publish} disabled={saving || publishing} className="inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-xs font-black text-emerald-950 hover:bg-emerald-300"><Send className="h-4 w-4" /> {publishing ? 'Publishing...' : 'Publish'}</button>
+            <button onClick={saveDraft} disabled={saving || publishing || bulkUploading} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black text-slate-950 hover:bg-slate-100"><Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save Draft'}</button>
+            <button onClick={publish} disabled={saving || publishing || bulkUploading} className="inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-xs font-black text-emerald-950 hover:bg-emerald-300"><Send className="h-4 w-4" /> {publishing ? 'Publishing...' : 'Publish'}</button>
           </div>
         </div>
         <div className="mt-5 grid gap-3 text-xs sm:grid-cols-3">
@@ -372,6 +420,30 @@ export const WebsiteManagementPage: React.FC = () => {
         <div className="grid gap-5 xl:grid-cols-2">
           <div className="space-y-4">
             <div className="flex items-center justify-between"><h2 className="font-black text-slate-900">Gallery images</h2><button onClick={() => mark({...content,gallery:[...content.gallery,{title:'',image:'',caption:'',category:'Clinical Training',location:'',date:'',photoCount:''}]})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add image</button></div>
+            <Card title="Bulk photo upload">
+              <label className="block text-xs font-black uppercase tracking-wide text-slate-500">
+                Category
+                <select value={bulkCategory} disabled={bulkUploading || bulkFailures.length > 0} onChange={(event) => setBulkCategory(event.target.value)} className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium normal-case text-slate-900">
+                  {galleryCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </label>
+              <p className="text-sm text-slate-500">Choose a category, then select multiple photos. Each photo is added separately to that category and can be edited below.</p>
+              <input ref={bulkInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(event) => { const files = Array.from(event.target.files || []); event.target.value = ''; void uploadGalleryBatch(files); }} />
+              <button type="button" disabled={bulkUploading || saving || publishing} onClick={() => bulkInputRef.current?.click()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-bold text-white hover:bg-teal-800 disabled:opacity-50">
+                <UploadCloud className="h-5 w-5" /> {bulkUploading ? 'Uploading photos...' : 'Select multiple photos'}
+              </button>
+              {bulkProgress.total > 0 && <div role="status" aria-live="polite" className="space-y-2 text-sm text-slate-600">
+                <p>{bulkProgress.done} / {bulkProgress.total} processed · {bulkProgress.added} added</p>
+                <progress aria-label="Photo upload progress" value={bulkProgress.done} max={bulkProgress.total} className="h-2 w-full accent-teal-600" />
+              </div>}
+              {bulkFailures.length > 0 && <div className="space-y-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                <ul className="max-h-40 space-y-1 overflow-y-auto">{bulkFailures.map(({ file, reason }, index) => <li key={index} className="break-words">{file.name}: {reason}</li>)}</ul>
+                <div className="flex flex-wrap gap-3">
+                  <button type="button" disabled={bulkUploading || saving || publishing} onClick={() => void uploadGalleryBatch(bulkFailures.map(({ file }) => file))} className="rounded-lg border border-amber-300 px-3 py-2 font-bold disabled:opacity-50">Retry failed photos</button>
+                  <button type="button" onClick={() => setBulkFailures([])} className="px-3 py-2 font-bold">Dismiss failures</button>
+                </div>
+              </div>}
+            </Card>
             {content.gallery.length===0 && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No gallery images yet.</div>}
             {content.gallery.map((item,index)=><Card key={index} title={`Gallery image ${index+1}`} onDelete={()=>mark({...content,gallery:content.gallery.filter((_,i)=>i!==index)})}>
               <Field label="Title" value={item.title} onChange={(v)=>updateGallery(index,'title',v)} placeholder="e.g. Internal Medicine Training" />
@@ -576,7 +648,7 @@ export const WebsiteManagementPage: React.FC = () => {
 
       <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur">
         <p className="text-xs font-bold text-slate-500">{dirty ? 'You have unsaved changes.' : 'All draft changes are saved.'}</p>
-        <div className="flex gap-2"><button onClick={saveDraft} disabled={saving||publishing} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white"><Save className="h-4 w-4" /> Save Draft</button><button onClick={publish} disabled={saving||publishing} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white"><Send className="h-4 w-4" /> Publish</button></div>
+        <div className="flex gap-2"><button onClick={saveDraft} disabled={saving||publishing||bulkUploading} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white"><Save className="h-4 w-4" /> Save Draft</button><button onClick={publish} disabled={saving||publishing||bulkUploading} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white"><Send className="h-4 w-4" /> Publish</button></div>
       </div>
     </div>
   );
