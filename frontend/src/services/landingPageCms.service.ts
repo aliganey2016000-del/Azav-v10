@@ -3,7 +3,15 @@ import api from './api';
 export type HighlightItem = { label: string; value: string };
 export type ProgramItem = { title: string; image: string; link: string };
 export type NewsItem = { title: string; label: string; summary: string; image: string; link: string };
-export type GalleryItem = { title: string; image: string; caption: string };
+export type GalleryItem = {
+  title: string;
+  image: string;
+  caption: string;
+  category?: string;
+  location?: string;
+  date?: string;
+  photoCount?: string;
+};
 export type VideoItem = { title: string; url: string; thumbnail: string; description: string };
 export type MembershipItem = { name: string; logo: string; url: string };
 export type HospitalItem = { name: string; image: string; location: string; description: string; url: string };
@@ -29,6 +37,7 @@ export type SectionHeadings = {
   testimonialsDescription: string;
   galleryEyebrow: string;
   galleryTitle: string;
+  galleryDescription: string;
   videosEyebrow: string;
   videosTitle: string;
   partnersEyebrow: string;

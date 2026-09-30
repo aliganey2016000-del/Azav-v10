@@ -365,9 +365,21 @@ export const WebsiteManagementPage: React.FC = () => {
       {activeTab === 'media' && (
         <div className="grid gap-5 xl:grid-cols-2">
           <div className="space-y-4">
-            <div className="flex items-center justify-between"><h2 className="font-black text-slate-900">Gallery images</h2><button onClick={() => mark({...content,gallery:[...content.gallery,{title:'',image:'',caption:''}]})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add image</button></div>
+            <div className="flex items-center justify-between"><h2 className="font-black text-slate-900">Gallery images</h2><button onClick={() => mark({...content,gallery:[...content.gallery,{title:'',image:'',caption:'',category:'Clinical Training',location:'',date:'',photoCount:''}]})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add image</button></div>
             {content.gallery.length===0 && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">No gallery images yet.</div>}
-            {content.gallery.map((item,index)=><Card key={index} title={`Gallery image ${index+1}`} onDelete={()=>mark({...content,gallery:content.gallery.filter((_,i)=>i!==index)})}><Field label="Title" value={item.title} onChange={(v)=>updateGallery(index,'title',v)} /><ImageField label="Image" value={item.image} onChange={(v)=>updateGallery(index,'image',v)} onError={showError} /><Field label="Caption" value={item.caption} onChange={(v)=>updateGallery(index,'caption',v)} multiline />{item.image&&<img src={item.image} alt="" className="h-40 w-full rounded-xl object-cover" />}</Card>)}
+            {content.gallery.map((item,index)=><Card key={index} title={`Gallery image ${index+1}`} onDelete={()=>mark({...content,gallery:content.gallery.filter((_,i)=>i!==index)})}>
+              <Field label="Title" value={item.title} onChange={(v)=>updateGallery(index,'title',v)} placeholder="e.g. Internal Medicine Training" />
+              <ImageField label="Image" value={item.image} onChange={(v)=>updateGallery(index,'image',v)} onError={showError} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Category" value={item.category || ''} onChange={(v)=>updateGallery(index,'category',v)} placeholder="Clinical Training" />
+                <Field label="Hospital / Location" value={item.location || ''} onChange={(v)=>updateGallery(index,'location',v)} placeholder="Mbarara Regional Referral Hospital" />
+                <Field label="Date / Month" value={item.date || ''} onChange={(v)=>updateGallery(index,'date',v)} placeholder="Jan 2026" />
+                <Field label="Photo count badge" value={item.photoCount || ''} onChange={(v)=>updateGallery(index,'photoCount',v)} placeholder="12" />
+              </div>
+              <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-800">Use one of these categories for the filter tabs: Clinical Training, Hospital Visits, Students, Partnerships, Events.</p>
+              <Field label="Caption / details" value={item.caption} onChange={(v)=>updateGallery(index,'caption',v)} multiline />
+              {item.image&&<img src={item.image} alt="" className="h-44 w-full rounded-xl object-cover" />}
+            </Card>)}
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between"><h2 className="font-black text-slate-900">Videos</h2><button onClick={() => mark({...content,videos:[...content.videos,{title:'',url:'',thumbnail:'',description:''}]})} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add video</button></div>
@@ -471,6 +483,7 @@ export const WebsiteManagementPage: React.FC = () => {
           <Card title="Gallery & Videos headings">
             <Field label="Gallery eyebrow" value={content.sectionHeadings.galleryEyebrow} onChange={(v) => updateSectionHeading('galleryEyebrow', v)} />
             <Field label="Gallery title" value={content.sectionHeadings.galleryTitle} onChange={(v) => updateSectionHeading('galleryTitle', v)} />
+            <Field label="Gallery description" value={content.sectionHeadings.galleryDescription} onChange={(v) => updateSectionHeading('galleryDescription', v)} multiline />
             <Field label="Videos eyebrow" value={content.sectionHeadings.videosEyebrow} onChange={(v) => updateSectionHeading('videosEyebrow', v)} />
             <Field label="Videos title" value={content.sectionHeadings.videosTitle} onChange={(v) => updateSectionHeading('videosTitle', v)} />
           </Card>

@@ -12,6 +12,8 @@ import {
   Globe2,
   GraduationCap,
   Image as ImageIcon,
+  Handshake,
+  MapPin,
   Maximize2,
   Play,
   PlayCircle,
@@ -174,6 +176,8 @@ export const LandingPage: React.FC = () => {
   const [showAllHospitals, setShowAllHospitals] = useState(false);
   const [showAllRecognitions, setShowAllRecognitions] = useState(false);
   const [showAllTestimonials, setShowAllTestimonials] = useState(false);
+  const [showAllGallery, setShowAllGallery] = useState(false);
+  const [activeGalleryCategory, setActiveGalleryCategory] = useState('All');
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -204,6 +208,18 @@ export const LandingPage: React.FC = () => {
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
   const galleryItems = content.gallery.filter((item) => item.image?.trim());
+  const galleryCategories = [
+    { label: 'All', icon: ImageIcon },
+    { label: 'Clinical Training', icon: Stethoscope },
+    { label: 'Hospital Visits', icon: Building2 },
+    { label: 'Students', icon: Users },
+    { label: 'Partnerships', icon: Handshake },
+    { label: 'Events', icon: CalendarDays },
+  ];
+  const filteredGalleryItems = activeGalleryCategory === 'All'
+    ? galleryItems
+    : galleryItems.filter((item) => (item.category || 'Clinical Training') === activeGalleryCategory);
+  const visibleGalleryItems = showAllGallery ? filteredGalleryItems : filteredGalleryItems.slice(0, 6);
   const recognitions = content.recognitions.filter((item) => item.name?.trim());
   const recognitionIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -503,61 +519,128 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {galleryItems.length > 0 && (
-        <section className="overflow-hidden bg-[#f8fbfa] py-16 text-slate-800 sm:py-20">
+        <section className="overflow-hidden bg-[#f8fbfa] py-14 text-slate-800 sm:py-18 lg:py-20">
           <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-2 text-[#008267]">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50">
-                  <ImageIcon className="h-5 w-5" />
-                </span>
-                <span className="text-[11px] font-black uppercase tracking-[0.18em]">{content.sectionHeadings.galleryEyebrow}</span>
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-4xl">
+                <div className="flex items-center gap-2 text-[#006a61]">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-100 bg-white shadow-sm">
+                    <ImageIcon className="h-5 w-5" />
+                  </span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em]">{content.sectionHeadings.galleryEyebrow}</span>
+                </div>
+                <h2
+                  className="mt-4 text-[38px] font-black leading-[0.98] tracking-[-0.035em] text-[#073f35] sm:text-[50px] lg:text-[58px]"
+                  style={headingFont}
+                >
+                  {content.sectionHeadings.galleryTitle}
+                </h2>
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+                  {content.sectionHeadings.galleryDescription}
+                </p>
               </div>
-              <h2 className="mt-4 text-[36px] font-black leading-[1.02] tracking-[-0.025em] text-[#073f35] sm:text-5xl" style={headingFont}>
-                {content.sectionHeadings.galleryTitle}
-              </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                Clinical training, institutional partnerships and professional activities from across the AIMN network.
-              </p>
+
+              {filteredGalleryItems.length > 6 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllGallery((current) => !current)}
+                  className="inline-flex h-12 shrink-0 items-center justify-center gap-2 self-start rounded-2xl border border-[#008267]/35 bg-white px-5 text-sm font-black text-[#07534a] shadow-sm transition hover:border-[#008267] hover:bg-emerald-50"
+                >
+                  {showAllGallery ? content.sectionHeadings.viewLessLabel : 'View All Photos'}
+                  <ArrowRight className={`h-4 w-4 transition ${showAllGallery ? 'rotate-180' : ''}`} />
+                </button>
+              )}
             </div>
 
-            <div className={`mt-9 grid gap-5 sm:mt-10 ${galleryItems.length === 1 ? 'mx-auto max-w-3xl grid-cols-1' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
-              {galleryItems.map((item, index) => (
-                <article key={`${item.image}-${index}`} className="min-w-0">
+            <div className="mt-7 flex flex-wrap gap-2 sm:gap-3">
+              {galleryCategories.map(({ label, icon: Icon }) => {
+                const active = activeGalleryCategory === label;
+                return (
                   <button
+                    key={label}
                     type="button"
-                    onClick={() => setActiveGalleryIndex(index)}
-                    className="group relative block aspect-[4/3] w-full overflow-hidden rounded-[24px] border border-emerald-100 bg-slate-100 text-left shadow-[0_18px_50px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(7,63,53,0.16)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60 sm:rounded-[28px]"
-                    aria-label={`Open ${item.title || 'AIMN gallery image'}`}
+                    onClick={() => {
+                      setActiveGalleryCategory(label);
+                      setShowAllGallery(false);
+                    }}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition sm:text-sm ${
+                      active
+                        ? 'border-[#006a61] bg-[#006a61] text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:text-[#006a61]'
+                    }`}
                   >
-                    <img
-                      src={item.image}
-                      alt={item.title || 'AIMN activity'}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
-                      onError={(event) => {
-                        event.currentTarget.style.display = 'none';
-                        event.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className="hidden absolute inset-0 flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
-                      <ImageIcon className="h-9 w-9 text-[#008267]" />
-                      <p className="text-sm font-black">Image unavailable</p>
-                    </div>
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#032f29]/95 via-[#032f29]/20 to-transparent" />
-                    <span className="pointer-events-none absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/25 text-white opacity-0 backdrop-blur transition group-hover:opacity-100 group-focus:opacity-100 sm:opacity-100">
-                      <Maximize2 className="h-4 w-4" />
-                    </span>
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                      <h3 className="break-words text-lg font-black leading-tight text-white sm:text-xl" style={headingFont}>
-                        {item.title || 'AIMN Activity'}
-                      </h3>
-                      {item.caption && <p className="mt-2 line-clamp-2 text-sm leading-5 text-white/75">{item.caption}</p>}
-                    </div>
+                    <Icon className="h-4 w-4" />
+                    {label}
                   </button>
-                </article>
-              ))}
+                );
+              })}
             </div>
+
+            {filteredGalleryItems.length > 0 ? (
+              <div className="mt-6 grid gap-4 sm:mt-7 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleGalleryItems.map((item) => {
+                  const originalIndex = galleryItems.indexOf(item);
+                  return (
+                    <article key={`${item.image}-${originalIndex}`} className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => setActiveGalleryIndex(originalIndex)}
+                        className="group relative block aspect-[16/10] w-full overflow-hidden rounded-[20px] bg-slate-200 text-left shadow-[0_12px_34px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(7,63,53,0.18)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60"
+                        aria-label={`Open ${item.title || 'AIMN gallery image'}`}
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.title || 'AIMN clinical training activity'}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                            event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="hidden absolute inset-0 flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
+                          <ImageIcon className="h-9 w-9 text-[#008267]" />
+                          <p className="text-sm font-black">Image unavailable</p>
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#00584f]/95 via-[#00584f]/10 to-transparent" />
+
+                        {item.photoCount && (
+                          <span className="pointer-events-none absolute right-3 top-3 inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#163f45]/80 px-3 text-xs font-black text-white backdrop-blur-sm">
+                            <ImageIcon className="h-4 w-4" />
+                            {item.photoCount}
+                          </span>
+                        )}
+
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                          <h3 className="text-[16px] font-black leading-tight text-white sm:text-lg">
+                            {item.title || 'Clinical Training'}
+                          </h3>
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-[11px] font-medium text-white/90 sm:text-xs">
+                            {item.location && (
+                              <span className="inline-flex min-w-0 items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">{item.location}</span>
+                              </span>
+                            )}
+                            {item.date && (
+                              <span className="inline-flex shrink-0 items-center gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5" />
+                                {item.date}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-8 rounded-2xl border border-dashed border-emerald-200 bg-white px-5 py-12 text-center text-sm text-slate-500">
+                No photos are currently assigned to this category.
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -691,13 +774,19 @@ export const LandingPage: React.FC = () => {
                 className="max-h-[76vh] w-full object-contain"
               />
             </div>
-            {(galleryItems[activeGalleryIndex].title || galleryItems[activeGalleryIndex].caption) && (
+            {(galleryItems[activeGalleryIndex].title || galleryItems[activeGalleryIndex].caption || galleryItems[activeGalleryIndex].location || galleryItems[activeGalleryIndex].date) && (
               <div className="px-5 py-4 text-white sm:px-7 sm:py-5">
                 {galleryItems[activeGalleryIndex].title && (
                   <h3 className="text-lg font-black sm:text-xl" style={headingFont}>{galleryItems[activeGalleryIndex].title}</h3>
                 )}
+                {(galleryItems[activeGalleryIndex].location || galleryItems[activeGalleryIndex].date) && (
+                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/70">
+                    {galleryItems[activeGalleryIndex].location && <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{galleryItems[activeGalleryIndex].location}</span>}
+                    {galleryItems[activeGalleryIndex].date && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{galleryItems[activeGalleryIndex].date}</span>}
+                  </div>
+                )}
                 {galleryItems[activeGalleryIndex].caption && (
-                  <p className="mt-1.5 text-sm leading-6 text-white/70">{galleryItems[activeGalleryIndex].caption}</p>
+                  <p className="mt-2 text-sm leading-6 text-white/70">{galleryItems[activeGalleryIndex].caption}</p>
                 )}
               </div>
             )}
