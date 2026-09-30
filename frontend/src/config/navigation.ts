@@ -86,7 +86,7 @@ const SUPER_ADMIN_NAVIGATION: NavigationSection[] = [
         roles: [UserRole.SUPER_ADMIN],
       },
       {
-        label: 'Private Presentation Gallery',
+        label: 'Presentation Gallery',
         path: '/admin/presentation-gallery',
         icon: ImageIcon,
         roles: [UserRole.SUPER_ADMIN],
