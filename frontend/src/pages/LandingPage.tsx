@@ -389,9 +389,9 @@ export const LandingPage: React.FC = () => {
       <section className="relative isolate w-full max-w-full overflow-x-hidden bg-[#303b8e]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.08),transparent_26%),radial-gradient(circle_at_82%_70%,rgba(0,185,104,0.12),transparent_30%)]" />
 
-        <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-14 sm:px-6 md:pt-20 lg:px-8 lg:pb-16">
-          <div className="grid min-w-0 items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
-            <div className="w-full min-w-0 max-w-2xl">
+        <div className="relative mx-auto w-full max-w-[1500px] px-4 pb-14 pt-14 sm:px-6 md:pt-20 lg:px-10 lg:pb-16 xl:px-12">
+          <div className="grid min-w-0 items-center gap-10 lg:grid-cols-[minmax(0,1.18fr)_minmax(460px,0.82fr)] lg:gap-10 xl:grid-cols-[minmax(0,1.22fr)_minmax(520px,0.78fr)] xl:gap-12">
+            <div className="w-full min-w-0 max-w-[820px]">
               <div className="flex w-fit max-w-full items-start gap-2 rounded-[24px] border border-[#ffb612]/35 bg-[#ffb612]/10 px-4 py-2 text-[10px] font-black uppercase leading-5 tracking-[0.14em] text-[#ffd55b] sm:items-center sm:rounded-full sm:text-[11px] sm:tracking-[0.2em]">
                 <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:mt-0" />
                 <span className="min-w-0 break-words [overflow-wrap:anywhere]">{content.hero.eyebrow || 'Trusted by medical schools & hospitals worldwide'}</span>
@@ -408,7 +408,7 @@ export const LandingPage: React.FC = () => {
                     </span>
                   ))}
                 </span>
-                <span className="hidden lg:block lg:text-[62px] xl:text-[68px]">
+                <span className="hidden lg:block lg:text-[56px] xl:text-[60px] 2xl:text-[64px]">
                   {desktopHeroTitleLines.map((line, index) => (
                     <span
                       key={index}
@@ -449,22 +449,10 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            <div id="organization-video" className="relative mx-auto w-full min-w-0 max-w-full scroll-mt-28 sm:max-w-[620px]">
+            <div id="organization-video" className="relative mx-auto w-full min-w-0 max-w-[640px] scroll-mt-28 lg:mx-0 lg:justify-self-end">
               <div className="absolute -inset-3 rounded-[28px] bg-white/10 blur-3xl sm:-inset-8 sm:rounded-[36px]" />
               <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border border-white/20 bg-white/[0.08] shadow-2xl shadow-black/25 backdrop-blur-xl sm:rounded-[28px]">
-                <div className="flex min-w-0 items-center justify-between gap-2 border-b border-white/10 px-4 py-4 sm:gap-4 sm:px-6">
-                  <div className="min-w-0">
-                    <p className="break-words text-[9px] font-black uppercase leading-4 tracking-[0.14em] text-[#ffbf2f] [overflow-wrap:anywhere] sm:text-[10px] sm:tracking-[0.18em]">{content.sectionHeadings.heroVideoEyebrow}</p>
-                    <h2 className="mt-1 break-words text-sm font-black leading-5 text-white [overflow-wrap:anywhere] sm:text-lg sm:leading-6">{content.sectionHeadings.heroVideoTitle}</h2>
-                  </div>
-                  <div className="hidden shrink-0 items-center gap-1.5 sm:flex" aria-hidden="true">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#ffb612]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#45d2aa]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#4bb6ff]" />
-                  </div>
-                </div>
-
-                <div className="aspect-video w-full min-w-0 max-w-full overflow-hidden bg-[#18236f]">
+                <div className="aspect-video w-full min-w-0 max-w-full overflow-hidden rounded-[23px] bg-[#18236f] sm:rounded-[27px]">
                   {heroShowcaseEmbed ? (
                     <iframe
                       src={`${heroShowcaseEmbed}${heroShowcaseEmbed.includes('?') ? '&' : '?'}rel=0&modestbranding=1&playsinline=1`}
@@ -486,11 +474,6 @@ export const LandingPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="min-w-0 border-t border-white/10 px-4 py-4 sm:px-6">
-                  <p className="break-words text-sm leading-6 text-white/70 [overflow-wrap:anywhere]">
-                    {content.sectionHeadings.heroVideoDescription}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
