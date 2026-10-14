@@ -129,6 +129,10 @@ export type LandingPageContent = {
   membershipSeedVersion: number;
   hospitals: HospitalItem[];
   hospitalSeedVersion: number;
+  sectionVisibility: {
+    partners: boolean;
+    hospitals: boolean;
+  };
   contact: {
     email: string;
     phone: string;
@@ -376,6 +380,10 @@ export const defaultLandingPageContent: LandingPageContent = {
     { name: 'Mbarara Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' }
   ],
   hospitalSeedVersion: 2,
+  sectionVisibility: {
+    partners: true,
+    hospitals: true,
+  },
   contact: {
     email: 'info@azaammedics.org',
     phone: '',
@@ -499,6 +507,10 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   membershipSeedVersion: 3,
   hospitals: mergeHospitals(value),
   hospitalSeedVersion: 2,
+  sectionVisibility: {
+    ...defaultLandingPageContent.sectionVisibility,
+    ...(value?.sectionVisibility || {}),
+  },
 });
 
 export const LandingPageCmsService = {

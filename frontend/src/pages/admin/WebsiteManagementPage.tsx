@@ -32,7 +32,7 @@ import {
 
 const galleryCategories = ['Clinical Training', 'Hospital Visits', 'Students', 'Partnerships', 'Events'];
 
-type TabKey = 'hero' | 'strategy' | 'highlights' | 'programs' | 'testimonials' | 'media' | 'network' | 'recognitions' | 'sections' | 'branding' | 'seo';
+type TabKey = 'hero' | 'strategy' | 'highlights' | 'programs' | 'testimonials' | 'media' | 'partners' | 'hospitals' | 'recognitions' | 'sections' | 'branding' | 'seo';
 
 const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'hero', label: 'Hero', icon: LayoutTemplate },
@@ -41,7 +41,8 @@ const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: 'programs', label: 'Training Programs', icon: LayoutTemplate },
   { key: 'testimonials', label: 'Testimonials', icon: MessageSquareQuote },
   { key: 'media', label: 'Gallery & Videos', icon: ImageIcon },
-  { key: 'network', label: 'Partners & Hospitals', icon: Users },
+  { key: 'partners', label: 'Our Partners', icon: Users },
+  { key: 'hospitals', label: 'Training Hospitals', icon: Globe2 },
   { key: 'recognitions', label: 'Recognitions', icon: CheckCircle2 },
   { key: 'sections', label: 'Section Text', icon: LayoutTemplate },
   { key: 'branding', label: 'Header & Footer', icon: Globe2 },
@@ -467,15 +468,54 @@ export const WebsiteManagementPage: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'network' && (
+      {activeTab === 'partners' && (
         <div className="max-w-3xl space-y-5">
           <Card title="Our Partners">
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-900">Public section visibility</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Show or hide the entire Our Partners section on the public website without deleting partner data.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => mark({ ...content, sectionVisibility: { ...content.sectionVisibility, partners: !content.sectionVisibility.partners } })}
+                className={`inline-flex min-w-28 items-center justify-center rounded-xl px-4 py-2.5 text-xs font-black transition ${
+                  content.sectionVisibility.partners
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                }`}
+              >
+                {content.sectionVisibility.partners ? 'Shown' : 'Hidden'}
+              </button>
+            </div>
             <p className="text-sm leading-6 text-slate-600">Add confirmed organizations with their logos. The logos scroll across the page; View more reveals the full list.</p>
             {content.memberships.map((item, index) => <div key={index} className="rounded-xl border border-slate-200 p-3"><div className="space-y-3"><Field label="Organization name" value={item.name} onChange={(v) => updateMembership(index, 'name', v)} /><ImageField label="Organization logo" value={item.logo} onChange={(v) => updateMembership(index, 'logo', v)} onError={showError} /><Field label="Website URL (optional)" value={item.url} onChange={(v) => updateMembership(index, 'url', v)} /></div><div className="mt-3 flex items-center justify-between gap-3">{item.logo && <img src={item.logo} alt="" className="h-12 w-24 object-contain" />}<button type="button" onClick={() => mark({ ...content, memberships: content.memberships.filter((_, i) => i !== index) })} className="ml-auto text-xs font-bold text-rose-600">Remove</button></div></div>)}
             <button type="button" onClick={() => mark({ ...content, memberships: [...content.memberships, { name: '', logo: '', url: '' }] })} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white"><Plus className="h-4 w-4" /> Add organization</button>
           </Card>
+        </div>
+      )}
+
+      {activeTab === 'hospitals' && (
+        <div className="max-w-3xl space-y-5">
           <Card title="Our Training Hospitals">
-            <p className="text-sm leading-6 text-slate-600">Add hospitals where students undertake supervised clinical training. They appear below the university partners on the landing page.</p>
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-900">Public section visibility</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Show or hide the entire Our Training Hospitals section on the public website without deleting hospital data.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => mark({ ...content, sectionVisibility: { ...content.sectionVisibility, hospitals: !content.sectionVisibility.hospitals } })}
+                className={`inline-flex min-w-28 items-center justify-center rounded-xl px-4 py-2.5 text-xs font-black transition ${
+                  content.sectionVisibility.hospitals
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                }`}
+              >
+                {content.sectionVisibility.hospitals ? 'Shown' : 'Hidden'}
+              </button>
+            </div>
+            <p className="text-sm leading-6 text-slate-600">Add hospitals where students undertake supervised clinical training. They appear on the landing page only when this section is shown.</p>
             {content.hospitals.map((hospital, index) => (
               <div key={index} className="space-y-3 rounded-xl border border-slate-200 p-3">
                 <Field label="Hospital name" value={hospital.name} onChange={(value) => updateHospital(index, 'name', value)} />

@@ -121,6 +121,10 @@ const DEFAULT_CONTENT = {
     { name: 'Mbarara Regional Referral Hospital', image: '/memberships/uganda-hospital-emblem.png', location: '', description: '', url: '' }
   ],
   hospitalSeedVersion: 2,
+  sectionVisibility: {
+    partners: true,
+    hospitals: true,
+  },
   contact: {
     email: 'info@azaammedics.org',
     phone: '',

@@ -230,7 +230,6 @@ export const LandingPage: React.FC = () => {
   const [showAllRecognitions, setShowAllRecognitions] = useState(false);
   const [showAllTestimonials, setShowAllTestimonials] = useState(false);
   const [showAllGallery, setShowAllGallery] = useState(false);
-  const [activeGalleryCategory, setActiveGalleryCategory] = useState('All');
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
   const [recognitionAccessTarget, setRecognitionAccessTarget] = useState<LandingPageContent['recognitions'][number] | null>(null);
   const [recognitionAccessCode, setRecognitionAccessCode] = useState('');
@@ -268,17 +267,7 @@ export const LandingPage: React.FC = () => {
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
   const galleryItems = content.gallery.filter((item) => item.image?.trim());
-  const galleryCategories = [
-    { label: 'All', icon: ImageIcon },
-    { label: 'Clinical Training', icon: Stethoscope },
-    { label: 'Hospital Visits', icon: Building2 },
-    { label: 'Students', icon: Users },
-    { label: 'Partnerships', icon: Handshake },
-    { label: 'Events', icon: CalendarDays },
-  ];
-  const filteredGalleryItems = activeGalleryCategory === 'All'
-    ? galleryItems
-    : galleryItems.filter((item) => (item.category || 'Clinical Training') === activeGalleryCategory);
+  const filteredGalleryItems = galleryItems;
   const scrollingGalleryItems = filteredGalleryItems.length
     ? Array.from(
         { length: Math.max(4, filteredGalleryItems.length) },
@@ -709,9 +698,6 @@ export const LandingPage: React.FC = () => {
                 >
                   {content.sectionHeadings.galleryTitle}
                 </h2>
-                <p className="mt-2.5 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
-                  {content.sectionHeadings.galleryDescription}
-                </p>
               </div>
 
               {filteredGalleryItems.length > 3 && (
@@ -724,30 +710,6 @@ export const LandingPage: React.FC = () => {
                   <ArrowRight className={`h-4 w-4 transition ${showAllGallery ? 'rotate-180' : ''}`} />
                 </button>
               )}
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-3">
-              {galleryCategories.map(({ label, icon: Icon }) => {
-                const active = activeGalleryCategory === label;
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => {
-                      setActiveGalleryCategory(label);
-                      setShowAllGallery(false);
-                    }}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition sm:text-sm ${
-                      active
-                        ? 'border-[#006a61] bg-[#006a61] text-white shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:text-[#006a61]'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {label}
-                  </button>
-                );
-              })}
             </div>
 
             {filteredGalleryItems.length > 0 ? (
@@ -902,7 +864,8 @@ export const LandingPage: React.FC = () => {
         </section>
       )}
 
-      <section id="network" aria-labelledby="memberships-title" className="bg-white px-4 pb-16 pt-10 text-[#202020] sm:px-6 lg:px-8 lg:pb-20">
+      {content.sectionVisibility.partners && (
+        <section id="network" aria-labelledby="memberships-title" className="bg-white px-4 pb-16 pt-10 text-[#202020] sm:px-6 lg:px-8 lg:pb-20">
         <div className="mx-auto max-w-6xl text-center">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[#008267]">{content.sectionHeadings.partnersEyebrow}</p>
           <h2 id="memberships-title" className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{content.sectionHeadings.partnersTitle}</h2>
@@ -923,8 +886,9 @@ export const LandingPage: React.FC = () => {
           ) : <p className="mx-auto mt-10 max-w-xl rounded border border-slate-200 px-6 py-12 text-base text-slate-600">Our partners will be displayed here when confirmed.</p>}
         </div>
       </section>
+      )}
 
-      {hospitals.length > 0 && (
+      {content.sectionVisibility.hospitals && hospitals.length > 0 && (
         <section id="training-hospitals" aria-labelledby="training-hospitals-title" className="bg-[#303b8e] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-6xl text-center">
             <p className="text-xs font-extrabold uppercase tracking-wide text-emerald-200">{content.sectionHeadings.hospitalsEyebrow}</p>
