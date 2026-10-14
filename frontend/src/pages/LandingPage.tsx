@@ -389,15 +389,15 @@ export const LandingPage: React.FC = () => {
       <section className="relative isolate w-full max-w-full overflow-x-hidden bg-[#303b8e]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.08),transparent_26%),radial-gradient(circle_at_82%_70%,rgba(0,185,104,0.12),transparent_30%)]" />
 
-        <div className="relative mx-auto w-full max-w-[1500px] px-4 pb-14 pt-14 sm:px-6 md:pt-20 lg:px-10 lg:pb-16 xl:px-12">
-          <div className="grid min-w-0 items-center gap-10 lg:grid-cols-[minmax(0,1.18fr)_minmax(460px,0.82fr)] lg:gap-10 xl:grid-cols-[minmax(0,1.22fr)_minmax(520px,0.78fr)] xl:gap-12">
-            <div className="w-full min-w-0 max-w-[820px]">
+        <div className="relative mx-auto w-full max-w-[1580px] px-4 pb-14 pt-14 sm:px-6 md:pt-20 lg:px-8 lg:pb-16 xl:px-10 2xl:px-12">
+          <div className="grid min-w-0 items-center gap-10 lg:grid-cols-[minmax(0,0.98fr)_minmax(560px,1.02fr)] lg:gap-10 xl:grid-cols-[minmax(0,0.94fr)_minmax(650px,1.06fr)] xl:gap-12">
+            <div className="w-full min-w-0 max-w-[760px]">
               <div className="flex w-fit max-w-full items-start gap-2 rounded-[24px] border border-[#ffb612]/35 bg-[#ffb612]/10 px-4 py-2 text-[10px] font-black uppercase leading-5 tracking-[0.14em] text-[#ffd55b] sm:items-center sm:rounded-full sm:text-[11px] sm:tracking-[0.2em]">
                 <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:mt-0" />
                 <span className="min-w-0 break-words [overflow-wrap:anywhere]">{content.hero.eyebrow || 'Trusted by medical schools & hospitals worldwide'}</span>
               </div>
 
-              <h1 className="mt-6 w-full max-w-[680px] text-[38px] font-black leading-[0.98] tracking-[-0.035em] text-white sm:text-[54px]" style={headingFont}>
+              <h1 className="mt-6 w-full max-w-[740px] text-[38px] font-black leading-[0.98] tracking-[-0.035em] text-white sm:text-[54px]" style={headingFont}>
                 <span className="lg:hidden">
                   {content.hero.titleLines.map((line, index) => (
                     <span
@@ -408,19 +408,24 @@ export const LandingPage: React.FC = () => {
                     </span>
                   ))}
                 </span>
-                <span className="hidden lg:block lg:text-[56px] xl:text-[60px] 2xl:text-[64px]">
-                  {desktopHeroTitleLines.map((line, index) => (
-                    <span
-                      key={index}
-                      className={`block whitespace-nowrap ${index === 1 ? 'text-[#ffbf2f]' : 'text-white'}`}
-                    >
-                      {line}
-                    </span>
-                  ))}
+                <span className="hidden lg:block lg:text-[52px] xl:text-[56px] 2xl:text-[60px]">
+                  {desktopHeroTitleLines.map((line, index) => {
+                    const words = line.trim().split(/\s+/);
+                    return (
+                      <span
+                        key={index}
+                        className={`flex w-full items-baseline justify-between gap-3 whitespace-nowrap ${index === 1 ? 'text-[#ffbf2f]' : 'text-white'}`}
+                      >
+                        {words.map((word, wordIndex) => (
+                          <span key={`${index}-${wordIndex}`}>{word}</span>
+                        ))}
+                      </span>
+                    );
+                  })}
                 </span>
               </h1>
 
-              <p className="mt-6 w-full max-w-2xl break-words text-[15px] leading-7 text-white/85 [overflow-wrap:anywhere] sm:text-base sm:leading-8 lg:text-[17px]">
+              <p className="mt-6 w-full max-w-[720px] break-words text-[15px] leading-7 text-white/85 [overflow-wrap:anywhere] sm:text-base sm:leading-8 lg:text-justify lg:text-[17px]">
                 {content.hero.subtitle || 'Manage clinical placements, student nominations, visas, hospital coordination, attendance, certificates and training operations — all in one powerful platform.'}
               </p>
 
@@ -449,10 +454,10 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            <div id="organization-video" className="relative mx-auto w-full min-w-0 max-w-[640px] scroll-mt-28 lg:mx-0 lg:justify-self-end">
+            <div id="organization-video" className="relative mx-auto w-full min-w-0 max-w-[760px] scroll-mt-28 lg:mx-0 lg:w-full lg:justify-self-end">
               <div className="absolute -inset-3 rounded-[28px] bg-white/10 blur-3xl sm:-inset-8 sm:rounded-[36px]" />
               <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border border-white/20 bg-white/[0.08] shadow-2xl shadow-black/25 backdrop-blur-xl sm:rounded-[28px]">
-                <div className="aspect-video w-full min-w-0 max-w-full overflow-hidden rounded-[23px] bg-[#18236f] sm:rounded-[27px]">
+                <div className="aspect-video w-full min-w-0 max-w-full overflow-hidden rounded-[23px] bg-[#18236f] sm:rounded-[27px] lg:aspect-[16/10] xl:aspect-video">
                   {heroShowcaseEmbed ? (
                     <iframe
                       src={`${heroShowcaseEmbed}${heroShowcaseEmbed.includes('?') ? '&' : '?'}rel=0&modestbranding=1&playsinline=1`}
