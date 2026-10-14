@@ -564,3 +564,38 @@ html.dark ::-webkit-scrollbar-thumb {
     scroll-snap-align: start;
   }
 }
+
+
+/* Continuous public gallery: right-to-left seamless marquee. */
+@keyframes aimn-gallery-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.aimn-gallery-track {
+  display: flex;
+  width: max-content;
+  animation: aimn-gallery-scroll 48s linear infinite;
+  will-change: transform;
+}
+
+@media (max-width: 640px) {
+  .aimn-gallery-track {
+    animation-duration: 38s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aimn-gallery-window {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .aimn-gallery-track {
+    animation: none !important;
+  }
+
+  .aimn-gallery-track article {
+    scroll-snap-align: start;
+  }
+}
