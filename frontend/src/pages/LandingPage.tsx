@@ -230,7 +230,6 @@ export const LandingPage: React.FC = () => {
   const [showAllRecognitions, setShowAllRecognitions] = useState(false);
   const [showAllTestimonials, setShowAllTestimonials] = useState(false);
   const [showAllGallery, setShowAllGallery] = useState(false);
-  const [galleryOffset, setGalleryOffset] = useState(0);
   const [activeGalleryCategory, setActiveGalleryCategory] = useState('All');
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null);
   const [recognitionAccessTarget, setRecognitionAccessTarget] = useState<LandingPageContent['recognitions'][number] | null>(null);
@@ -280,15 +279,12 @@ export const LandingPage: React.FC = () => {
   const filteredGalleryItems = activeGalleryCategory === 'All'
     ? galleryItems
     : galleryItems.filter((item) => (item.category || 'Clinical Training') === activeGalleryCategory);
-  const galleryStart = filteredGalleryItems.length ? galleryOffset % filteredGalleryItems.length : 0;
-  const visibleGalleryItems = showAllGallery ? filteredGalleryItems : [
-    ...filteredGalleryItems.slice(galleryStart), ...filteredGalleryItems.slice(0, galleryStart),
-  ].slice(0, 3);
-  const moveGallery = (direction: number) => {
-    if (filteredGalleryItems.length > 1) {
-      setGalleryOffset((current) => (current + direction + filteredGalleryItems.length) % filteredGalleryItems.length);
-    }
-  };
+  const scrollingGalleryItems = filteredGalleryItems.length
+    ? Array.from(
+        { length: Math.max(4, filteredGalleryItems.length) },
+        (_, index) => filteredGalleryItems[index % filteredGalleryItems.length]
+      )
+    : [];
   const recognitions = content.recognitions.filter((item) => item.name?.trim());
   const recognitionIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -739,7 +735,6 @@ export const LandingPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setActiveGalleryCategory(label);
-                      setGalleryOffset(0);
                       setShowAllGallery(false);
                     }}
                     className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition sm:text-sm ${
@@ -756,86 +751,120 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {filteredGalleryItems.length > 0 ? (
-              <div className="relative mt-4 sm:mt-5" role="region" aria-label="Gallery photos">
-                {!showAllGallery && filteredGalleryItems.length > 1 && (
-                  <>
-                    <button type="button" onClick={() => moveGallery(-1)} aria-label="Previous gallery photo"
-                      className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white/95 text-[#006a61] shadow-md backdrop-blur hover:bg-emerald-50 sm:-left-4 lg:-left-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
-                      <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-                    </button>
-                    <button type="button" onClick={() => moveGallery(1)} aria-label="Next gallery photo"
-                      className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-emerald-200 bg-white/95 text-[#006a61] shadow-md backdrop-blur hover:bg-emerald-50 sm:-right-4 lg:-right-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500">
-                      <ChevronRight className="h-6 w-6" aria-hidden="true" />
-                    </button>
-                  </>
-                )}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visibleGalleryItems.map((item, index) => {
-                  const originalIndex = galleryItems.indexOf(item);
-                  return (
-                    <article key={`${item.image}-${originalIndex}`} className={`min-w-0 ${!showAllGallery ? (index === 1 ? 'hidden sm:block' : index === 2 ? 'hidden lg:block' : '') : ''}`}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveGalleryIndex(originalIndex)}
-                        className="group relative block aspect-[4/3] w-full overflow-hidden rounded-[20px] bg-slate-200 text-left shadow-[0_12px_34px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(7,63,53,0.18)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60"
-                        aria-label={`Open ${item.title || 'AIMN gallery image'}`}
-                      >
-                        <div
-                          className="absolute inset-0 scale-110 bg-cover bg-center opacity-35 blur-xl"
-                          style={{ backgroundImage: `url("${item.image}")` }}
-                          aria-hidden="true"
-                        />
-                        <img
-                          src={item.image}
-                          alt={item.title || 'AIMN clinical training activity'}
-                          loading="lazy"
-                          decoding="async"
-                          className="relative z-[1] h-full w-full object-contain transition duration-500 group-hover:scale-[1.015]"
-                          onError={(event) => {
-                            event.currentTarget.style.display = 'none';
-                            const fallback = event.currentTarget.parentElement?.querySelector('[data-gallery-fallback]');
-                            fallback?.classList.remove('hidden');
-                            fallback?.classList.add('flex');
-                          }}
-                        />
-                        <div data-gallery-fallback className="hidden absolute inset-0 z-[2] flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
-                          <ImageIcon className="h-9 w-9 text-[#008267]" />
-                          <p className="text-sm font-black">Image unavailable</p>
-                        </div>
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#00584f]/95 via-[#00584f]/10 to-transparent" />
-
-                        {item.photoCount && (
-                          <span className="pointer-events-none absolute right-3 top-3 inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#163f45]/80 px-3 text-xs font-black text-white backdrop-blur-sm">
-                            <ImageIcon className="h-4 w-4" />
-                            {item.photoCount}
-                          </span>
-                        )}
-
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                          <h3 className="text-[16px] font-black leading-tight text-white sm:text-lg">
-                            {item.title || 'Clinical Training'}
-                          </h3>
-                          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-[11px] font-medium text-white/90 sm:text-xs">
-                            {item.location && (
-                              <span className="inline-flex min-w-0 items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                                <span className="truncate">{item.location}</span>
-                              </span>
-                            )}
-                            {item.date && (
-                              <span className="inline-flex shrink-0 items-center gap-1.5">
-                                <CalendarDays className="h-3.5 w-3.5" />
-                                {item.date}
-                              </span>
-                            )}
+              showAllGallery ? (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredGalleryItems.map((item, index) => {
+                    const originalIndex = galleryItems.indexOf(item);
+                    return (
+                      <article key={`gallery-grid-${item.image}-${index}`} className="min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setActiveGalleryIndex(originalIndex)}
+                          className="group relative block aspect-[4/3] w-full overflow-hidden rounded-[20px] bg-slate-200 text-left shadow-[0_12px_34px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(7,63,53,0.18)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60"
+                          aria-label={`Open ${item.title || 'AIMN gallery image'}`}
+                        >
+                          <div className="absolute inset-0 scale-110 bg-cover bg-center opacity-35 blur-xl" style={{ backgroundImage: `url("${item.image}")` }} aria-hidden="true" />
+                          <img
+                            src={item.image}
+                            alt={item.title || 'AIMN clinical training activity'}
+                            loading="lazy"
+                            decoding="async"
+                            className="relative z-[1] h-full w-full object-contain transition duration-500 group-hover:scale-[1.015]"
+                            onError={(event) => {
+                              event.currentTarget.style.display = 'none';
+                              const fallback = event.currentTarget.parentElement?.querySelector('[data-gallery-fallback]');
+                              fallback?.classList.remove('hidden');
+                              fallback?.classList.add('flex');
+                            }}
+                          />
+                          <div data-gallery-fallback className="hidden absolute inset-0 z-[2] flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
+                            <ImageIcon className="h-9 w-9 text-[#008267]" />
+                            <p className="text-sm font-black">Image unavailable</p>
                           </div>
-                        </div>
-                      </button>
-                    </article>
-                  );
-                })}
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#00584f]/95 via-[#00584f]/10 to-transparent" />
+                          {item.photoCount && (
+                            <span className="pointer-events-none absolute right-3 top-3 inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#163f45]/80 px-3 text-xs font-black text-white backdrop-blur-sm">
+                              <ImageIcon className="h-4 w-4" />{item.photoCount}
+                            </span>
+                          )}
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                            <h3 className="text-[16px] font-black leading-tight text-white sm:text-lg">{item.title || 'Clinical Training'}</h3>
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-[11px] font-medium text-white/90 sm:text-xs">
+                              {item.location && <span className="inline-flex min-w-0 items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{item.location}</span></span>}
+                              {item.date && <span className="inline-flex shrink-0 items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{item.date}</span>}
+                            </div>
+                          </div>
+                        </button>
+                      </article>
+                    );
+                  })}
                 </div>
-              </div>
+              ) : (
+                <CarouselControls className="aimn-gallery-window overflow-hidden" label="Gallery photos">
+                  <div
+                    className="aimn-gallery-track"
+                    style={{ animationDuration: `${Math.max(34, scrollingGalleryItems.length * 7)}s` }}
+                  >
+                    {[false, true].map((duplicate) => (
+                      <div
+                        key={duplicate ? 'gallery-copy' : 'gallery-original'}
+                        className="flex shrink-0 gap-5 pr-5"
+                        aria-hidden={duplicate ? 'true' : undefined}
+                      >
+                        {scrollingGalleryItems.map((item, index) => {
+                          const originalIndex = galleryItems.indexOf(item);
+                          return (
+                            <article
+                              key={`${duplicate ? 'copy' : 'original'}-${item.image}-${index}`}
+                              className="w-[82vw] max-w-[520px] shrink-0 sm:w-[46vw] lg:w-[31vw] lg:max-w-[460px]"
+                            >
+                              <button
+                                type="button"
+                                tabIndex={duplicate ? -1 : undefined}
+                                onClick={() => setActiveGalleryIndex(originalIndex)}
+                                className="group relative block aspect-[4/3] w-full overflow-hidden rounded-[20px] bg-slate-200 text-left shadow-[0_12px_34px_rgba(7,63,53,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(7,63,53,0.18)] focus:outline-none focus:ring-4 focus:ring-emerald-200/60"
+                                aria-label={duplicate ? undefined : `Open ${item.title || 'AIMN gallery image'}`}
+                              >
+                                <div className="absolute inset-0 scale-110 bg-cover bg-center opacity-35 blur-xl" style={{ backgroundImage: `url("${item.image}")` }} aria-hidden="true" />
+                                <img
+                                  src={item.image}
+                                  alt={duplicate ? '' : (item.title || 'AIMN clinical training activity')}
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="relative z-[1] h-full w-full object-contain transition duration-500 group-hover:scale-[1.015]"
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = 'none';
+                                    const fallback = event.currentTarget.parentElement?.querySelector('[data-gallery-fallback]');
+                                    fallback?.classList.remove('hidden');
+                                    fallback?.classList.add('flex');
+                                  }}
+                                />
+                                <div data-gallery-fallback className="hidden absolute inset-0 z-[2] flex-col items-center justify-center gap-3 bg-emerald-50 px-6 text-center text-[#073f35]">
+                                  <ImageIcon className="h-9 w-9 text-[#008267]" />
+                                  <p className="text-sm font-black">Image unavailable</p>
+                                </div>
+                                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#00584f]/95 via-[#00584f]/10 to-transparent" />
+                                {item.photoCount && (
+                                  <span className="pointer-events-none absolute right-3 top-3 inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#163f45]/80 px-3 text-xs font-black text-white backdrop-blur-sm">
+                                    <ImageIcon className="h-4 w-4" />{item.photoCount}
+                                  </span>
+                                )}
+                                <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                                  <h3 className="text-[16px] font-black leading-tight text-white sm:text-lg">{item.title || 'Clinical Training'}</h3>
+                                  <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-[11px] font-medium text-white/90 sm:text-xs">
+                                    {item.location && <span className="inline-flex min-w-0 items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{item.location}</span></span>}
+                                    {item.date && <span className="inline-flex shrink-0 items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{item.date}</span>}
+                                  </div>
+                                </div>
+                              </button>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </CarouselControls>
+              )
             ) : (
               <div className="mt-8 rounded-2xl border border-dashed border-emerald-200 bg-white px-5 py-12 text-center text-sm text-slate-500">
                 No photos are currently assigned to this category.
