@@ -372,6 +372,12 @@ export const LandingPage: React.FC = () => {
     </div>;
   };
 
+  const desktopHeroTitleLines = [
+    content.hero.titleLines[0] || 'Advancing Global',
+    content.hero.titleLines[1] || 'Clinical Training &',
+    content.hero.titleLines.slice(2).join(' ') || 'Health Workforce Capacity',
+  ];
+
   return (
     <div id="home" className="w-full max-w-full overflow-x-hidden bg-[#003d33] text-white">
       {preview && (
@@ -391,10 +397,27 @@ export const LandingPage: React.FC = () => {
                 <span className="min-w-0 break-words [overflow-wrap:anywhere]">{content.hero.eyebrow || 'Trusted by medical schools & hospitals worldwide'}</span>
               </div>
 
-              <h1 className="mt-6 w-full max-w-[680px] break-words text-[38px] font-black leading-[0.98] tracking-[-0.035em] text-white [overflow-wrap:anywhere] sm:text-[54px] lg:text-[62px] xl:text-[66px]" style={headingFont}>
-                {content.hero.titleLines.map((line, index) => (
-                  <span key={index} className={`block max-w-full break-words [overflow-wrap:anywhere] ${index > 0 && index < content.hero.titleLines.length - 1 ? 'text-[#ffbf2f]' : 'text-white'}`}>{line}</span>
-                ))}
+              <h1 className="mt-6 w-full max-w-[680px] text-[38px] font-black leading-[0.98] tracking-[-0.035em] text-white sm:text-[54px]" style={headingFont}>
+                <span className="lg:hidden">
+                  {content.hero.titleLines.map((line, index) => (
+                    <span
+                      key={index}
+                      className={`block max-w-full [text-wrap:balance] ${index === 1 ? 'text-[#ffbf2f]' : 'text-white'}`}
+                    >
+                      {line}
+                    </span>
+                  ))}
+                </span>
+                <span className="hidden lg:block lg:text-[62px] xl:text-[68px]">
+                  {desktopHeroTitleLines.map((line, index) => (
+                    <span
+                      key={index}
+                      className={`block whitespace-nowrap ${index === 1 ? 'text-[#ffbf2f]' : 'text-white'}`}
+                    >
+                      {line}
+                    </span>
+                  ))}
+                </span>
               </h1>
 
               <p className="mt-6 w-full max-w-2xl break-words text-[15px] leading-7 text-white/85 [overflow-wrap:anywhere] sm:text-base sm:leading-8 lg:text-[17px]">
