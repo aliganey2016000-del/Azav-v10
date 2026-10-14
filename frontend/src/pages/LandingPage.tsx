@@ -391,7 +391,7 @@ export const LandingPage: React.FC = () => {
 
         <div className="relative mx-auto w-full max-w-[1580px] px-4 pb-14 pt-14 sm:px-6 md:pt-20 lg:px-8 lg:pb-16 xl:px-10 2xl:px-12">
           <div className="grid min-w-0 items-center gap-10 lg:grid-cols-[minmax(0,0.98fr)_minmax(560px,1.02fr)] lg:gap-10 xl:grid-cols-[minmax(0,0.94fr)_minmax(650px,1.06fr)] xl:gap-12">
-            <div className="w-full min-w-0 max-w-[760px]">
+            <div className="w-full min-w-0 max-w-[760px] overflow-hidden">
               <div className="flex w-fit max-w-full items-start gap-2 rounded-[24px] border border-[#ffb612]/35 bg-[#ffb612]/10 px-4 py-2 text-[10px] font-black uppercase leading-5 tracking-[0.14em] text-[#ffd55b] sm:items-center sm:rounded-full sm:text-[11px] sm:tracking-[0.2em]">
                 <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:mt-0" />
                 <span className="min-w-0 break-words [overflow-wrap:anywhere]">{content.hero.eyebrow || 'Trusted by medical schools & hospitals worldwide'}</span>
@@ -408,20 +408,15 @@ export const LandingPage: React.FC = () => {
                     </span>
                   ))}
                 </span>
-                <span className="hidden lg:block lg:text-[52px] xl:text-[56px] 2xl:text-[60px]">
-                  {desktopHeroTitleLines.map((line, index) => {
-                    const words = line.trim().split(/\s+/);
-                    return (
-                      <span
-                        key={index}
-                        className={`flex w-full items-baseline justify-between gap-3 whitespace-nowrap ${index === 1 ? 'text-[#ffbf2f]' : 'text-white'}`}
-                      >
-                        {words.map((word, wordIndex) => (
-                          <span key={`${index}-${wordIndex}`}>{word}</span>
-                        ))}
-                      </span>
-                    );
-                  })}
+                <span className="hidden w-full lg:block lg:text-[44px] xl:text-[48px] 2xl:text-[52px]">
+                  {desktopHeroTitleLines.map((line, index) => (
+                    <span
+                      key={index}
+                      className={`block w-full whitespace-nowrap text-justify [text-align-last:justify] ${index === 1 ? 'text-[#ffbf2f]' : 'text-white'}`}
+                    >
+                      {line}
+                    </span>
+                  ))}
                 </span>
               </h1>
 
