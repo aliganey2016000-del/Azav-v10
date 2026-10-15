@@ -476,6 +476,38 @@ const normalizeSectionHeadings = (headings: Partial<SectionHeadings> | undefined
   return merged;
 };
 
+const resolveCurrentSiteAssetUrl = (rawUrl: string): string => {
+  const value = String(rawUrl || '').trim();
+  if (!value) return value;
+
+  // Website media may have been saved while the backend was still on an older
+  // Coolify/sslip hostname. Site-asset IDs are stable, so rebuild those URLs
+  // against the backend configured in the current frontend build.
+  const siteAssetMatch = value.match(/\/api\/v1\/site-assets\/([a-f\d]{24})(?:[/?#].*)?$/i);
+  if (!siteAssetMatch) return value;
+
+  const configuredApiRoot = String(import.meta.env.VITE_API_URL || '').trim();
+  const origin = (() => {
+    try {
+      return new URL(configuredApiRoot || window.location.origin, window.location.origin).origin;
+    } catch {
+      return window.location.origin;
+    }
+  })();
+
+  return `${origin}/api/v1/site-assets/${siteAssetMatch[1]}`;
+};
+
+const normalizeGallery = (value: Partial<LandingPageContent> | undefined): GalleryItem[] => {
+  const items = Array.isArray(value?.gallery) ? value!.gallery : defaultLandingPageContent.gallery;
+  return items
+    .filter((item) => item?.image?.trim())
+    .map((item) => ({
+      ...item,
+      image: resolveCurrentSiteAssetUrl(item.image),
+    }));
+};
+
 const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): LandingPageContent => ({
   ...defaultLandingPageContent,
   ...(value || {}),
@@ -500,7 +532,7 @@ const mergeWithDefaults = (value: Partial<LandingPageContent> | undefined): Land
   testimonials: Array.isArray(value?.testimonials) ? value!.testimonials : defaultLandingPageContent.testimonials,
   recognitions: mergeRecognitions(value),
   navigation: Array.isArray(value?.navigation) ? value!.navigation : defaultLandingPageContent.navigation,
-  gallery: Array.isArray(value?.gallery) ? value!.gallery : defaultLandingPageContent.gallery,
+  gallery: normalizeGallery(value),
   videos: Array.isArray(value?.videos) ? value!.videos : defaultLandingPageContent.videos,
   networkRoles: Array.isArray(value?.networkRoles) ? value!.networkRoles : defaultLandingPageContent.networkRoles,
   memberships: mergeMemberships(value),
@@ -572,8 +604,9 @@ export const LandingPageCmsService = {
       throw new Error('Upload completed but no asset URL was returned.');
     }
 
-    // Resolve both relative API paths and absolute object URLs safely.
-    const apiBase = ((import.meta.env.VITE_API_URL as string | undefined) || window.location.origin).trim();
-    return new URL(path, apiBase.endsWith('/') ? apiBase : `${apiBase}/`).toString();
+    // Save a stable URL that always points at the current backend origin.
+    // Existing gallery entries from older Coolify hostnames are normalized by
+    // resolveCurrentSiteAssetUrl when the CMS/public page loads.
+    return resolveCurrentSiteAssetUrl(path);
   },
 };
