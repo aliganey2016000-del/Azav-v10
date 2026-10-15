@@ -98,23 +98,6 @@ const CarouselControls: React.FC<{ label: string; className: string; children: R
   );
 };
 
-const resolveGalleryImageUrl = (rawUrl: string) => {
-  const value = String(rawUrl || '').trim();
-  if (!value) return value;
-
-  const siteAssetPath = value.match(/\/api\/v1\/site-assets\/[a-f\d]{24}(?:[/?#].*)?$/i)?.[0];
-  if (!siteAssetPath) return value;
-
-  const configuredBackend = String(import.meta.env.VITE_API_URL || '').trim();
-  if (!configuredBackend) return value;
-
-  try {
-    return new URL(siteAssetPath, configuredBackend.endsWith('/') ? configuredBackend : `${configuredBackend}/`).toString();
-  } catch {
-    return value;
-  }
-};
-
 const youtubeEmbed = (url: string) => {
   try {
     const parsed = new URL(url);
@@ -283,9 +266,7 @@ export const LandingPage: React.FC = () => {
   const heroShowcaseEmbed = heroShowcaseUrl ? youtubeEmbed(heroShowcaseUrl) : '';
   const memberships = content.memberships.filter((item) => item?.name?.trim() && item?.logo?.trim());
   const hospitals = content.hospitals.filter((hospital) => hospital.name?.trim());
-  const galleryItems = content.gallery
-    .filter((item) => item.image?.trim())
-    .map((item) => ({ ...item, image: resolveGalleryImageUrl(item.image) }));
+  const galleryItems = content.gallery.filter((item) => item.image?.trim());
   const filteredGalleryItems = galleryItems;
   const scrollingGalleryItems = filteredGalleryItems.length
     ? Array.from(
