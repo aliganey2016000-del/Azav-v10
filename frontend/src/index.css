@@ -599,3 +599,43 @@ html.dark ::-webkit-scrollbar-thumb {
     scroll-snap-align: start;
   }
 }
+
+
+/* Clinical Training: one continuous row moving right-to-left. */
+@keyframes aimn-program-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.aimn-program-track {
+  display: flex;
+  width: max-content;
+  animation: aimn-program-scroll 52s linear infinite;
+  will-change: transform;
+}
+
+.aimn-program-window:hover .aimn-program-track,
+.aimn-program-window:focus-within .aimn-program-track {
+  animation-play-state: paused;
+}
+
+@media (max-width: 640px) {
+  .aimn-program-track {
+    animation-duration: 42s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aimn-program-window {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .aimn-program-track {
+    animation: none;
+  }
+
+  .aimn-program-track article {
+    scroll-snap-align: start;
+  }
+}
