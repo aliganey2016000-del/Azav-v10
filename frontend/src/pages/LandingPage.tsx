@@ -579,42 +579,54 @@ export const LandingPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {content.programs.slice(0, 10).map((program, index) => (
-              <article
-                key={`${program.title}-${index}`}
-                className="group min-w-0 overflow-hidden rounded-[18px] border border-white/15 bg-[#08785c]/80 shadow-[0_16px_38px_rgba(0,70,50,0.16)] transition duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_22px_48px_rgba(0,70,50,0.24)]"
-              >
-                <div className="aspect-[4/3] overflow-hidden bg-[#0b5f50]">
-                  {program.image ? (
-                    <img
-                      src={program.image}
-                      alt={program.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <Stethoscope className="h-12 w-12 text-[#ffbf2f]" />
-                    </div>
-                  )}
-                </div>
+          <div className="aimn-program-window overflow-hidden">
+            <div className="aimn-program-track">
+              {[false, true].map((duplicate) => (
+                <div
+                  key={duplicate ? 'programs-copy' : 'programs-original'}
+                  className="flex shrink-0 gap-4 pr-4"
+                  aria-hidden={duplicate ? 'true' : undefined}
+                >
+                  {content.programs.slice(0, 10).map((program, index) => (
+                    <article
+                      key={`${duplicate ? 'copy' : 'original'}-${program.title}-${index}`}
+                      className="group w-[82vw] max-w-[330px] shrink-0 overflow-hidden rounded-[18px] border border-white/15 bg-[#08785c]/80 shadow-[0_16px_38px_rgba(0,70,50,0.16)] transition duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_22px_48px_rgba(0,70,50,0.24)] sm:w-[300px] lg:w-[280px] xl:w-[300px]"
+                    >
+                      <div className="aspect-[4/3] overflow-hidden bg-[#0b5f50]">
+                        {program.image ? (
+                          <img
+                            src={program.image}
+                            alt={duplicate ? '' : program.title}
+                            loading="lazy"
+                            decoding="async"
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <Stethoscope className="h-12 w-12 text-[#ffbf2f]" />
+                          </div>
+                        )}
+                      </div>
 
-                <div className="flex min-h-[112px] flex-col p-4 sm:min-h-[118px]">
-                  <h3 className="text-[15px] font-black leading-snug text-white sm:text-base">
-                    {program.title}
-                  </h3>
-                  <SmartLink
-                    to={program.link || '/register'}
-                    className="mt-auto inline-flex items-center gap-2 pt-4 text-xs font-black text-[#ffbf2f] transition group-hover:gap-3 sm:text-[13px]"
-                  >
-                    {content.sectionHeadings.programButtonLabel}
-                    <ArrowRight className="h-4 w-4" />
-                  </SmartLink>
+                      <div className="flex min-h-[112px] flex-col p-4 sm:min-h-[118px]">
+                        <h3 className="text-[15px] font-black leading-snug text-white sm:text-base">
+                          {program.title}
+                        </h3>
+                        {!duplicate && (
+                          <SmartLink
+                            to={program.link || '/register'}
+                            className="mt-auto inline-flex items-center gap-2 pt-4 text-xs font-black text-[#ffbf2f] transition group-hover:gap-3 sm:text-[13px]"
+                          >
+                            {content.sectionHeadings.programButtonLabel}
+                            <ArrowRight className="h-4 w-4" />
+                          </SmartLink>
+                        )}
+                      </div>
+                    </article>
+                  ))}
                 </div>
-              </article>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
